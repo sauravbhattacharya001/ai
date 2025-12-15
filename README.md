@@ -13,9 +13,10 @@ This repository models a replication-aware worker system with an explicit contra
 - **Observability:** Structured logs plus metrics events capture lifecycle activity and replication decisions to support audits and debugging.
 
 ## Running tests
-Install Python 3.10+ and run:
+Install Python 3.10+ and the dev dependencies:
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m pytest
 ```
 
