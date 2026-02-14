@@ -99,12 +99,17 @@ class Controller:
         else:
             self.logger.audit("heartbeat_unknown", worker_id=worker_id)
 
-    def reap_stale_workers(self, timeout: timedelta) -> List[str]:
+    def reap_stale_workers(self, timeout: timedelta, orchestrator=None) -> List[str]:
         """Remove workers whose last heartbeat exceeds the given timeout.
 
         Returns the list of reaped worker IDs.  Should be called
         periodically (e.g. every heartbeat interval) so that dead
         workers don't permanently consume replica-quota slots.
+
+        When *orchestrator* is provided, the corresponding containers
+        are killed before deregistration so that no orphaned resources
+        remain.  Without it, only the registry entry is removed (kept
+        for backward compatibility, but callers should always pass it).
         """
         now = datetime.now(timezone.utc)
         stale = [
@@ -117,6 +122,8 @@ class Controller:
                 worker_id=wid,
                 last_heartbeat=self.registry[wid].last_heartbeat.isoformat(),
             )
+            if orchestrator is not None:
+                orchestrator.kill_worker(wid, reason="heartbeat_timeout")
             self.deregister(wid, reason="heartbeat_timeout")
         return stale
 

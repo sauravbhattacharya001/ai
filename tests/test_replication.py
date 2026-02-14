@@ -134,6 +134,7 @@ def test_reap_stale_workers_frees_quota():
 
     child = root.maybe_replicate(reason="work", state_snapshot={"task": "child"})
     assert len(controller.registry) == 2
+    assert child.manifest.worker_id in orchestrator.containers
 
     # Quota is full — a third spawn should fail
     assert root.maybe_replicate(reason="excess", state_snapshot={"task": "over"}) is None
@@ -143,10 +144,11 @@ def test_reap_stale_workers_frees_quota():
     stale_time = datetime.now(timezone.utc) - timedelta(seconds=120)
     controller.registry[child.manifest.worker_id].last_heartbeat = stale_time
 
-    # Reap with a 60-second timeout — child should be reaped
-    reaped = controller.reap_stale_workers(timeout=timedelta(seconds=60))
+    # Reap with a 60-second timeout — child should be reaped (pass orchestrator to clean up containers)
+    reaped = controller.reap_stale_workers(timeout=timedelta(seconds=60), orchestrator=orchestrator)
     assert child.manifest.worker_id in reaped
     assert len(controller.registry) == 1  # only root remains
+    assert child.manifest.worker_id not in orchestrator.containers  # container should be cleaned up
 
     # Verify audit trail
     assert any(
