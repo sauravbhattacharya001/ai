@@ -1,0 +1,73 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in the AI Replication Sandbox
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the details below so we can reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear description of what the bug is.
+      placeholder: "e.g., Worker replication fails silently when depth equals max_depth"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps or code to trigger the bug.
+      placeholder: |
+        1. Create a ReplicationContract with max_depth=2
+        2. Spawn a worker at depth 2
+        3. Call maybe_replicate()
+        4. Expected: ReplicationDenied raised. Actual: returns None without logging
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened. Include error messages or logs if available.
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: "Output of `python --version`"
+      placeholder: "Python 3.12.x"
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      options:
+        - Controller (registry, lifecycle)
+        - Worker (task execution, replication)
+        - ManifestSigner (signing, verification)
+        - Orchestrator (container sandbox)
+        - Contract (policies, stop conditions)
+        - Observability (logging, metrics)
+        - Other
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Logs, screenshots, or anything else that might help.

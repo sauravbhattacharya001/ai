@@ -1,0 +1,65 @@
+name: Feature Request
+description: Propose a new feature or enhancement for the AI Replication Sandbox
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to improve the replication framework? Describe it below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What's the pain point?
+      placeholder: "e.g., There's no way to rate-limit replication bursts across the cluster"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this to work? Include API sketches or design ideas.
+      placeholder: |
+        Add a `burst_limit` field to ReplicationContract that caps how many
+        workers a single parent can spawn within a sliding window, separate
+        from the existing `cooldown_seconds` per-spawn delay.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other approaches you've thought about and why they're less ideal.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Controller (registry, lifecycle)
+        - Worker (task execution, replication)
+        - ManifestSigner (signing, verification)
+        - Orchestrator (container sandbox)
+        - Contract (policies, stop conditions)
+        - Observability (logging, metrics)
+        - New component
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: How big is this change?
+      options:
+        - Small (single module, < 100 lines)
+        - Medium (multiple modules, API changes)
+        - Large (new subsystem, architecture change)
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Links, references, diagrams, or anything else relevant.
