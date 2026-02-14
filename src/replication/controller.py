@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import hmac
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from hashlib import sha256
 from typing import Dict, List, Optional
 
 from .contract import Manifest, ReplicationContext, ReplicationContract
 from .observability import StructuredLogger
+from .signer import ManifestSigner
 
 
 @dataclass
@@ -22,31 +21,27 @@ class ReplicationDenied(Exception):
 
 
 class Controller:
-    """Tracks active replicas, enforces quotas, and signs manifests."""
+    """Tracks active replicas, enforces quotas, and delegates signing to *ManifestSigner*.
+
+    Crypto is handled by :class:`ManifestSigner`, keeping this class
+    focused on lifecycle management and policy enforcement.
+    """
 
     def __init__(self, contract: ReplicationContract, secret: str, logger: Optional[StructuredLogger] = None):
         self.contract = contract
-        self.secret = secret.encode()
+        self.signer = ManifestSigner(secret)
         self.logger = logger or StructuredLogger()
         self.registry: Dict[str, RegistryEntry] = {}
         self.spawn_timestamps: Dict[str, datetime] = {}
         self.kill_switch_engaged = False
 
-    def _signature(self, payload: str) -> str:
-        return hmac.new(self.secret, payload.encode(), sha256).hexdigest()
-
-    def _serialize_manifest(self, manifest: Manifest) -> str:
-        return f"{manifest.worker_id}:{manifest.parent_id}:{manifest.depth}:{manifest.issued_at.isoformat()}:{manifest.state_snapshot}"
+    # -- Manifest helpers (delegate to signer) -------------------------
 
     def sign_manifest(self, manifest: Manifest) -> Manifest:
-        payload = self._serialize_manifest(manifest)
-        signature = self._signature(payload)
-        manifest.signature = signature
-        return manifest
+        return self.signer.sign(manifest)
 
     def verify_manifest(self, manifest: Manifest) -> None:
-        expected = self._signature(self._serialize_manifest(manifest))
-        if not hmac.compare_digest(expected, manifest.signature):
+        if not self.signer.verify(manifest):
             self.logger.audit("reject_manifest_signature", worker_id=manifest.worker_id)
             raise ReplicationDenied("Manifest signature invalid")
 
@@ -61,7 +56,7 @@ class Controller:
             resources=resources,
             signature="",
         )
-        self.sign_manifest(manifest)
+        self.signer.sign(manifest)
         return manifest
 
     def can_spawn(self, parent_id: Optional[str]) -> None:

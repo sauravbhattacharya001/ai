@@ -18,6 +18,7 @@ from .contract import (
 )
 from .controller import Controller, ReplicationDenied, RegistryEntry
 from .observability import Metric, StructuredLogger
+from .signer import ManifestSigner
 from .orchestrator import ContainerRecord, SandboxOrchestrator
 from .worker import Worker, WorkerState
 
@@ -37,6 +38,8 @@ __all__ = [
     # observability
     "Metric",
     "StructuredLogger",
+    # signer
+    "ManifestSigner",
     # orchestrator
     "ContainerRecord",
     "SandboxOrchestrator",
