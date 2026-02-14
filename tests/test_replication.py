@@ -61,8 +61,9 @@ def test_quota_enforced_and_audited():
 
     def task(agent: Worker) -> None:
         agent.maybe_replicate(reason="branch", state_snapshot={"task": "child"})
-        with pytest.raises(ReplicationDenied):
-            agent.maybe_replicate(reason="excess", state_snapshot={"task": "overbudget"})
+        # When quota is exceeded, maybe_replicate returns None instead of raising
+        result = agent.maybe_replicate(reason="excess", state_snapshot={"task": "overbudget"})
+        assert result is None
 
     root.perform_task(task)
 

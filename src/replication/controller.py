@@ -109,7 +109,8 @@ class Controller:
 
     def kill_switch(self, orchestrator) -> None:
         self.kill_switch_engaged = True
+        active_before = len(self.registry)
         for worker_id in list(self.registry.keys()):
             orchestrator.kill_worker(worker_id, reason="kill_switch")
             self.deregister(worker_id, "kill_switch")
-        self.logger.audit("kill_switch_engaged", active_before=len(self.registry))
+        self.logger.audit("kill_switch_engaged", active_before=active_before)

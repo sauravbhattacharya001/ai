@@ -52,7 +52,11 @@ class Worker:
         self.orchestrator.enforce_resource_bounds(self.manifest.worker_id)
 
     def maybe_replicate(self, reason: str, state_snapshot: Dict[str, str]) -> Optional["Worker"]:
-        self.controller.can_spawn(self.manifest.worker_id)
+        try:
+            self.controller.can_spawn(self.manifest.worker_id)
+        except ReplicationDenied:
+            self.logger.log("replication_denied", parent_id=self.manifest.worker_id, reason=reason)
+            return None
         child_depth = self.manifest.depth + 1
         resources = self.manifest.resources
         manifest = self.controller.issue_manifest(
