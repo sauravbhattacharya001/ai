@@ -75,6 +75,7 @@ nav:
   - Concepts:
       - Architecture: concepts/architecture.md
       - Security Model: concepts/security.md
+      - Threat Model & Limitations: concepts/threat-model.md
   - API Reference:
       - Overview: api/index.md
       - Contract: api/contract.md
