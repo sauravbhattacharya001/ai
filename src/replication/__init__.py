@@ -23,6 +23,7 @@ from .observability import Metric, StructuredLogger
 from .signer import ManifestSigner
 from .orchestrator import ContainerRecord, SandboxOrchestrator
 from .simulator import Simulator, ScenarioConfig, SimulationReport, Strategy, PRESETS
+from .comparator import Comparator, ComparisonResult, RunResult
 from .worker import Worker, WorkerState
 
 __all__ = [
@@ -52,6 +53,10 @@ __all__ = [
     "SimulationReport",
     "Strategy",
     "PRESETS",
+    # comparator
+    "Comparator",
+    "ComparisonResult",
+    "RunResult",
     # worker
     "Worker",
     "WorkerState",

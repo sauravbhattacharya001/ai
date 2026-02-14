@@ -93,6 +93,40 @@ Built-in structured logging and metrics:
 - Audit trail for security-sensitive actions
 - Resource enforcement metrics per worker
 
+### 🔬 Simulation Runner
+Run configurable replication scenarios with 5 built-in strategies (greedy, conservative, random, chain, burst), ASCII worker tree + timeline visualization, JSON export, and reproducible seeds.
+
+```bash
+python -m replication.simulator                        # default scenario
+python -m replication.simulator --strategy chain       # linear chain
+python -m replication.simulator --scenario stress      # stress test preset
+```
+
+### 📈 Comparison Runner
+Run side-by-side experiments to compare strategies, presets, or sweep parameters:
+
+```bash
+python -m replication.comparator                                    # compare all strategies
+python -m replication.comparator --strategies greedy conservative   # compare specific ones
+python -m replication.comparator --presets minimal balanced stress  # compare presets
+python -m replication.comparator --sweep max_depth 1 2 3 4 5       # parameter sweep
+python -m replication.comparator --sweep max_replicas 5 10 20 50   # replica limit sweep
+python -m replication.comparator --seed 42 --json                  # reproducible JSON output
+```
+
+Output includes comparison tables, rankings with medals, overall scoring, key insights, depth utilization warnings, and full JSON export.
+
+```python
+from replication import Comparator, ScenarioConfig
+
+comp = Comparator(ScenarioConfig(max_depth=3, max_replicas=10))
+result = comp.compare_strategies(["greedy", "conservative", "random"], seed=42)
+print(result.render())          # table + rankings + insights
+
+result = comp.sweep("max_depth", [1, 2, 3, 4, 5], seed=42)
+print(result.render_table())    # just the comparison table
+```
+
 ## Quick Start
 
 ### Prerequisites
@@ -226,6 +260,23 @@ for event in logger.events:
 | `kill_all(reason)` | Terminate all running sandboxes |
 | `enforce_resource_bounds(worker_id)` | Check and log resource usage |
 
+### `Comparator`
+| Method | Description |
+|--------|-------------|
+| `compare_strategies(strategies, seed)` | Run same config with different strategies side-by-side |
+| `compare_presets(preset_names)` | Compare built-in scenario presets |
+| `sweep(param, values, seed)` | Sweep a parameter across multiple values |
+| `compare_configs(configs)` | Compare arbitrary named configurations |
+
+### `ComparisonResult`
+| Method | Description |
+|--------|-------------|
+| `render()` | Full report: table + rankings + insights |
+| `render_table()` | Comparison table with key metrics |
+| `render_rankings()` | Multi-dimension rankings with medals |
+| `render_insights()` | Automated analysis of patterns |
+| `to_dict()` | JSON-serializable export |
+
 ## Project Structure
 
 ```
@@ -237,10 +288,17 @@ ai/
 │       ├── controller.py        # Controller, registry, kill switch
 │       ├── orchestrator.py      # SandboxOrchestrator, ContainerRecord
 │       ├── observability.py     # StructuredLogger, Metric
+│       ├── simulator.py         # Simulation runner (5 strategies, CLI)
+│       ├── comparator.py        # Comparison runner (strategy/preset/sweep)
+│       ├── signer.py            # HMAC-SHA256 manifest signing
 │       └── worker.py            # Worker, task execution, self-replication
 ├── tests/
 │   ├── conftest.py              # Shared fixtures
-│   └── test_replication.py      # Comprehensive test suite
+│   ├── test_replication.py      # Core replication tests
+│   ├── test_controller.py       # Controller safety tests
+│   ├── test_signer.py           # Manifest signing tests
+│   ├── test_simulator.py        # Simulation runner tests
+│   └── test_comparator.py       # Comparison runner tests
 ├── docs/                        # Documentation
 ├── Dockerfile                   # Multi-stage build (test + runtime)
 ├── requirements-dev.txt         # Dev dependencies (pytest)
