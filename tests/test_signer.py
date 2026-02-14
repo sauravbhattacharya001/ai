@@ -56,3 +56,43 @@ def test_verify_fails_with_wrong_key():
     signer_a.sign(manifest)
 
     assert not signer_b.verify(manifest)
+
+
+def test_verify_rejects_tampered_resources():
+    """Tampering with resource limits must invalidate the signature."""
+    signer = ManifestSigner("secret-key")
+    manifest = _make_manifest()
+    signer.sign(manifest)
+
+    # Escalate CPU — should break signature
+    manifest.resources.cpu_limit = 99.0
+    assert not signer.verify(manifest)
+
+
+def test_verify_rejects_tampered_network_policy():
+    """Enabling external network access must invalidate the signature."""
+    from replication.contract import NetworkPolicy
+
+    signer = ManifestSigner("secret-key")
+    manifest = _make_manifest(
+        resources=ResourceSpec(
+            cpu_limit=0.5,
+            memory_limit_mb=256,
+            network_policy=NetworkPolicy(allow_controller=True, allow_external=False),
+        )
+    )
+    signer.sign(manifest)
+
+    # Tamper: enable external network access
+    manifest.resources.network_policy.allow_external = True
+    assert not signer.verify(manifest)
+
+
+def test_verify_rejects_tampered_memory_limit():
+    """Escalating memory limit must invalidate the signature."""
+    signer = ManifestSigner("secret-key")
+    manifest = _make_manifest()
+    signer.sign(manifest)
+
+    manifest.resources.memory_limit_mb = 99999
+    assert not signer.verify(manifest)

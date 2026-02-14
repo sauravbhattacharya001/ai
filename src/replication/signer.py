@@ -19,9 +19,12 @@ class ManifestSigner:
         self._key = secret.encode()
 
     def _serialize(self, manifest: Manifest) -> str:
+        res = manifest.resources
         return (
             f"{manifest.worker_id}:{manifest.parent_id}:{manifest.depth}"
             f":{manifest.issued_at.isoformat()}:{manifest.state_snapshot}"
+            f":{res.cpu_limit}:{res.memory_limit_mb}"
+            f":{res.network_policy.allow_controller}:{res.network_policy.allow_external}"
         )
 
     def sign(self, manifest: Manifest) -> Manifest:
