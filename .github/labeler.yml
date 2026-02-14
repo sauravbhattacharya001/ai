@@ -1,0 +1,48 @@
+# Auto-labeler configuration for actions/labeler
+# Labels PRs based on which files are modified
+
+"code":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/**"
+
+"testing":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+
+"ci/cd":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".github/dependabot.yml"
+          - ".github/labeler.yml"
+
+"documentation":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "*.md"
+          - "!CHANGELOG.md"
+
+"docker":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "Dockerfile"
+          - ".dockerignore"
+          - "docker-compose*.yml"
+
+"dependencies":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "requirements*.txt"
+          - "pyproject.toml"
+          - "setup.py"
+          - "setup.cfg"
+
+"security":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/replication/signer.py"
+          - "src/replication/contract.py"
+          - ".github/SECURITY.md"
