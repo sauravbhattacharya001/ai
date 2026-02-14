@@ -42,10 +42,8 @@ class SandboxOrchestrator:
         )
 
     def kill_worker(self, worker_id: str, reason: str) -> None:
-        record = self.containers.get(worker_id)
+        record = self.containers.pop(worker_id, None)
         if record:
-            record.status = "killed"
-            record.reason = reason
             self.logger.log("container_killed", worker_id=worker_id, reason=reason)
 
     def kill_all(self, reason: str) -> None:

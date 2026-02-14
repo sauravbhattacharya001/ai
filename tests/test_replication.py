@@ -116,7 +116,7 @@ def test_kill_switch_stops_all_workers():
 
     assert controller.kill_switch_engaged
     assert not controller.registry
-    assert all(record.status == "killed" for record in orchestrator.containers.values())
+    assert not orchestrator.containers  # killed containers are removed to prevent memory leaks
     assert any(event.get("decision") == "kill_switch_engaged" for event in logger.events if event.get("event") == "audit")
 
 
