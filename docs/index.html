@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Replication Sandbox — Documentation</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #79c0ff;
+            --green: #3fb950;
+            --orange: #d29922;
+            --red: #f85149;
+            --purple: #bc8cff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            text-align: center;
+        }
+        .header h1 { font-size: 2rem; font-weight: 600; }
+        .header h1 span { color: var(--accent); }
+        .header p { color: var(--text-muted); margin-top: 0.5rem; font-size: 1.1rem; }
+        .badges { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+        .badges img { height: 20px; }
+        .container { max-width: 960px; margin: 2rem auto; padding: 0 1.5rem; }
+        nav {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+        }
+        nav h3 { color: var(--accent); margin-bottom: 0.5rem; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
+        nav a { color: var(--text); text-decoration: none; font-size: 0.95rem; }
+        nav a:hover { color: var(--accent); }
+        section { margin-bottom: 2.5rem; }
+        h2 {
+            font-size: 1.5rem;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        h3 { font-size: 1.15rem; color: var(--accent); margin: 1.2rem 0 0.5rem; }
+        p, li { color: var(--text-muted); margin-bottom: 0.5rem; }
+        ul { padding-left: 1.5rem; }
+        pre {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 0.5rem 0 1rem;
+            font-size: 0.9rem;
+        }
+        code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; color: var(--text); }
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+        }
+        .card h4 { color: var(--accent); margin-bottom: 0.5rem; }
+        .card p { font-size: 0.9rem; }
+        .tag {
+            display: inline-block;
+            background: var(--border);
+            color: var(--text-muted);
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin: 0.15rem 0.15rem;
+        }
+        .flow { color: var(--green); font-weight: 500; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        th, td {
+            padding: 0.6rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+        th { color: var(--text); background: var(--surface); }
+        td { color: var(--text-muted); }
+        td code { color: var(--purple); }
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 <span>AI Replication Sandbox</span></h1>
+        <p>A replication-aware worker system with explicit contracts, sandboxed orchestration, and structured observability</p>
+        <div class="badges">
+            <img src="https://img.shields.io/github/actions/workflow/status/sauravbhattacharya001/ai/ci.yml?branch=master&style=flat-square&label=CI" alt="CI">
+            <img src="https://img.shields.io/github/v/release/sauravbhattacharya001/ai?style=flat-square&color=blue" alt="Release">
+            <img src="https://img.shields.io/github/license/sauravbhattacharya001/ai?style=flat-square" alt="License">
+            <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white" alt="Python">
+        </div>
+    </div>
+
+    <div class="container">
+        <nav>
+            <h3>Navigation</h3>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#components">Components</a></li>
+                <li><a href="#api">API Reference</a></li>
+                <li><a href="#quickstart">Quick Start</a></li>
+                <li><a href="#security">Security Model</a></li>
+                <li><a href="#testing">Testing</a></li>
+            </ul>
+        </nav>
+
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>The AI Replication Sandbox models controlled self-replication of AI worker agents. It provides a framework for defining replication policies (contracts), enforcing them via a centralized controller, and running workers in simulated sandboxed environments with resource limits and network isolation.</p>
+            <p>This is a <strong>simulator-friendly</strong> implementation — no Docker/Podman required — while documenting the resource and network boundaries that would be enforced in production.</p>
+            <div style="margin-top: 1rem;">
+                <span class="tag">AI Safety</span>
+                <span class="tag">Replication Control</span>
+                <span class="tag">Sandboxing</span>
+                <span class="tag">Observability</span>
+                <span class="tag">Python 3.10+</span>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <h2>Architecture</h2>
+            <p>The system follows a hub-and-spoke model where the <strong>Controller</strong> is the central authority and <strong>Workers</strong> are the executing agents.</p>
+            <pre><code>┌─────────────────────────────────────────────────────────┐
+│                    Controller                           │
+│  ┌──────────┐  ┌──────────┐  ┌────────────────────┐    │
+│  │ Registry │  │ Manifest │  │ Contract Evaluator │    │
+│  │          │  │ Signer   │  │ (Stop Conditions)  │    │
+│  └──────────┘  └──────────┘  └────────────────────┘    │
+│  ┌──────────┐  ┌──────────────────────────────────┐    │
+│  │ Kill     │  │ Audit Trail / Structured Logger  │    │
+│  │ Switch   │  └──────────────────────────────────┘    │
+│  └──────────┘                                           │
+└─────────┬───────────────────────────────┬───────────────┘
+          │                               │
+    ┌─────▼─────┐                   ┌─────▼─────┐
+    │  Worker A │──replicates──▶    │  Worker B │
+    │  depth=0  │                   │  depth=1  │
+    │  ┌──────┐ │                   │  ┌──────┐ │
+    │  │Sandbox│ │                   │  │Sandbox│ │
+    │  │CPU/RAM│ │                   │  │CPU/RAM│ │
+    │  │NetPol │ │                   │  │NetPol │ │
+    │  └──────┘ │                   │  └──────┘ │
+    └───────────┘                   └───────────┘</code></pre>
+
+            <h3>Replication Flow</h3>
+            <p><span class="flow">1.</span> Controller issues a signed <code>Manifest</code> for the root worker</p>
+            <p><span class="flow">2.</span> Worker registers with the Controller (manifest signature verified)</p>
+            <p><span class="flow">3.</span> Worker executes tasks, heartbeats back to Controller</p>
+            <p><span class="flow">4.</span> Worker requests replication → Controller checks contract (depth, quota, cooldown, stop conditions)</p>
+            <p><span class="flow">5.</span> If allowed, Controller issues a child manifest → new Worker spawns in its own sandbox</p>
+            <p><span class="flow">6.</span> Kill switch terminates all workers immediately</p>
+        </section>
+
+        <section id="components">
+            <h2>Components</h2>
+            <div class="component-grid">
+                <div class="card">
+                    <h4>📜 ReplicationContract</h4>
+                    <p>Defines the rules: max depth, max replicas, cooldown between spawns, optional expiration, and pluggable stop conditions evaluated during registration.</p>
+                </div>
+                <div class="card">
+                    <h4>📋 Manifest</h4>
+                    <p>Immutable snapshot of worker state: ID, parent lineage, depth, state snapshot, resource quotas, issuance time, and HMAC-SHA256 signature.</p>
+                </div>
+                <div class="card">
+                    <h4>🎛️ Controller</h4>
+                    <p>Central authority. Signs manifests, manages the worker registry, enforces all contract constraints, provides kill switch, reaps stale workers, maintains audit trail.</p>
+                </div>
+                <div class="card">
+                    <h4>📦 SandboxOrchestrator</h4>
+                    <p>Simulates isolated container environments. Tracks CPU/RAM limits and network policy (egress-only to controller). Emits resource enforcement metrics.</p>
+                </div>
+                <div class="card">
+                    <h4>⚙️ Worker</h4>
+                    <p>Task-executing agent. Registers on creation, heartbeats during tasks, handles expiration and kill switch, optionally self-replicates subject to contract.</p>
+                </div>
+                <div class="card">
+                    <h4>📊 StructuredLogger</h4>
+                    <p>In-memory structured logging with separate audit trail. Captures lifecycle events, replication decisions, and resource metrics for debugging and compliance.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="api">
+            <h2>API Reference</h2>
+
+            <h3>ReplicationContract</h3>
+            <table>
+                <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                <tr><td><code>max_depth</code></td><td>int</td><td>Maximum replication depth (generations)</td></tr>
+                <tr><td><code>max_replicas</code></td><td>int</td><td>Maximum concurrent active replicas</td></tr>
+                <tr><td><code>cooldown_seconds</code></td><td>float</td><td>Minimum time between spawns from same parent</td></tr>
+                <tr><td><code>expiration_seconds</code></td><td>float | None</td><td>Worker auto-shutdown timer</td></tr>
+                <tr><td><code>stop_conditions</code></td><td>List[StopCondition]</td><td>Pluggable predicates checked on registration</td></tr>
+            </table>
+
+            <h3>Controller</h3>
+            <table>
+                <tr><th>Method</th><th>Description</th></tr>
+                <tr><td><code>issue_manifest(parent_id, depth, state_snapshot, resources)</code></td><td>Create and sign a new manifest</td></tr>
+                <tr><td><code>register_worker(manifest)</code></td><td>Verify signature, evaluate contract, register</td></tr>
+                <tr><td><code>can_spawn(parent_id)</code></td><td>Check if replication is allowed (raises ReplicationDenied)</td></tr>
+                <tr><td><code>heartbeat(worker_id)</code></td><td>Update last heartbeat timestamp</td></tr>
+                <tr><td><code>reap_stale_workers(timeout)</code></td><td>Remove workers exceeding heartbeat timeout</td></tr>
+                <tr><td><code>kill_switch(orchestrator)</code></td><td>Terminate all workers immediately</td></tr>
+                <tr><td><code>deregister(worker_id, reason)</code></td><td>Remove worker from registry</td></tr>
+            </table>
+
+            <h3>Worker</h3>
+            <table>
+                <tr><th>Method</th><th>Description</th></tr>
+                <tr><td><code>perform_task(task_fn)</code></td><td>Execute a task (checks expiration + kill switch first)</td></tr>
+                <tr><td><code>maybe_replicate(reason, state_snapshot)</code></td><td>Attempt self-replication subject to contract</td></tr>
+                <tr><td><code>shutdown(reason)</code></td><td>Clean shutdown: kill container + deregister</td></tr>
+            </table>
+
+            <h3>Imports</h3>
+            <pre><code>from replication import (
+    Controller, Worker, ReplicationContract,
+    Manifest, ResourceSpec, NetworkPolicy,
+    StopCondition, ReplicationContext,
+    SandboxOrchestrator, StructuredLogger,
+    ReplicationDenied, WorkerState,
+)</code></pre>
+        </section>
+
+        <section id="quickstart">
+            <h2>Quick Start</h2>
+            <pre><code>pip install -r requirements-dev.txt</code></pre>
+
+            <h3>Basic Usage</h3>
+            <pre><code>from replication import (
+    Controller, Worker, ReplicationContract,
+    ResourceSpec, SandboxOrchestrator, StructuredLogger,
+)
+
+# Define the replication policy
+contract = ReplicationContract(
+    max_depth=2,
+    max_replicas=5,
+    cooldown_seconds=1.0,
+    expiration_seconds=60.0,
+)
+
+# Set up infrastructure
+logger = StructuredLogger()
+controller = Controller(contract, secret="my-secret", logger=logger)
+orchestrator = SandboxOrchestrator(logger=logger)
+
+# Create the root worker
+resources = ResourceSpec(cpu_limit=0.5, memory_limit_mb=256)
+manifest = controller.issue_manifest(
+    parent_id=None, depth=0,
+    state_snapshot={"task": "analyze"},
+    resources=resources,
+)
+root = Worker(manifest, contract, controller, orchestrator, logger)
+
+# Execute a task
+root.perform_task(lambda w: print(f"Worker {w.manifest.worker_id} working"))
+
+# Replicate
+child = root.maybe_replicate(
+    reason="subtask",
+    state_snapshot={"task": "sub-analyze"},
+)
+
+# Clean up
+root.shutdown("complete")
+if child:
+    child.shutdown("complete")</code></pre>
+        </section>
+
+        <section id="security">
+            <h2>Security Model</h2>
+            <ul>
+                <li><strong>Manifest Signing</strong> — All manifests are HMAC-SHA256 signed. Tampered manifests are rejected on registration with an audit log entry.</li>
+                <li><strong>Network Isolation</strong> — Workers operate under a NetworkPolicy that defaults to controller-only egress. External network access is denied by default.</li>
+                <li><strong>Resource Limits</strong> — Each worker has explicit CPU and memory quotas enforced by the orchestrator.</li>
+                <li><strong>Kill Switch</strong> — Emergency shutdown of all workers. Once engaged, no new workers can register.</li>
+                <li><strong>Depth + Quota Limits</strong> — Prevents runaway replication. Contract-level controls with controller enforcement.</li>
+                <li><strong>Stop Conditions</strong> — Pluggable predicates evaluated on registration. Failed conditions are audit-logged with the condition name.</li>
+                <li><strong>Stale Worker Reaping</strong> — Workers that miss heartbeats are automatically deregistered and their quota slots freed.</li>
+            </ul>
+        </section>
+
+        <section id="testing">
+            <h2>Testing</h2>
+            <pre><code># Run all tests
+python -m pytest tests/ -v
+
+# Run with coverage
+python -m pytest tests/ --cov=src/replication --cov-report=term-missing</code></pre>
+            <p>The test suite covers:</p>
+            <ul>
+                <li>Replication up to permitted depth with quota enforcement</li>
+                <li>Stop condition evaluation and denial</li>
+                <li>Kill switch engagement and immediate termination</li>
+                <li>Heartbeat timeout reaping of stale workers</li>
+                <li>Manifest signature verification and tampering rejection</li>
+                <li>Cooldown period enforcement between spawns</li>
+            </ul>
+        </section>
+    </div>
+
+    <div class="footer">
+        <p>AI Replication Sandbox · MIT License · <a href="https://github.com/sauravbhattacharya001/ai">GitHub</a></p>
+    </div>
+</body>
+</html>
