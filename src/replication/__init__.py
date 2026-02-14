@@ -22,6 +22,7 @@ from .controller import Controller, ReplicationDenied, RegistryEntry
 from .observability import Metric, StructuredLogger
 from .signer import ManifestSigner
 from .orchestrator import ContainerRecord, SandboxOrchestrator
+from .simulator import Simulator, ScenarioConfig, SimulationReport, Strategy, PRESETS
 from .worker import Worker, WorkerState
 
 __all__ = [
@@ -45,6 +46,12 @@ __all__ = [
     # orchestrator
     "ContainerRecord",
     "SandboxOrchestrator",
+    # simulator
+    "Simulator",
+    "ScenarioConfig",
+    "SimulationReport",
+    "Strategy",
+    "PRESETS",
     # worker
     "Worker",
     "WorkerState",
