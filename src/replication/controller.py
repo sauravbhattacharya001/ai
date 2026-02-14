@@ -3,7 +3,7 @@ from __future__ import annotations
 import hmac
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Dict, Optional
 
@@ -51,7 +51,7 @@ class Controller:
             raise ReplicationDenied("Manifest signature invalid")
 
     def issue_manifest(self, parent_id: Optional[str], depth: int, state_snapshot: Dict[str, str], resources) -> Manifest:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         manifest = Manifest(
             worker_id=secrets.token_hex(4),
             parent_id=parent_id,
@@ -74,7 +74,7 @@ class Controller:
             last_spawn = self.spawn_timestamps.get(parent_id)
             if last_spawn:
                 cooldown = timedelta(seconds=self.contract.cooldown_seconds)
-                if datetime.utcnow() - last_spawn < cooldown:
+                if datetime.now(timezone.utc) - last_spawn < cooldown:
                     self.logger.audit("deny_cooldown", parent_id=parent_id)
                     raise ReplicationDenied("Cooldown not satisfied")
             parent_entry = self.registry.get(parent_id)
@@ -92,14 +92,14 @@ class Controller:
             self.logger.audit("deny_stop_condition", condition=stop_condition.name, worker_id=manifest.worker_id)
             raise ReplicationDenied(f"Stop condition triggered: {stop_condition.name}")
 
-        self.registry[manifest.worker_id] = RegistryEntry(manifest=manifest, last_heartbeat=datetime.utcnow())
+        self.registry[manifest.worker_id] = RegistryEntry(manifest=manifest, last_heartbeat=datetime.now(timezone.utc))
         if manifest.parent_id:
-            self.spawn_timestamps[manifest.parent_id] = datetime.utcnow()
+            self.spawn_timestamps[manifest.parent_id] = datetime.now(timezone.utc)
         self.logger.log("worker_registered", worker_id=manifest.worker_id, parent_id=manifest.parent_id, depth=manifest.depth)
 
     def heartbeat(self, worker_id: str) -> None:
         if worker_id in self.registry:
-            self.registry[worker_id].last_heartbeat = datetime.utcnow()
+            self.registry[worker_id].last_heartbeat = datetime.now(timezone.utc)
             self.logger.log("heartbeat", worker_id=worker_id)
 
     def deregister(self, worker_id: str, reason: str) -> None:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from .contract import Manifest, ResourceSpec
@@ -29,7 +29,7 @@ class SandboxOrchestrator:
             manifest=manifest,
             resources=manifest.resources,
             status="running",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(timezone.utc),
         )
         self.containers[manifest.worker_id] = record
         self.logger.log(

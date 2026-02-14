@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, Optional
 
 from .contract import Manifest, ReplicationContract
@@ -37,14 +37,14 @@ class Worker:
         self.logger = logger or StructuredLogger()
         expires_at = None
         if contract.expiration_seconds:
-            expires_at = datetime.utcnow() + timedelta(seconds=contract.expiration_seconds)
-        self.state = WorkerState(manifest=manifest, expires_at=expires_at, created_at=datetime.utcnow())
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=contract.expiration_seconds)
+        self.state = WorkerState(manifest=manifest, expires_at=expires_at, created_at=datetime.now(timezone.utc))
         self.controller.register_worker(self.manifest)
         self.orchestrator.launch_worker(self.manifest)
         self.logger.log("worker_started", worker_id=self.manifest.worker_id, parent_id=self.manifest.parent_id)
 
     def perform_task(self, task: TaskFn) -> None:
-        if self.state.expires_at and datetime.utcnow() > self.state.expires_at:
+        if self.state.expires_at and datetime.now(timezone.utc) > self.state.expires_at:
             self.shutdown("expired")
             raise ReplicationDenied("Worker expired")
         task(self)
