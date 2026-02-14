@@ -1,0 +1,91 @@
+site_name: AI Replication Sandbox
+site_url: https://sauravbhattacharya001.github.io/ai/
+site_description: Contract-enforced sandbox for studying AI agent self-replication safety
+site_author: Saurav Bhattacharya
+
+repo_name: sauravbhattacharya001/ai
+repo_url: https://github.com/sauravbhattacharya001/ai
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            heading_level: 2
+            members_order: source
+            docstring_style: google
+            show_signature_annotations: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+  - Concepts:
+      - Architecture: concepts/architecture.md
+      - Security Model: concepts/security.md
+  - API Reference:
+      - Overview: api/index.md
+      - Contract: api/contract.md
+      - Controller: api/controller.md
+      - Worker: api/worker.md
+      - Orchestrator: api/orchestrator.md
+      - Observability: api/observability.md
+      - Signer: api/signer.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sauravbhattacharya001/ai

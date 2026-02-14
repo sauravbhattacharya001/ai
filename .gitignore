@@ -29,6 +29,9 @@ htmlcov/
 coverage.xml
 .mypy_cache/
 
+# MkDocs build output
+site/
+
 # OS files
 .DS_Store
 Thumbs.db
