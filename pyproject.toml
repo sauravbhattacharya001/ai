@@ -63,6 +63,25 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 
+[tool.coverage.run]
+source = ["replication"]
+branch = true
+omit = ["tests/*", "*/conftest.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
 [tool.flake8]
 max-line-length = 120
 exclude = [".git", "__pycache__", "build", "dist"]
