@@ -5,7 +5,7 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from .contract import Manifest, ReplicationContext, ReplicationContract
 from .observability import StructuredLogger
@@ -101,6 +101,29 @@ class Controller:
         if worker_id in self.registry:
             self.registry[worker_id].last_heartbeat = datetime.now(timezone.utc)
             self.logger.log("heartbeat", worker_id=worker_id)
+        else:
+            self.logger.audit("heartbeat_unknown", worker_id=worker_id)
+
+    def reap_stale_workers(self, timeout: timedelta) -> List[str]:
+        """Remove workers whose last heartbeat exceeds the given timeout.
+
+        Returns the list of reaped worker IDs.  Should be called
+        periodically (e.g. every heartbeat interval) so that dead
+        workers don't permanently consume replica-quota slots.
+        """
+        now = datetime.now(timezone.utc)
+        stale = [
+            wid for wid, entry in self.registry.items()
+            if now - entry.last_heartbeat > timeout
+        ]
+        for wid in stale:
+            self.logger.audit(
+                "reap_stale",
+                worker_id=wid,
+                last_heartbeat=self.registry[wid].last_heartbeat.isoformat(),
+            )
+            self.deregister(wid, reason="heartbeat_timeout")
+        return stale
 
     def deregister(self, worker_id: str, reason: str) -> None:
         if worker_id in self.registry:

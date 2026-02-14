@@ -1,5 +1,7 @@
 import pytest
 
+from datetime import timedelta
+
 from replication.contract import ReplicationContract, ResourceSpec, StopCondition
 from replication.controller import Controller, ReplicationDenied
 from replication.observability import StructuredLogger
@@ -116,3 +118,57 @@ def test_kill_switch_stops_all_workers():
     assert not controller.registry
     assert all(record.status == "killed" for record in orchestrator.containers.values())
     assert any(event.get("decision") == "kill_switch_engaged" for event in logger.events if event.get("event") == "audit")
+
+
+def test_reap_stale_workers_frees_quota():
+    """Dead workers that miss heartbeats should be reaped, freeing quota slots."""
+    logger = StructuredLogger()
+    contract = ReplicationContract(max_depth=2, max_replicas=2, cooldown_seconds=0.0)
+    controller = Controller(contract=contract, secret="topsecret", logger=logger)
+    orchestrator = SandboxOrchestrator(logger=logger)
+    resources = ResourceSpec(cpu_limit=0.25, memory_limit_mb=128)
+
+    # Spawn two workers (fills quota)
+    root_manifest = controller.issue_manifest(None, depth=0, state_snapshot={"task": "root"}, resources=resources)
+    root = Worker(root_manifest, contract, controller, orchestrator, logger)
+
+    child = root.maybe_replicate(reason="work", state_snapshot={"task": "child"})
+    assert len(controller.registry) == 2
+
+    # Quota is full — a third spawn should fail
+    assert root.maybe_replicate(reason="excess", state_snapshot={"task": "over"}) is None
+
+    # Simulate stale heartbeat: manually backdate the child's heartbeat
+    from datetime import datetime, timezone
+    stale_time = datetime.now(timezone.utc) - timedelta(seconds=120)
+    controller.registry[child.manifest.worker_id].last_heartbeat = stale_time
+
+    # Reap with a 60-second timeout — child should be reaped
+    reaped = controller.reap_stale_workers(timeout=timedelta(seconds=60))
+    assert child.manifest.worker_id in reaped
+    assert len(controller.registry) == 1  # only root remains
+
+    # Verify audit trail
+    assert any(
+        event.get("decision") == "reap_stale" and event.get("worker_id") == child.manifest.worker_id
+        for event in logger.events if event.get("event") == "audit"
+    )
+
+    # Quota should be freed — spawning a new child should work now
+    new_child = root.maybe_replicate(reason="replacement", state_snapshot={"task": "replacement"})
+    assert new_child is not None
+    assert len(controller.registry) == 2
+
+
+def test_heartbeat_unknown_worker_logged():
+    """Heartbeat from an unknown worker_id should be logged for observability."""
+    logger = StructuredLogger()
+    contract = ReplicationContract(max_depth=1, max_replicas=2, cooldown_seconds=0.0)
+    controller = Controller(contract=contract, secret="topsecret", logger=logger)
+
+    controller.heartbeat("nonexistent_worker")
+
+    assert any(
+        event.get("decision") == "heartbeat_unknown" and event.get("worker_id") == "nonexistent_worker"
+        for event in logger.events if event.get("event") == "audit"
+    )
