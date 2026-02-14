@@ -46,6 +46,32 @@ class Controller:
             raise ReplicationDenied("Manifest signature invalid")
 
     def issue_manifest(self, parent_id: Optional[str], depth: int, state_snapshot: Dict[str, str], resources) -> Manifest:
+        """Create and sign a manifest after enforcing all safety policies.
+
+        Safety checks (kill switch, quota, cooldown, depth) are applied
+        before the manifest is signed, so callers cannot bypass policy
+        by calling ``issue_manifest`` directly instead of going through
+        :meth:`Worker.maybe_replicate`.
+
+        The *depth* parameter supplied by the caller is only used when
+        ``parent_id`` is ``None`` (root workers).  For child workers the
+        depth is derived from the parent's actual depth to prevent
+        callers from lying about their position in the tree.
+        """
+        self.can_spawn(parent_id)
+
+        # Derive depth from the parent's registry entry rather than
+        # trusting the caller-supplied value.  This prevents depth
+        # spoofing where a caller claims depth=0 while actually being
+        # several levels deep.
+        if parent_id:
+            parent_entry = self.registry.get(parent_id)
+            # can_spawn already verified parent existence, but guard
+            # against race conditions defensively.
+            if parent_entry is None:
+                raise ReplicationDenied("Parent unknown")
+            depth = parent_entry.manifest.depth + 1
+
         now = datetime.now(timezone.utc)
         manifest = Manifest(
             worker_id=secrets.token_hex(4),
