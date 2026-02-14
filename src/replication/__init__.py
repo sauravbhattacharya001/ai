@@ -7,6 +7,8 @@ Convenience re-exports so consumers can write::
 instead of reaching into submodules.
 """
 
+__version__ = "1.0.0"
+
 from .contract import (
     Manifest,
     NetworkPolicy,

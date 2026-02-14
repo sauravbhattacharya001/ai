@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-replication-sandbox"
+version = "1.0.0"
+description = "Contract-enforced sandbox for studying AI agent self-replication safety"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Saurav Bhattacharya", email = "online.saurav@gmail.com"},
+]
+keywords = [
+    "ai-safety",
+    "self-replication",
+    "autonomous-agents",
+    "sandboxing",
+    "ai-governance",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/sauravbhattacharya001/ai"
+Documentation = "https://sauravbhattacharya001.github.io/ai/"
+Repository = "https://github.com/sauravbhattacharya001/ai"
+Issues = "https://github.com/sauravbhattacharya001/ai/issues"
+Changelog = "https://github.com/sauravbhattacharya001/ai/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "flake8",
+    "mypy",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/replication/"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/replication"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.flake8]
+max-line-length = 120
+exclude = [".git", "__pycache__", "build", "dist"]
