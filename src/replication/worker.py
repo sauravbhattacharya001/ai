@@ -47,7 +47,19 @@ class Worker:
         if self.state.expires_at and datetime.now(timezone.utc) > self.state.expires_at:
             self.shutdown("expired")
             raise ReplicationDenied("Worker expired")
-        task(self)
+        if self.controller.kill_switch_engaged:
+            self.shutdown("kill_switch")
+            raise ReplicationDenied("Kill switch engaged")
+        try:
+            task(self)
+        except Exception:
+            self.logger.log(
+                "task_failed",
+                worker_id=self.manifest.worker_id,
+                error=True,
+            )
+            self.shutdown("task_error")
+            raise
         self.controller.heartbeat(self.manifest.worker_id)
         self.orchestrator.enforce_resource_bounds(self.manifest.worker_id)
 
