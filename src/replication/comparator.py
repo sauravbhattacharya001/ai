@@ -26,7 +26,6 @@ Programmatic::
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Union
 
@@ -421,6 +420,7 @@ def main() -> None:
     """CLI entry point for the comparison tool."""
     import argparse
     import io
+    import json
     import sys
 
     if sys.stdout.encoding != "utf-8":

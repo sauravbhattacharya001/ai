@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .contract import Manifest, ReplicationContext, ReplicationContract
 from .observability import StructuredLogger
@@ -45,7 +45,7 @@ class Controller:
             self.logger.audit("reject_manifest_signature", worker_id=manifest.worker_id)
             raise ReplicationDenied("Manifest signature invalid")
 
-    def issue_manifest(self, parent_id: Optional[str], depth: int, state_snapshot: Dict[str, str], resources) -> Manifest:
+    def issue_manifest(self, parent_id: Optional[str], depth: int, state_snapshot: Dict[str, Any], resources) -> Manifest:
         """Create and sign a manifest after enforcing all safety policies.
 
         Safety checks (kill switch, quota, cooldown, depth) are applied

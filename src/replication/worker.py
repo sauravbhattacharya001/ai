@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 from .contract import Manifest, ReplicationContract
 from .controller import Controller, ReplicationDenied
@@ -63,13 +63,15 @@ class Worker:
         self.controller.heartbeat(self.manifest.worker_id)
         self.orchestrator.enforce_resource_bounds(self.manifest.worker_id)
 
-    def maybe_replicate(self, reason: str, state_snapshot: Dict[str, str]) -> Optional["Worker"]:
-        child_depth = self.manifest.depth + 1
+    def maybe_replicate(self, reason: str, state_snapshot: Dict[str, Any]) -> Optional["Worker"]:
         resources = self.manifest.resources
         try:
+            # Depth is derived by the controller from the parent's
+            # registry entry; the value passed here is ignored for
+            # child workers (see Controller.issue_manifest).
             manifest = self.controller.issue_manifest(
                 parent_id=self.manifest.worker_id,
-                depth=child_depth,
+                depth=0,
                 state_snapshot=state_snapshot,
                 resources=resources,
             )

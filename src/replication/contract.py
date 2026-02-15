@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 @dataclass
@@ -27,7 +27,7 @@ class Manifest:
     worker_id: str
     parent_id: Optional[str]
     depth: int
-    state_snapshot: Dict[str, str]
+    state_snapshot: Dict[str, Any]
     issued_at: datetime
     resources: ResourceSpec
     signature: str
