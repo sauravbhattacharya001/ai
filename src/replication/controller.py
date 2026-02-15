@@ -58,7 +58,8 @@ class Controller:
         depth is derived from the parent's actual depth to prevent
         callers from lying about their position in the tree.
         """
-        self.can_spawn(parent_id)
+        now = datetime.now(timezone.utc)
+        self.can_spawn(parent_id, _now=now)
 
         # Derive depth from the parent's registry entry rather than
         # trusting the caller-supplied value.  This prevents depth
@@ -72,7 +73,6 @@ class Controller:
                 raise ReplicationDenied("Parent unknown")
             depth = parent_entry.manifest.depth + 1
 
-        now = datetime.now(timezone.utc)
         manifest = Manifest(
             worker_id=secrets.token_hex(4),
             parent_id=parent_id,
@@ -85,7 +85,7 @@ class Controller:
         self.signer.sign(manifest)
         return manifest
 
-    def can_spawn(self, parent_id: Optional[str]) -> None:
+    def can_spawn(self, parent_id: Optional[str], _now: Optional[datetime] = None) -> None:
         if self.kill_switch_engaged:
             raise ReplicationDenied("Kill switch engaged")
         if len(self.registry) >= self.contract.max_replicas:
@@ -94,8 +94,10 @@ class Controller:
         if parent_id:
             last_spawn = self.spawn_timestamps.get(parent_id)
             if last_spawn:
+                if _now is None:
+                    _now = datetime.now(timezone.utc)
                 cooldown = timedelta(seconds=self.contract.cooldown_seconds)
-                if datetime.now(timezone.utc) - last_spawn < cooldown:
+                if _now - last_spawn < cooldown:
                     self.logger.audit("deny_cooldown", parent_id=parent_id)
                     raise ReplicationDenied("Cooldown not satisfied")
             parent_entry = self.registry.get(parent_id)

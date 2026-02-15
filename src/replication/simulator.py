@@ -25,10 +25,11 @@ from __future__ import annotations
 
 import random
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Deque, Dict, List, Optional
 
 from .contract import ReplicationContract, ResourceSpec
 from .controller import Controller, ReplicationDenied
@@ -210,8 +211,9 @@ class SimulationReport:
         max_depth_seen = max((w.depth for w in self.workers.values()), default=0)
         lines.append(f"  Max Depth Reached:   {max_depth_seen}")
 
-        total_cpu = sum(self.config.cpu_limit for _ in self.workers)
-        total_mem = sum(self.config.memory_limit_mb for _ in self.workers)
+        n_workers = len(self.workers)
+        total_cpu = self.config.cpu_limit * n_workers
+        total_mem = self.config.memory_limit_mb * n_workers
         lines.append(f"  Total CPU Allocated: {total_cpu:.2f} cores")
         lines.append(f"  Total RAM Allocated: {total_mem} MB")
         lines.append(f"  Duration:            {self.duration_ms:.1f}ms")
@@ -337,11 +339,11 @@ class Simulator:
             "worker_id": root_id, "detail": "Root worker created (depth 0)",
         })
 
-        # BFS work queue
-        queue: List[Worker] = [root]
+        # BFS work queue — deque gives O(1) popleft vs O(n) list.pop(0)
+        queue: Deque[Worker] = deque([root])
 
         while queue:
-            worker = queue.pop(0)
+            worker = queue.popleft()
             wid = worker.manifest.worker_id
             rec = records[wid]
 
