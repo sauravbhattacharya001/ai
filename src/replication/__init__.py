@@ -8,6 +8,7 @@ instead of reaching into submodules.
 """
 
 __version__ = "1.0.0"
+__license__ = "MIT"
 
 from .contract import (
     Manifest,

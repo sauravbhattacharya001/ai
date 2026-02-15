@@ -1,0 +1,4 @@
+chore: update LICENSE copyright year and add license metadata
+
+- Update LICENSE copyright to 2020-2026 to cover ongoing development
+- Add __license__ attribute to package __init__.py for programmatic access
