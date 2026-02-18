@@ -25,6 +25,14 @@ from .signer import ManifestSigner
 from .orchestrator import ContainerRecord, SandboxOrchestrator
 from .simulator import Simulator, ScenarioConfig, SimulationReport, Strategy, PRESETS
 from .comparator import Comparator, ComparisonResult, RunResult
+from .threats import (
+    ThreatSimulator,
+    ThreatConfig,
+    ThreatReport,
+    ThreatResult,
+    ThreatSeverity,
+    MitigationStatus,
+)
 from .worker import Worker, WorkerState
 
 __all__ = [
@@ -58,6 +66,13 @@ __all__ = [
     "Comparator",
     "ComparisonResult",
     "RunResult",
+    # threats
+    "ThreatSimulator",
+    "ThreatConfig",
+    "ThreatReport",
+    "ThreatResult",
+    "ThreatSeverity",
+    "MitigationStatus",
     # worker
     "Worker",
     "WorkerState",

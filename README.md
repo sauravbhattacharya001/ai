@@ -132,6 +132,47 @@ result = comp.sweep("max_depth", [1, 2, 3, 4, 5], seed=42)
 print(result.render_table())    # just the comparison table
 ```
 
+### 🛡️ Threat Scenario Simulator
+Simulate adversarial attack vectors against the replication contract and validate that safety controls properly mitigate each threat. Produces a security assessment report with scores, grades, and recommendations.
+
+```bash
+python -m replication.threats                                # run all 9 threat scenarios
+python -m replication.threats --list                         # list available scenarios
+python -m replication.threats --scenario depth_spoofing      # run a specific threat
+python -m replication.threats --max-depth 5 --max-replicas 20  # custom contract config
+python -m replication.threats --json                         # JSON output
+python -m replication.threats --matrix-only                  # threat/defense matrix only
+```
+
+**9 built-in threat scenarios** covering critical attack vectors:
+| Scenario | Severity | Description |
+|----------|----------|-------------|
+| `depth_spoofing` | 🔴 Critical | Worker lies about depth to bypass limits |
+| `signature_tampering` | 🔴 Critical | Tamper with HMAC-signed manifests |
+| `kill_switch_evasion` | 🔴 Critical | Spawn workers after kill switch engaged |
+| `quota_exhaustion` | 🟠 High | Rapidly exhaust replica quota |
+| `cooldown_bypass` | 🟠 High | Ignore cooldown between spawns |
+| `runaway_replication` | 🟠 High | Exponential growth overwhelming system |
+| `stale_worker_accumulation` | 🟡 Medium | DoS via quota slot hoarding |
+| `expiration_evasion` | 🟡 Medium | Operate after expiration time |
+| `stop_condition_bypass` | 🟡 Medium | Bypass custom stop conditions |
+
+Output includes a security score (0-100), letter grade (A+ to F), threat/defense matrix, per-scenario details with block rates, and actionable recommendations.
+
+```python
+from replication import ThreatSimulator, ThreatConfig
+
+sim = ThreatSimulator(ThreatConfig(max_depth=3, max_replicas=10))
+report = sim.run_all()
+print(report.render())                    # full report with score + matrix + details
+print(f"Score: {report.security_score}")  # 0-100
+print(f"Grade: {report.grade}")           # A+ to F
+
+# Run individual scenarios
+result = sim.run_scenario("signature_tampering")
+print(result.render())
+```
+
 ## Quick Start
 
 ### Prerequisites
@@ -282,6 +323,25 @@ for event in logger.events:
 | `render_insights()` | Automated analysis of patterns |
 | `to_dict()` | JSON-serializable export |
 
+### `ThreatSimulator`
+| Method | Description |
+|--------|-------------|
+| `run_all()` | Run all 9 threat scenarios, return `ThreatReport` |
+| `run_scenario(scenario_id)` | Run a specific threat scenario |
+| `available_scenarios()` | List registered scenario IDs |
+
+### `ThreatReport`
+| Method / Property | Description |
+|-------------------|-------------|
+| `render()` | Full report: summary + matrix + details + recommendations |
+| `render_summary()` | Security score, grade, and config overview |
+| `render_matrix()` | Threat/defense matrix table |
+| `render_details()` | Per-scenario detailed results grouped by severity |
+| `render_recommendations()` | Actionable security recommendations |
+| `security_score` | Severity-weighted score (0-100) |
+| `grade` | Letter grade (A+ to F) |
+| `to_dict()` | JSON-serializable export |
+
 ## Project Structure
 
 ```
@@ -295,6 +355,7 @@ ai/
 │       ├── observability.py     # StructuredLogger, Metric
 │       ├── simulator.py         # Simulation runner (5 strategies, CLI)
 │       ├── comparator.py        # Comparison runner (strategy/preset/sweep)
+│       ├── threats.py           # Threat scenario simulator (9 attack vectors)
 │       ├── signer.py            # HMAC-SHA256 manifest signing
 │       └── worker.py            # Worker, task execution, self-replication
 ├── tests/
@@ -303,7 +364,8 @@ ai/
 │   ├── test_controller.py       # Controller safety tests
 │   ├── test_signer.py           # Manifest signing tests
 │   ├── test_simulator.py        # Simulation runner tests
-│   └── test_comparator.py       # Comparison runner tests
+│   ├── test_comparator.py       # Comparison runner tests
+│   └── test_threats.py          # Threat scenario tests
 ├── docs/                        # Documentation
 ├── Dockerfile                   # Multi-stage build (test + runtime)
 ├── requirements-dev.txt         # Dev dependencies (pytest)
