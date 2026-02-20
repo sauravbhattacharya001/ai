@@ -33,6 +33,7 @@ from .threats import (
     ThreatSeverity,
     MitigationStatus,
 )
+from .reporter import HTMLReporter
 from .worker import Worker, WorkerState
 
 __all__ = [
@@ -73,6 +74,8 @@ __all__ = [
     "ThreatResult",
     "ThreatSeverity",
     "MitigationStatus",
+    # reporter
+    "HTMLReporter",
     # worker
     "Worker",
     "WorkerState",
