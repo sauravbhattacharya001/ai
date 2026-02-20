@@ -33,6 +33,14 @@ from .threats import (
     ThreatSeverity,
     MitigationStatus,
 )
+from .montecarlo import (
+    MonteCarloAnalyzer,
+    MonteCarloComparison,
+    MonteCarloConfig,
+    MonteCarloResult,
+    MetricDistribution,
+    RiskMetrics,
+)
 from .reporter import HTMLReporter
 from .worker import Worker, WorkerState
 
@@ -76,6 +84,13 @@ __all__ = [
     "MitigationStatus",
     # reporter
     "HTMLReporter",
+    # montecarlo
+    "MonteCarloAnalyzer",
+    "MonteCarloComparison",
+    "MonteCarloConfig",
+    "MonteCarloResult",
+    "MetricDistribution",
+    "RiskMetrics",
     # worker
     "Worker",
     "WorkerState",
