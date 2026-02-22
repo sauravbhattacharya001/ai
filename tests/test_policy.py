@@ -209,6 +209,32 @@ class TestRuleResult:
         assert "PASS" in rendered
         assert "total_workers" in rendered
 
+    def test_extraction_error_icon(self):
+        rule = PolicyRule("bad_metric", Operator.LE, 50, Severity.ERROR)
+        result = RuleResult(rule=rule, actual=0.0, passed=False, error="Unknown metric: bad_metric")
+        assert result.icon == "💥"
+        assert result.status == "ERROR"
+
+    def test_extraction_error_render(self):
+        rule = PolicyRule("bad_metric", Operator.LE, 50, Severity.ERROR)
+        result = RuleResult(rule=rule, actual=0.0, passed=False, error="Unknown metric: bad_metric")
+        rendered = result.render()
+        assert "error:" in rendered
+        assert "bad_metric" in rendered
+
+    def test_extraction_error_to_dict(self):
+        rule = PolicyRule("bad_metric", Operator.LE, 50)
+        result = RuleResult(rule=rule, actual=0.0, passed=False, error="Unknown metric: bad_metric")
+        d = result.to_dict()
+        assert d["error"] == "Unknown metric: bad_metric"
+        assert d["passed"] is False
+
+    def test_no_error_field_when_none(self):
+        rule = PolicyRule("total_workers", Operator.LE, 50)
+        result = RuleResult(rule=rule, actual=30, passed=True)
+        d = result.to_dict()
+        assert "error" not in d
+
     def test_to_dict(self):
         rule = PolicyRule("total_workers", Operator.LE, 50)
         result = RuleResult(rule=rule, actual=30.123456, passed=True)
@@ -343,6 +369,44 @@ class TestPolicyResult:
         result = self._make_result([rr])
         assert result.passed is True
         assert result.verdict in ("PASS", "WARN")  # info doesn't affect verdict
+
+    def test_extraction_error_fails_result(self):
+        """An extraction error should cause the overall result to FAIL."""
+        rule = PolicyRule("bad_metric", Operator.LE, 50, Severity.ERROR)
+        rr = RuleResult(rule=rule, actual=0.0, passed=False, error="Unknown metric: bad_metric")
+        result = self._make_result([rr])
+        assert result.passed is False
+        assert result.verdict == "FAIL"
+        assert result.has_extraction_errors is True
+
+    def test_extraction_error_even_warning_severity_fails(self):
+        """Extraction errors should fail regardless of rule severity."""
+        rule = PolicyRule("bad_metric", Operator.LE, 50, Severity.WARNING)
+        rr = RuleResult(rule=rule, actual=0.0, passed=False, error="Unknown metric: bad_metric")
+        result = self._make_result([rr])
+        assert result.passed is False
+        assert result.has_extraction_errors is True
+
+    def test_extraction_errors_list(self):
+        rr1 = RuleResult(PolicyRule("a", Operator.LE, 1), 0.5, True)
+        rr2 = RuleResult(PolicyRule("bad", Operator.LE, 1), 0.0, False, error="Unknown metric: bad")
+        result = self._make_result([rr1, rr2])
+        assert len(result.extraction_errors) == 1
+        assert result.extraction_errors[0].error == "Unknown metric: bad"
+
+    def test_to_dict_includes_extraction_errors_count(self):
+        rr = RuleResult(PolicyRule("bad", Operator.LE, 1), 0.0, False, error="Unknown metric: bad")
+        result = self._make_result([rr])
+        d = result.to_dict()
+        assert d["has_extraction_errors"] is True
+        assert d["rules_extraction_errors"] == 1
+
+    def test_no_extraction_errors(self):
+        rule = PolicyRule("total_workers", Operator.LE, 100)
+        rr = RuleResult(rule=rule, actual=50, passed=True)
+        result = self._make_result([rr])
+        assert result.has_extraction_errors is False
+        assert len(result.extraction_errors) == 0
 
     def test_mixed_error_and_warning(self):
         r1 = RuleResult(
@@ -658,6 +722,49 @@ class TestSafetyPolicyIntegration:
         d = result.to_dict()
         serialized = json.dumps(d, default=str)
         assert len(serialized) > 0
+
+    def test_unknown_metric_in_rule_recorded_as_error(self):
+        """Rules with unknown metric names should produce extraction errors, not silently pass."""
+        policy = SafetyPolicy("Bad Config", [
+            PolicyRule("nonexistent_metric", Operator.LE, 50, Severity.ERROR, "Typo in metric"),
+            PolicyRule("total_workers", Operator.LE, 1000, Severity.ERROR, "Valid rule"),
+        ])
+        report = _make_report(seed=42)
+        result = policy.evaluate(report)
+        # Should fail due to extraction error
+        assert result.passed is False
+        assert result.has_extraction_errors is True
+        assert len(result.extraction_errors) == 1
+        assert "nonexistent_metric" in result.extraction_errors[0].error
+        # Valid rule should still be evaluated
+        valid_results = [r for r in result.rule_results if r.error is None]
+        assert len(valid_results) == 1
+        assert valid_results[0].passed is True
+
+    def test_unknown_mc_metric_recorded_as_error(self):
+        """MC rules with unknown metric names should produce extraction errors."""
+        from replication.montecarlo import MonteCarloAnalyzer, MonteCarloConfig
+        policy = SafetyPolicy("Bad MC", [
+            PolicyRule("nonexistent_mc_metric", Operator.LE, 0.5, monte_carlo=True),
+        ])
+        base_config = ScenarioConfig(strategy="conservative", max_depth=2, seed=42)
+        report = _make_report(seed=42)
+        mc_config = MonteCarloConfig(num_runs=5, base_scenario=base_config)
+        mc = MonteCarloAnalyzer(mc_config)
+        mc_result = mc.analyze()
+        result = policy.evaluate(report, mc_result=mc_result)
+        assert result.has_extraction_errors is True
+        assert result.passed is False
+
+    def test_render_shows_extraction_errors_section(self):
+        """Render output should have an extraction errors section."""
+        policy = SafetyPolicy("Bad Config", [
+            PolicyRule("bad_metric_name", Operator.LE, 50, Severity.ERROR),
+        ])
+        report = _make_report(seed=42)
+        result = policy.evaluate(report)
+        rendered = result.render()
+        assert "Extraction Errors" in rendered
 
     def test_all_single_run_metrics_extractable(self):
         """Every documented metric should be extractable from a report."""

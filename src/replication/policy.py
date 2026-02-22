@@ -245,9 +245,12 @@ class RuleResult:
     rule: PolicyRule
     actual: float
     passed: bool
+    error: Optional[str] = None
 
     @property
     def icon(self) -> str:
+        if self.error:
+            return "💥"
         if self.passed:
             return "✅"
         if self.rule.severity == Severity.ERROR:
@@ -258,12 +261,20 @@ class RuleResult:
 
     @property
     def status(self) -> str:
+        if self.error:
+            return "ERROR"
         if self.passed:
             return "PASS"
         return self.rule.severity.value.upper()
 
     def render(self) -> str:
         desc = f"  {self.rule.description}" if self.rule.description else ""
+        if self.error:
+            return (
+                f"  {self.icon}  {self.status:7s}  "
+                f"{self.rule.render_expression():40s}  "
+                f"error: {self.error}"
+            )
         return (
             f"  {self.icon}  {self.status:7s}  "
             f"{self.rule.render_expression():40s}  "
@@ -271,12 +282,15 @@ class RuleResult:
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d: Dict[str, Any] = {
             "rule": self.rule.to_dict(),
             "actual": round(self.actual, 6),
             "passed": self.passed,
             "status": self.status,
         }
+        if self.error:
+            d["error"] = self.error
+        return d
 
 
 @dataclass
@@ -291,9 +305,9 @@ class PolicyResult:
 
     @property
     def passed(self) -> bool:
-        """True if no ERROR-severity rules failed."""
+        """True if no ERROR-severity rules failed and no extraction errors occurred."""
         return not any(
-            not r.passed and r.rule.severity == Severity.ERROR
+            (not r.passed and r.rule.severity == Severity.ERROR) or r.error
             for r in self.rule_results
         )
 
@@ -305,8 +319,18 @@ class PolicyResult:
         )
 
     @property
+    def has_extraction_errors(self) -> bool:
+        """True if any rules failed to extract their metric value."""
+        return any(r.error for r in self.rule_results)
+
+    @property
     def errors(self) -> List[RuleResult]:
         return [r for r in self.rule_results if not r.passed and r.rule.severity == Severity.ERROR]
+
+    @property
+    def extraction_errors(self) -> List[RuleResult]:
+        """Rules where metric extraction failed (misconfigured metric name)."""
+        return [r for r in self.rule_results if r.error]
 
     @property
     def warnings(self) -> List[RuleResult]:
@@ -314,7 +338,7 @@ class PolicyResult:
 
     @property
     def failures(self) -> List[RuleResult]:
-        return [r for r in self.rule_results if not r.passed]
+        return [r for r in self.rule_results if not r.passed or r.error]
 
     @property
     def passes(self) -> List[RuleResult]:
@@ -322,6 +346,8 @@ class PolicyResult:
 
     @property
     def verdict(self) -> str:
+        if self.has_extraction_errors:
+            return "FAIL"
         if self.passed and not self.has_warnings:
             return "PASS"
         elif self.passed and self.has_warnings:
@@ -360,6 +386,12 @@ class PolicyResult:
         lines.append("")
 
         # Group by status
+        if self.extraction_errors:
+            lines.append("  ── Extraction Errors (misconfigured rules) ──────────")
+            for r in self.extraction_errors:
+                lines.append(r.render())
+            lines.append("")
+
         if self.errors:
             lines.append("  ── Errors (policy violations) ──────────────────────")
             for r in self.errors:
@@ -414,11 +446,13 @@ class PolicyResult:
             "verdict": self.verdict,
             "passed": self.passed,
             "has_warnings": self.has_warnings,
+            "has_extraction_errors": self.has_extraction_errors,
             "exit_code": self.exit_code,
             "rules_total": len(self.rule_results),
             "rules_passed": len(self.passes),
             "rules_errors": len(self.errors),
             "rules_warnings": len(self.warnings),
+            "rules_extraction_errors": len(self.extraction_errors),
             "monte_carlo_used": self.monte_carlo_used,
             "num_mc_runs": self.num_mc_runs,
             "duration_ms": round(self.duration_ms, 1),
@@ -567,6 +601,11 @@ class SafetyPolicy:
 
         If mc_result is provided, Monte Carlo rules will be evaluated
         against it. Otherwise, MC rules are skipped.
+
+        Metric extraction errors are recorded on the RuleResult (with
+        ``error`` set and ``passed=False``) instead of silently defaulting
+        to 0.0, which would mask typos and configuration mistakes in
+        safety-critical policy definitions.
         """
         start = time.monotonic()
         results: List[RuleResult] = []
@@ -577,13 +616,21 @@ class SafetyPolicy:
                     continue  # skip MC rules when no MC data
                 try:
                     actual = _extract_mc_metric(mc_result, rule.metric)
-                except ValueError:
-                    actual = 0.0
+                except ValueError as exc:
+                    results.append(RuleResult(
+                        rule=rule, actual=0.0, passed=False,
+                        error=str(exc),
+                    ))
+                    continue
             else:
                 try:
                     actual = _extract_metric(report, rule.metric)
-                except ValueError:
-                    actual = 0.0
+                except ValueError as exc:
+                    results.append(RuleResult(
+                        rule=rule, actual=0.0, passed=False,
+                        error=str(exc),
+                    ))
+                    continue
 
             passed = rule.evaluate(actual)
             results.append(RuleResult(rule=rule, actual=actual, passed=passed))
@@ -634,13 +681,21 @@ class SafetyPolicy:
                     continue
                 try:
                     actual = _extract_mc_metric(mc_result, rule.metric)
-                except ValueError:
-                    actual = 0.0
+                except ValueError as exc:
+                    results.append(RuleResult(
+                        rule=rule, actual=0.0, passed=False,
+                        error=str(exc),
+                    ))
+                    continue
             else:
                 try:
                     actual = _extract_metric(report, rule.metric)
-                except ValueError:
-                    actual = 0.0
+                except ValueError as exc:
+                    results.append(RuleResult(
+                        rule=rule, actual=0.0, passed=False,
+                        error=str(exc),
+                    ))
+                    continue
 
             passed = rule.evaluate(actual)
             results.append(RuleResult(rule=rule, actual=actual, passed=passed))
