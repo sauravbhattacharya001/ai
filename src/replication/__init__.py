@@ -41,6 +41,14 @@ from .montecarlo import (
     MetricDistribution,
     RiskMetrics,
 )
+from .sensitivity import (
+    SensitivityAnalyzer,
+    SensitivityConfig,
+    SensitivityCurve,
+    SensitivityResult,
+    TippingPoint,
+    PARAM_DEFS,
+)
 from .reporter import HTMLReporter
 from .worker import Worker, WorkerState
 
@@ -91,6 +99,13 @@ __all__ = [
     "MonteCarloResult",
     "MetricDistribution",
     "RiskMetrics",
+    # sensitivity
+    "SensitivityAnalyzer",
+    "SensitivityConfig",
+    "SensitivityCurve",
+    "SensitivityResult",
+    "TippingPoint",
+    "PARAM_DEFS",
     # worker
     "Worker",
     "WorkerState",
