@@ -62,6 +62,15 @@ from .policy import (
 )
 from .reporter import HTMLReporter
 from .worker import Worker, WorkerState
+from .forensics import (
+    ForensicAnalyzer,
+    ForensicEvent,
+    ForensicReport,
+    NearMiss,
+    EscalationPhase,
+    Counterfactual,
+    DecisionPoint,
+)
 
 __all__ = [
     # contract
@@ -113,6 +122,14 @@ __all__ = [
     "MONTE_CARLO_METRICS",
     # reporter
     "HTMLReporter",
+    # forensics
+    "ForensicAnalyzer",
+    "ForensicEvent",
+    "ForensicReport",
+    "NearMiss",
+    "EscalationPhase",
+    "Counterfactual",
+    "DecisionPoint",
     # montecarlo
     "MonteCarloAnalyzer",
     "MonteCarloComparison",
