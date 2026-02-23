@@ -71,6 +71,14 @@ from .forensics import (
     Counterfactual,
     DecisionPoint,
 )
+from .scenarios import (
+    ScenarioGenerator,
+    GeneratorConfig,
+    GeneratedScenario,
+    ScenarioSuite,
+    ScenarioCategory,
+    score_scenario,
+)
 
 __all__ = [
     # contract
@@ -130,6 +138,13 @@ __all__ = [
     "EscalationPhase",
     "Counterfactual",
     "DecisionPoint",
+    # scenarios
+    "ScenarioGenerator",
+    "GeneratorConfig",
+    "GeneratedScenario",
+    "ScenarioSuite",
+    "ScenarioCategory",
+    "score_scenario",
     # montecarlo
     "MonteCarloAnalyzer",
     "MonteCarloComparison",
