@@ -383,3 +383,159 @@ class TestEdgeCases:
         m = ctrl.issue_manifest(None, 0, big_state, res)
         assert m.state_snapshot == big_state
         assert ctrl.signer.verify(m)
+
+
+# ---------------------------------------------------------------------------
+# Input validation — ReplicationContract
+# ---------------------------------------------------------------------------
+
+class TestContractValidation:
+    """ReplicationContract rejects invalid safety-critical parameters."""
+
+    def test_negative_max_depth_rejected(self):
+        with pytest.raises(ValueError, match="max_depth must be >= 0"):
+            ReplicationContract(max_depth=-1, max_replicas=5, cooldown_seconds=0)
+
+    def test_negative_large_max_depth_rejected(self):
+        with pytest.raises(ValueError, match="max_depth must be >= 0"):
+            ReplicationContract(max_depth=-100, max_replicas=5, cooldown_seconds=0)
+
+    def test_zero_max_depth_accepted(self):
+        c = ReplicationContract(max_depth=0, max_replicas=1, cooldown_seconds=0)
+        assert c.max_depth == 0
+
+    def test_positive_max_depth_accepted(self):
+        c = ReplicationContract(max_depth=10, max_replicas=1, cooldown_seconds=0)
+        assert c.max_depth == 10
+
+    def test_zero_max_replicas_rejected(self):
+        with pytest.raises(ValueError, match="max_replicas must be >= 1"):
+            ReplicationContract(max_depth=3, max_replicas=0, cooldown_seconds=0)
+
+    def test_negative_max_replicas_rejected(self):
+        with pytest.raises(ValueError, match="max_replicas must be >= 1"):
+            ReplicationContract(max_depth=3, max_replicas=-1, cooldown_seconds=0)
+
+    def test_one_max_replicas_accepted(self):
+        c = ReplicationContract(max_depth=3, max_replicas=1, cooldown_seconds=0)
+        assert c.max_replicas == 1
+
+    def test_negative_cooldown_rejected(self):
+        with pytest.raises(ValueError, match="cooldown_seconds must be >= 0"):
+            ReplicationContract(max_depth=3, max_replicas=5, cooldown_seconds=-1)
+
+    def test_negative_fractional_cooldown_rejected(self):
+        with pytest.raises(ValueError, match="cooldown_seconds must be >= 0"):
+            ReplicationContract(max_depth=3, max_replicas=5, cooldown_seconds=-0.5)
+
+    def test_zero_cooldown_accepted(self):
+        c = ReplicationContract(max_depth=3, max_replicas=5, cooldown_seconds=0)
+        assert c.cooldown_seconds == 0
+
+    def test_positive_cooldown_accepted(self):
+        c = ReplicationContract(max_depth=3, max_replicas=5, cooldown_seconds=10.5)
+        assert c.cooldown_seconds == 10.5
+
+    def test_zero_expiration_rejected(self):
+        with pytest.raises(ValueError, match="expiration_seconds must be > 0"):
+            ReplicationContract(
+                max_depth=3, max_replicas=5, cooldown_seconds=0,
+                expiration_seconds=0,
+            )
+
+    def test_negative_expiration_rejected(self):
+        with pytest.raises(ValueError, match="expiration_seconds must be > 0"):
+            ReplicationContract(
+                max_depth=3, max_replicas=5, cooldown_seconds=0,
+                expiration_seconds=-60,
+            )
+
+    def test_none_expiration_accepted(self):
+        c = ReplicationContract(
+            max_depth=3, max_replicas=5, cooldown_seconds=0,
+            expiration_seconds=None,
+        )
+        assert c.expiration_seconds is None
+
+    def test_positive_expiration_accepted(self):
+        c = ReplicationContract(
+            max_depth=3, max_replicas=5, cooldown_seconds=0,
+            expiration_seconds=3600,
+        )
+        assert c.expiration_seconds == 3600
+
+    def test_multiple_invalid_params_first_wins(self):
+        """When multiple params are invalid, the first check triggers."""
+        with pytest.raises(ValueError, match="max_depth"):
+            ReplicationContract(max_depth=-1, max_replicas=-1, cooldown_seconds=-1)
+
+
+# ---------------------------------------------------------------------------
+# Input validation — Controller
+# ---------------------------------------------------------------------------
+
+class TestControllerSecretValidation:
+    """Controller rejects empty or whitespace-only HMAC secrets."""
+
+    def test_empty_secret_rejected(self):
+        c = _contract()
+        with pytest.raises(ValueError, match="secret must not be empty"):
+            Controller(contract=c, secret="")
+
+    def test_whitespace_secret_rejected(self):
+        c = _contract()
+        with pytest.raises(ValueError, match="secret must not be empty"):
+            Controller(contract=c, secret="   ")
+
+    def test_tab_secret_rejected(self):
+        c = _contract()
+        with pytest.raises(ValueError, match="secret must not be empty"):
+            Controller(contract=c, secret="\t\n")
+
+    def test_valid_secret_accepted(self):
+        c = _contract()
+        ctrl = Controller(contract=c, secret="my-secure-key")
+        assert ctrl.signer is not None
+
+    def test_short_secret_accepted(self):
+        c = _contract()
+        ctrl = Controller(contract=c, secret="x")
+        assert ctrl.signer is not None
+
+
+# ---------------------------------------------------------------------------
+# Input validation — ResourceSpec
+# ---------------------------------------------------------------------------
+
+class TestResourceSpecValidation:
+    """ResourceSpec rejects non-positive CPU and memory limits."""
+
+    def test_zero_cpu_rejected(self):
+        with pytest.raises(ValueError, match="cpu_limit must be > 0"):
+            ResourceSpec(cpu_limit=0, memory_limit_mb=512)
+
+    def test_negative_cpu_rejected(self):
+        with pytest.raises(ValueError, match="cpu_limit must be > 0"):
+            ResourceSpec(cpu_limit=-1.0, memory_limit_mb=512)
+
+    def test_positive_cpu_accepted(self):
+        r = ResourceSpec(cpu_limit=0.5, memory_limit_mb=256)
+        assert r.cpu_limit == 0.5
+
+    def test_zero_memory_rejected(self):
+        with pytest.raises(ValueError, match="memory_limit_mb must be > 0"):
+            ResourceSpec(cpu_limit=1.0, memory_limit_mb=0)
+
+    def test_negative_memory_rejected(self):
+        with pytest.raises(ValueError, match="memory_limit_mb must be > 0"):
+            ResourceSpec(cpu_limit=1.0, memory_limit_mb=-256)
+
+    def test_positive_memory_accepted(self):
+        r = ResourceSpec(cpu_limit=1.0, memory_limit_mb=128)
+        assert r.memory_limit_mb == 128
+
+    def test_custom_network_policy(self):
+        policy = NetworkPolicy(allow_controller=False, allow_external=True)
+        r = ResourceSpec(cpu_limit=2.0, memory_limit_mb=1024, network_policy=policy)
+        assert not r.network_policy.allow_controller
+        assert r.network_policy.allow_external

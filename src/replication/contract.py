@@ -19,6 +19,16 @@ class ResourceSpec:
     memory_limit_mb: int
     network_policy: NetworkPolicy = field(default_factory=NetworkPolicy)
 
+    def __post_init__(self) -> None:
+        if self.cpu_limit <= 0:
+            raise ValueError(
+                f"cpu_limit must be > 0, got {self.cpu_limit}"
+            )
+        if self.memory_limit_mb <= 0:
+            raise ValueError(
+                f"memory_limit_mb must be > 0, got {self.memory_limit_mb}"
+            )
+
 
 @dataclass
 class Manifest:
@@ -62,6 +72,24 @@ class ReplicationContract:
     cooldown_seconds: float
     stop_conditions: List[StopCondition] = field(default_factory=list)
     expiration_seconds: Optional[float] = None
+
+    def __post_init__(self) -> None:
+        if self.max_depth < 0:
+            raise ValueError(
+                f"max_depth must be >= 0, got {self.max_depth}"
+            )
+        if self.max_replicas < 1:
+            raise ValueError(
+                f"max_replicas must be >= 1, got {self.max_replicas}"
+            )
+        if self.cooldown_seconds < 0:
+            raise ValueError(
+                f"cooldown_seconds must be >= 0, got {self.cooldown_seconds}"
+            )
+        if self.expiration_seconds is not None and self.expiration_seconds <= 0:
+            raise ValueError(
+                f"expiration_seconds must be > 0 when set, got {self.expiration_seconds}"
+            )
 
     def evaluate(self, context: ReplicationContext) -> Optional[StopCondition]:
         for condition in self.stop_conditions:

@@ -28,6 +28,11 @@ class Controller:
     """
 
     def __init__(self, contract: ReplicationContract, secret: str, logger: Optional[StructuredLogger] = None):
+        if not secret or not secret.strip():
+            raise ValueError(
+                "Controller secret must not be empty or whitespace — "
+                "an empty HMAC key offers no authenticity guarantee"
+            )
         self.contract = contract
         self.signer = ManifestSigner(secret)
         self.logger = logger or StructuredLogger()
