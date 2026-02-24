@@ -437,6 +437,107 @@ class ThreatSimulator:
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# SCENARIO CONTEXT HELPER
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class _ScenarioContext:
+    """Shared bookkeeping for threat scenario execution.
+
+    Each threat scenario repeats the same setup (timer, infra, counters,
+    root worker), teardown (registry cleanup), status calculation, and
+    ``ThreatResult`` construction.  This helper consolidates all of that
+    so individual scenarios can focus on attack logic.
+    """
+
+    def __init__(self, sim: ThreatSimulator, *, make_root: bool = True) -> None:
+        self.start = time.monotonic()
+        self.contract, self.controller, self.orchestrator, self.logger, self.resources = (
+            sim._make_infra()
+        )
+        self.details: List[str] = []
+        self.attempted = 0
+        self.blocked = 0
+        self.succeeded = 0
+        self.root: Optional[Worker] = (
+            sim._make_root(
+                self.contract, self.controller, self.orchestrator,
+                self.logger, self.resources,
+            )
+            if make_root
+            else None
+        )
+
+    def record_attempt(self, attack_fn: Callable[[], Any], *,
+                       success_msg: str, block_msg: str) -> None:
+        """Run an attack attempt, recording the outcome.
+
+        Use this for the simple try/except ``ReplicationDenied`` pattern.
+        For scenarios with more complex branching, manipulate
+        ``attempted``, ``blocked``, ``succeeded``, and ``details``
+        directly.
+        """
+        self.attempted += 1
+        try:
+            attack_fn()
+            self.succeeded += 1
+            self.details.append(success_msg)
+        except ReplicationDenied as e:
+            self.blocked += 1
+            self.details.append(f"{block_msg}: {e}")
+
+    def cleanup(self) -> None:
+        """Deregister all workers from the controller registry."""
+        for wid in list(self.controller.registry.keys()):
+            self.controller.deregister(wid, "test_cleanup")
+
+    def build_result(
+        self,
+        scenario_id: str,
+        name: str,
+        description: str,
+        severity: ThreatSeverity,
+        *,
+        status: Optional[MitigationStatus] = None,
+    ) -> ThreatResult:
+        """Build the ``ThreatResult`` from accumulated state.
+
+        Calls ``cleanup()`` automatically.  When *status* is ``None``
+        (default), the standard succeeded-based logic is applied::
+
+            succeeded == 0      → MITIGATED
+            succeeded < attempted → PARTIAL
+            otherwise           → FAILED
+
+        Pass an explicit *status* for scenarios with custom logic.
+        """
+        self.cleanup()
+        duration_ms = (time.monotonic() - self.start) * 1000
+        if status is None:
+            if self.succeeded == 0:
+                status = MitigationStatus.MITIGATED
+            elif self.succeeded < self.attempted:
+                status = MitigationStatus.PARTIAL
+            else:
+                status = MitigationStatus.FAILED
+        return ThreatResult(
+            scenario_id=scenario_id,
+            name=name,
+            description=description,
+            severity=severity,
+            status=status,
+            attacks_attempted=self.attempted,
+            attacks_blocked=self.blocked,
+            attacks_succeeded=self.succeeded,
+            details=self.details,
+            duration_ms=duration_ms,
+            audit_events=[
+                e for e in self.logger.events if e.get("event") == "audit"
+            ],
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # THREAT SCENARIOS
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -448,18 +549,10 @@ def _threat_depth_spoofing(sim: ThreatSimulator) -> ThreatResult:
     A malicious worker at depth=2 claims depth=0 when requesting
     a child manifest, hoping to reset the depth counter.
     """
-    start = time.monotonic()
-    contract, controller, orchestrator, logger, resources = sim._make_infra()
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    # Create a chain to reach a deeper worker
-    root = sim._make_root(contract, controller, orchestrator, logger, resources)
+    ctx = _ScenarioContext(sim)
 
     # Build chain up to max_depth - 1
-    current = root
+    current = ctx.root
     for i in range(sim.config.max_depth - 1):
         child = current.maybe_replicate(
             reason="build_chain", state_snapshot={"depth_target": i + 1},
@@ -470,72 +563,49 @@ def _threat_depth_spoofing(sim: ThreatSimulator) -> ThreatResult:
             break
 
     # Now 'current' is at max_depth-1. Try to spoof depth=0 when issuing
-    attempted += 1
+    ctx.attempted += 1
     try:
         # Direct call to issue_manifest with spoofed depth=0
-        spoofed_manifest = controller.issue_manifest(
+        spoofed_manifest = ctx.controller.issue_manifest(
             parent_id=current.manifest.worker_id,
             depth=0,  # SPOOFED — claiming to be root level
             state_snapshot={"attack": "depth_spoof"},
-            resources=resources,
+            resources=ctx.resources,
         )
         # If we get here, check if the actual depth is correct (derived from parent)
         if spoofed_manifest.depth == current.manifest.depth + 1:
-            blocked += 1
-            details.append(
+            ctx.blocked += 1
+            ctx.details.append(
                 f"Depth spoof rejected: requested depth=0, got depth={spoofed_manifest.depth} "
                 f"(correctly derived from parent)"
             )
         else:
-            succeeded += 1
-            details.append(
+            ctx.succeeded += 1
+            ctx.details.append(
                 f"Depth spoof succeeded! Got depth={spoofed_manifest.depth} "
                 f"instead of expected {current.manifest.depth + 1}"
             )
     except ReplicationDenied as e:
-        blocked += 1
-        details.append(f"Depth spoof blocked by contract: {e}")
+        ctx.blocked += 1
+        ctx.details.append(f"Depth spoof blocked by contract: {e}")
 
     # Also try spoofing with a fake parent_id
-    attempted += 1
-    try:
-        controller.issue_manifest(
+    ctx.record_attempt(
+        lambda: ctx.controller.issue_manifest(
             parent_id="fake_parent_id",
             depth=0,
             state_snapshot={"attack": "fake_parent"},
-            resources=resources,
-        )
-        succeeded += 1
-        details.append("Fake parent_id accepted — vulnerability!")
-    except ReplicationDenied as e:
-        blocked += 1
-        details.append(f"Fake parent_id rejected: {e}")
+            resources=ctx.resources,
+        ),
+        success_msg="Fake parent_id accepted — vulnerability!",
+        block_msg="Fake parent_id rejected",
+    )
 
-    # Clean up
-    for wid in list(controller.registry.keys()):
-        controller.deregister(wid, "test_cleanup")
-
-    duration_ms = (time.monotonic() - start) * 1000
-
-    if succeeded == 0:
-        status = MitigationStatus.MITIGATED
-    elif succeeded < attempted:
-        status = MitigationStatus.PARTIAL
-    else:
-        status = MitigationStatus.FAILED
-
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="depth_spoofing",
         name="Depth Spoofing Attack",
         description="Worker lies about its depth to bypass depth limits",
         severity=ThreatSeverity.CRITICAL,
-        status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
@@ -668,68 +738,50 @@ def _threat_signature_tampering(sim: ThreatSimulator) -> ThreatResult:
 @_scenario
 def _threat_quota_exhaustion(sim: ThreatSimulator) -> ThreatResult:
     """Attack: Rapidly spawn workers to exhaust the replica quota."""
-    start = time.monotonic()
-    contract, controller, orchestrator, logger, resources = sim._make_infra()
+    ctx = _ScenarioContext(sim)
     # Use no cooldown for this test to isolate quota behavior
-    contract.cooldown_seconds = 0.0
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    root = sim._make_root(contract, controller, orchestrator, logger, resources)
+    ctx.contract.cooldown_seconds = 0.0
 
     # Try to spawn max_replicas + 5 workers (beyond quota)
     target = sim.config.max_replicas + 5
     children: List[Worker] = []
     for i in range(target):
-        attempted += 1
+        ctx.attempted += 1
         try:
-            child_manifest = controller.issue_manifest(
-                parent_id=root.manifest.worker_id,
+            child_manifest = ctx.controller.issue_manifest(
+                parent_id=ctx.root.manifest.worker_id,
                 depth=0,
                 state_snapshot={"attack": "exhaust", "seq": i},
-                resources=resources,
+                resources=ctx.resources,
             )
-            child = Worker(child_manifest, contract, controller, orchestrator, logger)
+            child = Worker(child_manifest, ctx.contract, ctx.controller,
+                           ctx.orchestrator, ctx.logger)
             children.append(child)
-            succeeded += 1
+            ctx.succeeded += 1
         except ReplicationDenied:
-            blocked += 1
+            ctx.blocked += 1
 
-    over_quota = succeeded - (sim.config.max_replicas - 1)  # -1 for root
-    details.append(f"Spawned {succeeded}/{target} workers (quota={sim.config.max_replicas})")
-    details.append(f"Blocked {blocked} over-quota attempts")
+    over_quota = ctx.succeeded - (sim.config.max_replicas - 1)  # -1 for root
+    ctx.details.append(f"Spawned {ctx.succeeded}/{target} workers (quota={sim.config.max_replicas})")
+    ctx.details.append(f"Blocked {ctx.blocked} over-quota attempts")
 
     if over_quota > 0:
-        details.append(f"WARNING: {over_quota} workers exceeded intended quota")
-
-    # Clean up
-    for wid in list(controller.registry.keys()):
-        controller.deregister(wid, "test_cleanup")
-
-    duration_ms = (time.monotonic() - start) * 1000
+        ctx.details.append(f"WARNING: {over_quota} workers exceeded intended quota")
 
     # Quota is enforced if we blocked the extra 5
-    if blocked >= 5:
+    if ctx.blocked >= 5:
         status = MitigationStatus.MITIGATED
-    elif blocked > 0:
+    elif ctx.blocked > 0:
         status = MitigationStatus.PARTIAL
     else:
         status = MitigationStatus.FAILED
 
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="quota_exhaustion",
         name="Quota Exhaustion Attack",
         description="Rapidly spawn workers to exhaust the replica quota",
         severity=ThreatSeverity.HIGH,
         status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
@@ -828,44 +880,34 @@ def _threat_cooldown_bypass(sim: ThreatSimulator) -> ThreatResult:
 @_scenario
 def _threat_kill_switch_evasion(sim: ThreatSimulator) -> ThreatResult:
     """Attack: Try to spawn workers after kill switch is engaged."""
-    start = time.monotonic()
-    contract, controller, orchestrator, logger, resources = sim._make_infra()
-    contract.cooldown_seconds = 0.0
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    root = sim._make_root(contract, controller, orchestrator, logger, resources)
+    ctx = _ScenarioContext(sim)
+    ctx.contract.cooldown_seconds = 0.0
 
     # Spawn a child before kill switch
-    child = root.maybe_replicate(
+    child = ctx.root.maybe_replicate(
         reason="pre_kill", state_snapshot={"phase": "before_kill"},
     )
-    pre_kill_count = len(controller.registry)
-    details.append(f"Pre-kill workers: {pre_kill_count}")
+    pre_kill_count = len(ctx.controller.registry)
+    ctx.details.append(f"Pre-kill workers: {pre_kill_count}")
 
     # Engage kill switch
-    controller.kill_switch(orchestrator)
-    post_kill_count = len(controller.registry)
-    details.append(f"Post-kill workers: {post_kill_count}")
+    ctx.controller.kill_switch(ctx.orchestrator)
+    post_kill_count = len(ctx.controller.registry)
+    ctx.details.append(f"Post-kill workers: {post_kill_count}")
 
     # Try to spawn via issue_manifest (the normal path)
-    attempted += 1
-    try:
-        controller.issue_manifest(
+    ctx.record_attempt(
+        lambda: ctx.controller.issue_manifest(
             parent_id=None, depth=0,
             state_snapshot={"attack": "post_kill_spawn"},
-            resources=resources,
-        )
-        succeeded += 1
-        details.append("Post-kill-switch spawn succeeded — evasion!")
-    except ReplicationDenied:
-        blocked += 1
-        details.append("Post-kill-switch spawn blocked (good)")
+            resources=ctx.resources,
+        ),
+        success_msg="Post-kill-switch spawn succeeded — evasion!",
+        block_msg="Post-kill-switch spawn blocked (good)",
+    )
 
     # Try to perform_task on a killed worker (if we had one)
-    attempted += 1
+    ctx.attempted += 1
     try:
         # Create a mock worker that checks kill switch
         test_manifest = Manifest(
@@ -874,49 +916,41 @@ def _threat_kill_switch_evasion(sim: ThreatSimulator) -> ThreatResult:
             depth=0,
             state_snapshot={"test": True},
             issued_at=datetime.now(timezone.utc),
-            resources=resources,
+            resources=ctx.resources,
             signature="",
         )
-        controller.signer.sign(test_manifest)
+        ctx.controller.signer.sign(test_manifest)
         # Even with valid signature, the kill switch should prevent
         # new work from being done
-        if controller.kill_switch_engaged:
-            blocked += 1
-            details.append("Kill switch flag prevents new task execution (good)")
+        if ctx.controller.kill_switch_engaged:
+            ctx.blocked += 1
+            ctx.details.append("Kill switch flag prevents new task execution (good)")
         else:
-            succeeded += 1
-            details.append("Kill switch flag not set — evasion!")
+            ctx.succeeded += 1
+            ctx.details.append("Kill switch flag not set — evasion!")
     except Exception:
-        blocked += 1
-        details.append("Post-kill task attempt failed (good)")
+        ctx.blocked += 1
+        ctx.details.append("Post-kill task attempt failed (good)")
 
     # Verify registry is empty (all killed)
     if post_kill_count == 0:
-        details.append("Kill switch cleared all workers ✓")
+        ctx.details.append("Kill switch cleared all workers ✓")
     else:
-        details.append(f"Kill switch left {post_kill_count} workers alive!")
+        ctx.details.append(f"Kill switch left {post_kill_count} workers alive!")
 
-    duration_ms = (time.monotonic() - start) * 1000
-
-    if succeeded == 0 and post_kill_count == 0:
+    if ctx.succeeded == 0 and post_kill_count == 0:
         status = MitigationStatus.MITIGATED
-    elif succeeded == 0:
+    elif ctx.succeeded == 0:
         status = MitigationStatus.PARTIAL
     else:
         status = MitigationStatus.FAILED
 
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="kill_switch_evasion",
         name="Kill Switch Evasion",
         description="Attempt to spawn or register workers after kill switch is engaged",
         severity=ThreatSeverity.CRITICAL,
         status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
@@ -1011,21 +1045,14 @@ def _threat_stale_worker_accumulation(sim: ThreatSimulator) -> ThreatResult:
     If stale workers are never reaped, they hold quota slots forever,
     eventually preventing legitimate spawns — a denial-of-service.
     """
-    start = time.monotonic()
-    contract, controller, orchestrator, logger, resources = sim._make_infra()
-    contract.cooldown_seconds = 0.0
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    root = sim._make_root(contract, controller, orchestrator, logger, resources)
+    ctx = _ScenarioContext(sim)
+    ctx.contract.cooldown_seconds = 0.0
 
     # Spawn workers up to quota
     stale_workers: List[Worker] = []
     for i in range(sim.config.max_replicas - 1):  # -1 for root
         try:
-            child = root.maybe_replicate(
+            child = ctx.root.maybe_replicate(
                 reason="stale_fill",
                 state_snapshot={"stale_idx": i},
             )
@@ -1034,57 +1061,52 @@ def _threat_stale_worker_accumulation(sim: ThreatSimulator) -> ThreatResult:
         except Exception:
             break
 
-    pre_reap_count = len(controller.registry)
-    details.append(f"Filled quota: {pre_reap_count}/{sim.config.max_replicas} slots")
+    pre_reap_count = len(ctx.controller.registry)
+    ctx.details.append(f"Filled quota: {pre_reap_count}/{sim.config.max_replicas} slots")
 
     # Try to spawn one more — should be blocked (quota full)
-    attempted += 1
-    over_quota = root.maybe_replicate(
+    ctx.attempted += 1
+    over_quota = ctx.root.maybe_replicate(
         reason="over_quota_test",
         state_snapshot={"test": "over_quota"},
     )
     if over_quota is None:
-        blocked += 1
-        details.append("New spawn blocked when quota full (expected)")
+        ctx.blocked += 1
+        ctx.details.append("New spawn blocked when quota full (expected)")
     else:
-        succeeded += 1
-        details.append("Spawn succeeded despite full quota — vulnerability!")
+        ctx.succeeded += 1
+        ctx.details.append("Spawn succeeded despite full quota — vulnerability!")
 
     # Simulate time passing — make workers stale by backdating heartbeats
     stale_cutoff = datetime.now(timezone.utc) - timedelta(seconds=120)
-    for wid in list(controller.registry.keys()):
-        if wid != root.manifest.worker_id:
-            controller.registry[wid].last_heartbeat = stale_cutoff
+    for wid in list(ctx.controller.registry.keys()):
+        if wid != ctx.root.manifest.worker_id:
+            ctx.controller.registry[wid].last_heartbeat = stale_cutoff
 
     # Reap stale workers
-    reaped = controller.reap_stale_workers(
-        timeout=timedelta(seconds=60), orchestrator=orchestrator,
+    reaped = ctx.controller.reap_stale_workers(
+        timeout=timedelta(seconds=60), orchestrator=ctx.orchestrator,
     )
-    post_reap_count = len(controller.registry)
-    details.append(f"Reaped {len(reaped)} stale workers")
-    details.append(f"Post-reap registry: {post_reap_count}/{sim.config.max_replicas}")
+    post_reap_count = len(ctx.controller.registry)
+    ctx.details.append(f"Reaped {len(reaped)} stale workers")
+    ctx.details.append(f"Post-reap registry: {post_reap_count}/{sim.config.max_replicas}")
 
     # Now try spawning again — should work after reaping
-    attempted += 1
+    ctx.attempted += 1
     try:
-        new_manifest = controller.issue_manifest(
-            parent_id=root.manifest.worker_id,
+        new_manifest = ctx.controller.issue_manifest(
+            parent_id=ctx.root.manifest.worker_id,
             depth=0,
             state_snapshot={"test": "post_reap"},
-            resources=resources,
+            resources=ctx.resources,
         )
-        new_worker = Worker(new_manifest, contract, controller, orchestrator, logger)
-        succeeded += 1
-        details.append("Post-reap spawn succeeded (quota freed) ✓")
+        new_worker = Worker(new_manifest, ctx.contract, ctx.controller,
+                            ctx.orchestrator, ctx.logger)
+        ctx.succeeded += 1
+        ctx.details.append("Post-reap spawn succeeded (quota freed) ✓")
     except ReplicationDenied:
-        blocked += 1
-        details.append("Post-reap spawn still blocked — reaping didn't free quota")
-
-    # Clean up
-    for wid in list(controller.registry.keys()):
-        controller.deregister(wid, "test_cleanup")
-
-    duration_ms = (time.monotonic() - start) * 1000
+        ctx.blocked += 1
+        ctx.details.append("Post-reap spawn still blocked — reaping didn't free quota")
 
     # Good: quota was enforced AND reaping freed slots
     if len(reaped) > 0 and post_reap_count < pre_reap_count:
@@ -1094,18 +1116,12 @@ def _threat_stale_worker_accumulation(sim: ThreatSimulator) -> ThreatResult:
     else:
         status = MitigationStatus.FAILED
 
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="stale_worker_accumulation",
         name="Stale Worker Accumulation (DoS)",
         description="Workers stop heartbeating to permanently consume quota slots",
         severity=ThreatSeverity.MEDIUM,
         status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
