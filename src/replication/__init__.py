@@ -79,6 +79,15 @@ from .scenarios import (
     ScenarioCategory,
     score_scenario,
 )
+from .chaos import (
+    ChaosRunner,
+    ChaosConfig,
+    ChaosReport,
+    ChaosResult,
+    FaultConfig,
+    FaultType,
+    FAULT_ALIASES,
+)
 
 __all__ = [
     # contract
@@ -145,6 +154,14 @@ __all__ = [
     "ScenarioSuite",
     "ScenarioCategory",
     "score_scenario",
+    # chaos
+    "ChaosRunner",
+    "ChaosConfig",
+    "ChaosReport",
+    "ChaosResult",
+    "FaultConfig",
+    "FaultType",
+    "FAULT_ALIASES",
     # montecarlo
     "MonteCarloAnalyzer",
     "MonteCarloComparison",
