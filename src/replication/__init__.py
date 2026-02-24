@@ -88,6 +88,15 @@ from .chaos import (
     FaultType,
     FAULT_ALIASES,
 )
+from .regression import (
+    RegressionDetector,
+    RegressionConfig,
+    RegressionResult,
+    MetricChange,
+    ChangeDirection,
+    MetricPolarity,
+    METRIC_DEFINITIONS,
+)
 
 __all__ = [
     # contract
@@ -162,6 +171,14 @@ __all__ = [
     "FaultConfig",
     "FaultType",
     "FAULT_ALIASES",
+    # regression
+    "RegressionDetector",
+    "RegressionConfig",
+    "RegressionResult",
+    "MetricChange",
+    "ChangeDirection",
+    "MetricPolarity",
+    "METRIC_DEFINITIONS",
     # montecarlo
     "MonteCarloAnalyzer",
     "MonteCarloComparison",
