@@ -88,6 +88,12 @@ from .chaos import (
     FaultType,
     FAULT_ALIASES,
 )
+from .scorecard import (
+    SafetyScorecard,
+    ScorecardConfig,
+    ScorecardResult,
+    DimensionScore,
+)
 from .regression import (
     RegressionDetector,
     RegressionConfig,
@@ -193,6 +199,11 @@ __all__ = [
     "SensitivityResult",
     "TippingPoint",
     "PARAM_DEFS",
+    # scorecard
+    "SafetyScorecard",
+    "ScorecardConfig",
+    "ScorecardResult",
+    "DimensionScore",
     # worker
     "Worker",
     "WorkerState",
