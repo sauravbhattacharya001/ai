@@ -85,6 +85,16 @@ def _ci95(values: List[float]) -> Tuple[float, float]:
     return (m - margin, m + margin)
 
 
+def _box_header(title: str, width: int = 57) -> List[str]:
+    """Create a box-drawing header with centered title."""
+    inner = width - 2
+    return [
+        "┌" + "─" * inner + "┐",
+        "│" + title.center(inner) + "│",
+        "└" + "─" * inner + "┘",
+    ]
+
+
 # ── Data models ─────────────────────────────────────────────────────────
 
 @dataclass
@@ -233,9 +243,7 @@ class MonteCarloResult:
 
     def render_summary(self) -> str:
         lines: List[str] = []
-        lines.append("┌───────────────────────────────────────────────────────┐")
-        lines.append("│       🎲  Monte Carlo Risk Analysis  🎲              │")
-        lines.append("└───────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("🎲  Monte Carlo Risk Analysis  🎲"))
         lines.append("")
         lines.append(f"  Risk Level: {self.risk_emoji} {self.risk_level}")
         lines.append("")
@@ -252,9 +260,7 @@ class MonteCarloResult:
     def render_distributions(self) -> str:
         lines: List[str] = []
         lines.append("")
-        lines.append("┌───────────────────────────────────────────────────────┐")
-        lines.append("│            Metric Distributions                       │")
-        lines.append("└───────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("Metric Distributions"))
         lines.append("")
 
         # Table header
@@ -287,9 +293,7 @@ class MonteCarloResult:
     def render_risk_indicators(self) -> str:
         lines: List[str] = []
         lines.append("")
-        lines.append("┌───────────────────────────────────────────────────────┐")
-        lines.append("│            Risk Indicators                            │")
-        lines.append("└───────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("Risk Indicators"))
         lines.append("")
 
         rm = self.risk_metrics
@@ -321,9 +325,7 @@ class MonteCarloResult:
     def render_histograms(self) -> str:
         lines: List[str] = []
         lines.append("")
-        lines.append("┌───────────────────────────────────────────────────────┐")
-        lines.append("│            Depth Distribution (across runs)           │")
-        lines.append("└───────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("Depth Distribution (across runs)"))
         lines.append("")
 
         if self.depth_histogram:
@@ -336,9 +338,7 @@ class MonteCarloResult:
                 lines.append(f"  depth {depth:>2}: {bar} {count:>4} ({pct:.0f}%)")
 
         lines.append("")
-        lines.append("┌───────────────────────────────────────────────────────┐")
-        lines.append("│          Worker Count Distribution (across runs)      │")
-        lines.append("└───────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("Worker Count Distribution (across runs)"))
         lines.append("")
 
         if self.worker_histogram:
@@ -355,9 +355,7 @@ class MonteCarloResult:
     def render_recommendations(self) -> str:
         lines: List[str] = []
         lines.append("")
-        lines.append("┌───────────────────────────────────────────────────────┐")
-        lines.append("│            Recommendations                            │")
-        lines.append("└───────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("Recommendations"))
         lines.append("")
 
         rm = self.risk_metrics
@@ -452,9 +450,7 @@ class MonteCarloComparison:
 
     def render_table(self) -> str:
         lines: List[str] = []
-        lines.append("┌───────────────────────────────────────────────────────────────┐")
-        lines.append("│       🎲  Monte Carlo Risk Comparison  🎲                    │")
-        lines.append("└───────────────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("🎲  Monte Carlo Risk Comparison  🎲", width=65))
         lines.append("")
 
         # Header
@@ -496,9 +492,7 @@ class MonteCarloComparison:
     def render_risk_ranking(self) -> str:
         lines: List[str] = []
         lines.append("")
-        lines.append("┌───────────────────────────────────────────────────────────────┐")
-        lines.append("│               Risk Ranking (safest first)                     │")
-        lines.append("└───────────────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("Risk Ranking (safest first)", width=65))
         lines.append("")
 
         # Rank by combined risk (lower = safer)
@@ -527,9 +521,7 @@ class MonteCarloComparison:
     def render_insights(self) -> str:
         lines: List[str] = []
         lines.append("")
-        lines.append("┌───────────────────────────────────────────────────────────────┐")
-        lines.append("│               Key Insights                                    │")
-        lines.append("└───────────────────────────────────────────────────────────────┘")
+        lines.extend(_box_header("Key Insights", width=65))
         lines.append("")
 
         # Find extremes
