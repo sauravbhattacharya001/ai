@@ -35,6 +35,22 @@ from typing import Any, Dict, List, Optional, Tuple
 from .simulator import ScenarioConfig, Simulator, SimulationReport, WorkerRecord
 
 
+# ── Helpers ──────────────────────────────────────────────────────
+
+
+def _box_header(title: str, width: int = 43) -> List[str]:
+    """Create a box-drawing header with centered title.
+
+    Returns 3 lines: top border, title line, bottom border.
+    """
+    inner = width - 2  # subtract 2 for the │ characters
+    return [
+        "┌" + "─" * inner + "┐",
+        "│" + title.center(inner) + "│",
+        "└" + "─" * inner + "┘",
+    ]
+
+
 # ── Data models ──────────────────────────────────────────────────
 
 
@@ -129,9 +145,7 @@ class ForensicReport:
     def render_events(self) -> str:
         """Render reconstructed event timeline with safety annotations."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────┐")
-        lines.append("│        Forensic Event Timeline          │")
-        lines.append("└─────────────────────────────────────────┘")
+        lines.extend(_box_header("Forensic Event Timeline"))
         lines.append("")
 
         icons = {
@@ -157,9 +171,7 @@ class ForensicReport:
     def render_near_misses(self) -> str:
         """Render near-miss safety events."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────┐")
-        lines.append("│           Near-Miss Analysis            │")
-        lines.append("└─────────────────────────────────────────┘")
+        lines.extend(_box_header("Near-Miss Analysis"))
         lines.append("")
 
         if not self.near_misses:
@@ -181,9 +193,7 @@ class ForensicReport:
     def render_escalation(self) -> str:
         """Render escalation phase analysis."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────┐")
-        lines.append("│       Escalation Phase Analysis         │")
-        lines.append("└─────────────────────────────────────────┘")
+        lines.extend(_box_header("Escalation Phase Analysis"))
         lines.append("")
 
         if not self.escalation_phases:
@@ -206,9 +216,7 @@ class ForensicReport:
     def render_counterfactuals(self) -> str:
         """Render counterfactual what-if analysis."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────┐")
-        lines.append("│      Counterfactual Analysis            │")
-        lines.append("└─────────────────────────────────────────┘")
+        lines.extend(_box_header("Counterfactual Analysis"))
         lines.append("")
 
         if not self.counterfactuals:
@@ -232,9 +240,7 @@ class ForensicReport:
     def render_decisions(self) -> str:
         """Render controller decision audit trail."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────┐")
-        lines.append("│      Controller Decision Audit          │")
-        lines.append("└─────────────────────────────────────────┘")
+        lines.extend(_box_header("Decision Point Analysis"))
         lines.append("")
 
         if not self.decision_points:
@@ -272,9 +278,7 @@ class ForensicReport:
     def render_summary(self) -> str:
         """Render the safety summary and recommendations."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────┐")
-        lines.append("│         Forensic Summary                │")
-        lines.append("└─────────────────────────────────────────┘")
+        lines.extend(_box_header("Forensic Safety Summary"))
         lines.append("")
 
         s = self.safety_summary
@@ -308,86 +312,18 @@ class ForensicReport:
 
     def to_dict(self) -> Dict[str, Any]:
         """Export as a JSON-serializable dictionary."""
-        return {
-            "config": {
+        from dataclasses import asdict
+        result = asdict(self)
+        # Keep only the config fields that are relevant for forensics
+        if self.config:
+            result["config"] = {
                 "strategy": self.config.strategy,
                 "max_depth": self.config.max_depth,
                 "max_replicas": self.config.max_replicas,
                 "cooldown_seconds": self.config.cooldown_seconds,
                 "tasks_per_worker": self.config.tasks_per_worker,
-            },
-            "safety_summary": self.safety_summary,
-            "near_misses": [
-                {
-                    "step": nm.step,
-                    "time_ms": nm.time_ms,
-                    "metric": nm.metric,
-                    "current_value": nm.current_value,
-                    "limit_value": nm.limit_value,
-                    "headroom_pct": nm.headroom_pct,
-                    "worker_id": nm.worker_id,
-                    "description": nm.description,
-                }
-                for nm in self.near_misses
-            ],
-            "escalation_phases": [
-                {
-                    "start_step": ep.start_step,
-                    "end_step": ep.end_step,
-                    "start_time_ms": ep.start_time_ms,
-                    "end_time_ms": ep.end_time_ms,
-                    "workers_at_start": ep.workers_at_start,
-                    "workers_at_end": ep.workers_at_end,
-                    "growth_rate": ep.growth_rate,
-                    "peak_depth": ep.peak_depth,
-                    "description": ep.description,
-                }
-                for ep in self.escalation_phases
-            ],
-            "counterfactuals": [
-                {
-                    "parameter": cf.parameter,
-                    "original_value": cf.original_value,
-                    "modified_value": cf.modified_value,
-                    "original_workers": cf.original_workers,
-                    "modified_workers": cf.modified_workers,
-                    "delta_workers": cf.delta_workers,
-                    "original_denied": cf.original_denied,
-                    "modified_denied": cf.modified_denied,
-                    "delta_denied": cf.delta_denied,
-                    "original_max_depth": cf.original_max_depth,
-                    "modified_max_depth": cf.modified_max_depth,
-                    "insight": cf.insight,
-                }
-                for cf in self.counterfactuals
-            ],
-            "decision_points": [
-                {
-                    "step": dp.step,
-                    "time_ms": dp.time_ms,
-                    "worker_id": dp.worker_id,
-                    "decision": dp.decision,
-                    "depth": dp.depth,
-                    "active_workers": dp.active_workers,
-                    "reason": dp.reason,
-                }
-                for dp in self.decision_points
-            ],
-            "recommendations": self.recommendations,
-            "events": [
-                {
-                    "step": e.step,
-                    "time_ms": e.time_ms,
-                    "event_type": e.event_type,
-                    "worker_id": e.worker_id,
-                    "depth": e.depth,
-                    "safety_relevant": e.safety_relevant,
-                    "safety_note": e.safety_note,
-                    "detail": e.detail,
-                }
-                for e in self.events
-            ],
-        }
+            }
+        return result
 
 
 # ── Analyzer ─────────────────────────────────────────────────────
