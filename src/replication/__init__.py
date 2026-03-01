@@ -130,6 +130,13 @@ from .regression import (
     MetricPolarity,
     METRIC_DEFINITIONS,
 )
+from .quarantine import (
+    QuarantineManager,
+    QuarantineEntry,
+    QuarantineReport,
+    QuarantineStatus,
+    QuarantineSeverity,
+)
 
 __all__ = [
     # contract
@@ -258,4 +265,10 @@ __all__ = [
     # worker
     "Worker",
     "WorkerState",
+    # quarantine
+    "QuarantineManager",
+    "QuarantineEntry",
+    "QuarantineReport",
+    "QuarantineStatus",
+    "QuarantineSeverity",
 ]
