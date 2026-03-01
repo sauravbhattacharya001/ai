@@ -94,6 +94,13 @@ from .scorecard import (
     ScorecardResult,
     DimensionScore,
 )
+from .optimizer import (
+    ContractOptimizer,
+    OptimizerConfig,
+    OptimizerResult,
+    CandidateResult,
+    Objective,
+)
 from .regression import (
     RegressionDetector,
     RegressionConfig,
@@ -204,6 +211,12 @@ __all__ = [
     "ScorecardConfig",
     "ScorecardResult",
     "DimensionScore",
+    # optimizer
+    "ContractOptimizer",
+    "OptimizerConfig",
+    "OptimizerResult",
+    "CandidateResult",
+    "Objective",
     # worker
     "Worker",
     "WorkerState",
