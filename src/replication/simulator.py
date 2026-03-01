@@ -347,6 +347,7 @@ class Simulator:
             wid = worker.manifest.worker_id
             rec = records[wid]
 
+            early_shutdown = False
             for task_num in range(self.config.tasks_per_worker):
                 # Perform task
                 try:
@@ -359,10 +360,14 @@ class Simulator:
                         "detail": f"Task {task_num + 1}/{self.config.tasks_per_worker} completed",
                     })
                 except ReplicationDenied:
+                    worker.shutdown("expired_or_killed")
+                    rec.shutdown_at = _elapsed_ms()
+                    rec.shutdown_reason = "expired_or_killed"
                     timeline.append({
                         "type": "shutdown", "time_ms": _elapsed_ms(),
                         "worker_id": wid, "detail": "Worker expired or killed",
                     })
+                    early_shutdown = True
                     break
 
                 # Decide whether to replicate based on strategy
@@ -410,14 +415,15 @@ class Simulator:
                             "worker_id": wid, "detail": "Replication denied by contract",
                         })
 
-            # Shutdown worker after tasks
-            worker.shutdown("tasks_complete")
-            rec.shutdown_at = _elapsed_ms()
-            rec.shutdown_reason = "tasks_complete"
-            timeline.append({
-                "type": "shutdown", "time_ms": _elapsed_ms(),
-                "worker_id": wid, "detail": "Shutdown (tasks complete)",
-            })
+            # Shutdown worker after tasks (skip if already shut down early)
+            if not early_shutdown:
+                worker.shutdown("tasks_complete")
+                rec.shutdown_at = _elapsed_ms()
+                rec.shutdown_reason = "tasks_complete"
+                timeline.append({
+                    "type": "shutdown", "time_ms": _elapsed_ms(),
+                    "worker_id": wid, "detail": "Shutdown (tasks complete)",
+                })
 
         duration_ms = _elapsed_ms()
 

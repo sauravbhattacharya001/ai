@@ -199,3 +199,91 @@ def test_strategy_enum_parsing():
     for s in ["greedy", "conservative", "random", "chain", "burst"]:
         config = ScenarioConfig(strategy=s)
         assert config.strategy_enum == Strategy(s)
+
+
+def test_no_duplicate_shutdown_events():
+    """Each worker should have exactly one shutdown event in the timeline.
+
+    Regression test: previously, workers that hit a ReplicationDenied
+    during perform_task() received two shutdown events — one from the
+    early break path and one from the normal post-loop shutdown. This
+    caused peak_concurrent tracking in forensics to double-decrement,
+    potentially under-counting concurrency peaks.
+    """
+    # Use various configs to exercise different code paths
+    configs = [
+        ScenarioConfig(max_depth=2, max_replicas=5, strategy="greedy",
+                       tasks_per_worker=3, cooldown_seconds=0.0, seed=42),
+        ScenarioConfig(max_depth=1, max_replicas=2, strategy="burst",
+                       tasks_per_worker=5, cooldown_seconds=0.0, seed=99),
+        ScenarioConfig(max_depth=3, max_replicas=3, strategy="chain",
+                       tasks_per_worker=2, cooldown_seconds=0.0, seed=7),
+        ScenarioConfig(max_depth=2, max_replicas=10, strategy="conservative",
+                       tasks_per_worker=2, cooldown_seconds=0.0, seed=123),
+    ]
+
+    for config in configs:
+        report = Simulator(config).run()
+
+        # Count shutdown events per worker
+        shutdown_counts: dict = {}
+        for entry in report.timeline:
+            if entry["type"] == "shutdown":
+                wid = entry["worker_id"]
+                shutdown_counts[wid] = shutdown_counts.get(wid, 0) + 1
+
+        for wid, count in shutdown_counts.items():
+            assert count == 1, (
+                f"Worker {wid} has {count} shutdown events (expected 1) "
+                f"with strategy={config.strategy}"
+            )
+
+
+def test_timeline_shutdown_count_equals_worker_count():
+    """Total shutdown events should match total workers spawned."""
+    config = ScenarioConfig(
+        max_depth=3, max_replicas=8, strategy="greedy",
+        tasks_per_worker=2, cooldown_seconds=0.0, seed=42,
+    )
+    report = Simulator(config).run()
+
+    shutdown_events = [e for e in report.timeline if e["type"] == "shutdown"]
+    spawn_events = [e for e in report.timeline
+                    if e["type"] in ("spawn", "replicate_ok")]
+
+    assert len(shutdown_events) == len(spawn_events), (
+        f"Shutdown events ({len(shutdown_events)}) != "
+        f"spawn events ({len(spawn_events)})"
+    )
+    assert len(shutdown_events) == len(report.workers)
+
+
+def test_peak_concurrent_never_negative():
+    """Peak concurrent tracking should never undercount due to double shutdown.
+
+    Verifies the forensics-style peak_concurrent calculation stays
+    non-negative throughout the entire timeline and that the final
+    active count is zero (all workers properly shut down).
+    """
+    config = ScenarioConfig(
+        max_depth=3, max_replicas=10, strategy="greedy",
+        tasks_per_worker=3, cooldown_seconds=0.0, seed=42,
+    )
+    report = Simulator(config).run()
+
+    active = 0
+    peak = 0
+    for entry in report.timeline:
+        if entry["type"] in ("spawn", "replicate_ok"):
+            active += 1
+            peak = max(peak, active)
+        elif entry["type"] == "shutdown":
+            active -= 1
+            assert active >= 0, (
+                f"Active count went negative at {entry['time_ms']:.1f}ms "
+                f"(worker {entry['worker_id']})"
+            )
+
+    assert active == 0, (
+        f"Active count is {active} at end of timeline (expected 0)"
+    )
