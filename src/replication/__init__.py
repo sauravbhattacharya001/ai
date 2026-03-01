@@ -111,6 +111,16 @@ from .drift import (
     MetricTrend,
     MetricWindow,
 )
+from .compliance import (
+    ComplianceAuditor,
+    AuditConfig,
+    AuditResult,
+    Finding,
+    Framework,
+    FrameworkResult,
+    Verdict,
+    FRAMEWORK_CHECKS,
+)
 from .regression import (
     RegressionDetector,
     RegressionConfig,
@@ -203,6 +213,15 @@ __all__ = [
     "DriftSeverity",
     "MetricTrend",
     "MetricWindow",
+    # compliance
+    "ComplianceAuditor",
+    "AuditConfig",
+    "AuditResult",
+    "Finding",
+    "Framework",
+    "FrameworkResult",
+    "Verdict",
+    "FRAMEWORK_CHECKS",
     # regression
     "RegressionDetector",
     "RegressionConfig",
