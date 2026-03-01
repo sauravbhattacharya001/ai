@@ -101,6 +101,16 @@ from .optimizer import (
     CandidateResult,
     Objective,
 )
+from .drift import (
+    DriftDetector,
+    DriftConfig,
+    DriftResult,
+    DriftAlert,
+    DriftDirection,
+    DriftSeverity,
+    MetricTrend,
+    MetricWindow,
+)
 from .regression import (
     RegressionDetector,
     RegressionConfig,
@@ -184,6 +194,15 @@ __all__ = [
     "FaultConfig",
     "FaultType",
     "FAULT_ALIASES",
+    # drift
+    "DriftDetector",
+    "DriftConfig",
+    "DriftResult",
+    "DriftAlert",
+    "DriftDirection",
+    "DriftSeverity",
+    "MetricTrend",
+    "MetricWindow",
     # regression
     "RegressionDetector",
     "RegressionConfig",
