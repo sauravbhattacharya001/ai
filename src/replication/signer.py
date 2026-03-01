@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import json
 from hashlib import sha256
 from typing import Optional
 
@@ -19,10 +20,22 @@ class ManifestSigner:
         self._key = secret.encode()
 
     def _serialize(self, manifest: Manifest) -> str:
+        """Produce a canonical string representation for HMAC signing.
+
+        Uses ``json.dumps(sort_keys=True)`` for the state snapshot to
+        guarantee deterministic serialization regardless of dict
+        insertion order.  The previous ``str()`` approach produced
+        Python's repr() output whose key order is an implementation
+        detail and can differ across interpreters, versions, or even
+        runs with hash randomization enabled — allowing an attacker to
+        craft a snapshot whose ``str()`` output matches a different
+        dict, effectively bypassing signature verification.
+        """
         res = manifest.resources
+        canonical_state = json.dumps(manifest.state_snapshot, sort_keys=True, separators=(",", ":"))
         return (
             f"{manifest.worker_id}:{manifest.parent_id}:{manifest.depth}"
-            f":{manifest.issued_at.isoformat()}:{manifest.state_snapshot}"
+            f":{manifest.issued_at.isoformat()}:{canonical_state}"
             f":{res.cpu_limit}:{res.memory_limit_mb}"
             f":{res.network_policy.allow_controller}:{res.network_policy.allow_external}"
         )

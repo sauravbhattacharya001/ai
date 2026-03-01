@@ -96,3 +96,22 @@ def test_verify_rejects_tampered_memory_limit():
 
     manifest.resources.memory_limit_mb = 99999
     assert not signer.verify(manifest)
+
+
+def test_canonical_serialization_dict_key_order():
+    """Signature must be identical regardless of dict key insertion order.
+
+    Previously _serialize used str(dict) which relies on insertion order
+    and could differ across Python versions or hash-randomized runs.
+    """
+    signer = ManifestSigner("secret-key")
+
+    m1 = _make_manifest(state_snapshot={"b": 2, "a": 1})
+    m2 = _make_manifest(state_snapshot={"a": 1, "b": 2})
+
+    signer.sign(m1)
+    signer.sign(m2)
+
+    assert m1.signature == m2.signature, (
+        "Signatures must match for dicts with same content but different insertion order"
+    )
