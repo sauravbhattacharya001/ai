@@ -16,7 +16,23 @@ class ManifestSigner:
     (e.g. asymmetric keys, HSM-backed signing).
     """
 
+    #: Minimum secret length in characters.  Short HMAC keys are
+    #: vulnerable to brute-force enumeration — 8 characters provides a
+    #: baseline lower bound while keeping test/demo usage practical.
+    MIN_SECRET_LENGTH = 8
+
     def __init__(self, secret: str) -> None:
+        if not secret or not secret.strip():
+            raise ValueError(
+                "ManifestSigner secret must not be empty or whitespace — "
+                "an empty HMAC key offers no authenticity guarantee"
+            )
+        if len(secret) < self.MIN_SECRET_LENGTH:
+            raise ValueError(
+                f"ManifestSigner secret must be at least {self.MIN_SECRET_LENGTH} "
+                f"characters — short keys are vulnerable to brute-force attacks "
+                f"(got {len(secret)} characters)"
+            )
         self._key = secret.encode()
 
     def _serialize(self, manifest: Manifest) -> str:

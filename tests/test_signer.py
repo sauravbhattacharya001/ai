@@ -1,5 +1,6 @@
 """Tests for the ManifestSigner extracted from Controller."""
 
+import pytest
 from datetime import datetime, timezone
 
 from replication.contract import Manifest, ResourceSpec
@@ -42,15 +43,15 @@ def test_different_keys_produce_different_signatures():
     m1 = _make_manifest()
     m2 = _make_manifest()
 
-    ManifestSigner("key-a").sign(m1)
-    ManifestSigner("key-b").sign(m2)
+    ManifestSigner("key-alpha-1").sign(m1)
+    ManifestSigner("key-bravo-2").sign(m2)
 
     assert m1.signature != m2.signature
 
 
 def test_verify_fails_with_wrong_key():
-    signer_a = ManifestSigner("key-a")
-    signer_b = ManifestSigner("key-b")
+    signer_a = ManifestSigner("key-alpha-1")
+    signer_b = ManifestSigner("key-bravo-2")
 
     manifest = _make_manifest()
     signer_a.sign(manifest)
@@ -115,3 +116,39 @@ def test_canonical_serialization_dict_key_order():
     assert m1.signature == m2.signature, (
         "Signatures must match for dicts with same content but different insertion order"
     )
+
+
+# ── Secret validation tests ─────────────────────────────────────────────
+
+def test_empty_secret_rejected():
+    with pytest.raises(ValueError, match="must not be empty"):
+        ManifestSigner("")
+
+
+def test_whitespace_only_secret_rejected():
+    with pytest.raises(ValueError, match="must not be empty"):
+        ManifestSigner("   ")
+
+
+def test_none_secret_rejected():
+    with pytest.raises((ValueError, TypeError)):
+        ManifestSigner(None)
+
+
+def test_short_secret_rejected():
+    with pytest.raises(ValueError, match="at least"):
+        ManifestSigner("short")
+
+
+def test_minimum_length_secret_accepted():
+    """A secret exactly at MIN_SECRET_LENGTH should be accepted."""
+    signer = ManifestSigner("a" * ManifestSigner.MIN_SECRET_LENGTH)
+    manifest = _make_manifest()
+    signer.sign(manifest)
+    assert signer.verify(manifest)
+
+
+def test_seven_char_secret_rejected():
+    """One below minimum should be rejected."""
+    with pytest.raises(ValueError, match="at least"):
+        ManifestSigner("a" * (ManifestSigner.MIN_SECRET_LENGTH - 1))

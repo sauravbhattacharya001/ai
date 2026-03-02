@@ -497,10 +497,10 @@ class TestControllerSecretValidation:
         ctrl = Controller(contract=c, secret="my-secure-key")
         assert ctrl.signer is not None
 
-    def test_short_secret_accepted(self):
+    def test_short_secret_rejected(self):
         c = _contract()
-        ctrl = Controller(contract=c, secret="x")
-        assert ctrl.signer is not None
+        with pytest.raises(ValueError):
+            Controller(contract=c, secret="x")
 
 
 # ---------------------------------------------------------------------------

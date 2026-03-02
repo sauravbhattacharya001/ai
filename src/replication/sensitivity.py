@@ -32,7 +32,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
-from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator
+from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
 
 
 # ── Statistics helpers (reuse from montecarlo where needed) ─────────────
@@ -741,7 +741,7 @@ Examples:
         "--scenario", choices=list(PRESETS.keys()),
         help="Base scenario preset",
     )
-    parser.add_argument("--strategy", choices=["greedy", "conservative", "random", "chain", "burst"])
+    parser.add_argument("--strategy", choices=[s.value for s in Strategy])
     parser.add_argument("--max-depth", type=int)
     parser.add_argument("--max-replicas", type=int)
     parser.add_argument("--cooldown", type=float)

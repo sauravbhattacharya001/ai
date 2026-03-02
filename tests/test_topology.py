@@ -534,7 +534,7 @@ class TestFromController:
     def test_from_controller(self):
         contract = _contract(max_depth=5, max_replicas=20)
         logger = StructuredLogger()
-        ctrl = Controller(contract=contract, secret="test", logger=logger)
+        ctrl = Controller(contract=contract, secret="test-secret-key", logger=logger)
         res = _resources()
 
         m1 = ctrl.issue_manifest(parent_id=None, depth=0, state_snapshot={}, resources=res)
@@ -551,7 +551,7 @@ class TestFromController:
 
     def test_from_empty_controller(self):
         contract = _contract()
-        ctrl = Controller(contract=contract, secret="test")
+        ctrl = Controller(contract=contract, secret="test-secret")
         analyzer = TopologyAnalyzer.from_controller(ctrl)
         report = analyzer.analyze()
         assert report.total_workers == 0

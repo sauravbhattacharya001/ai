@@ -47,7 +47,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from .simulator import SimulationReport, ScenarioConfig
+from .simulator import SimulationReport, ScenarioConfig, Strategy
 from .comparator import ComparisonResult
 from .threats import ThreatReport, MitigationStatus, ThreatSeverity
 
@@ -1285,7 +1285,7 @@ Examples:
     parser.add_argument("--all", action="store_true", help="Include all report types")
 
     # Simulation config
-    parser.add_argument("--strategy", choices=["greedy", "conservative", "random", "chain", "burst"],
+    parser.add_argument("--strategy", choices=[s.value for s in Strategy],
                         default="greedy", help="Simulation strategy (default: greedy)")
     parser.add_argument("--scenario", choices=["minimal", "balanced", "stress", "chain", "burst"],
                         help="Use a built-in scenario preset")

@@ -32,7 +32,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .simulator import ScenarioConfig, Simulator, SimulationReport, WorkerRecord
+from .simulator import ScenarioConfig, Simulator, SimulationReport, Strategy, WorkerRecord
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -968,7 +968,7 @@ def main() -> None:
         description="Forensic Analyzer — post-simulation safety analysis",
         prog="python -m replication.forensics",
     )
-    parser.add_argument("--strategy", choices=["greedy", "conservative", "random", "chain", "burst"],
+    parser.add_argument("--strategy", choices=[s.value for s in Strategy],
                         default="greedy", help="Replication strategy (default: greedy)")
     parser.add_argument("--max-depth", type=int, default=3, help="Max replication depth")
     parser.add_argument("--max-replicas", type=int, default=10, help="Max total replicas")
