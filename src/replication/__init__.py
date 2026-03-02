@@ -164,6 +164,16 @@ from .topology import (
     RiskLevel,
     PathologicalPattern,
 )
+from .lineage import (
+    LineageTracker,
+    LineageReport,
+    LineageNode,
+    LineageChain,
+    LineageAnomaly,
+    LineageSeverity,
+    StateMutation,
+    GenerationStats,
+)
 
 __all__ = [
     # contract
@@ -322,4 +332,13 @@ __all__ = [
     "SubtreeRisk",
     "RiskLevel",
     "PathologicalPattern",
+    # lineage
+    "LineageTracker",
+    "LineageReport",
+    "LineageNode",
+    "LineageChain",
+    "LineageAnomaly",
+    "LineageSeverity",
+    "StateMutation",
+    "GenerationStats",
 ]
