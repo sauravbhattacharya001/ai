@@ -252,6 +252,31 @@ class TestMaybeReplicate:
         c2 = parent.maybe_replicate("test", {})
         assert c2 is None
 
+    def test_replication_denied_when_expired(self):
+        contract = _contract(expiration_seconds=60)
+        ctrl, orch, logger, res = _make_env(contract=contract)
+        w = _root_worker(ctrl, orch, logger, res, contract=contract)
+
+        # Force expiration
+        w.state.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+        child = w.maybe_replicate("test", {"subtask": "child"})
+        assert child is None
+
+        # Should have logged the denial with reason "expired"
+        denied = [e for e in logger.events if e.get("event") == "replication_denied"]
+        assert any(e.get("reason") == "expired" for e in denied)
+
+    def test_replication_denied_when_kill_switch(self):
+        ctrl, orch, logger, res = _make_env()
+        w = _root_worker(ctrl, orch, logger, res)
+        ctrl.kill_switch_engaged = True
+
+        child = w.maybe_replicate("test", {"subtask": "child"})
+        assert child is None
+
+        denied = [e for e in logger.events if e.get("event") == "replication_denied"]
+        assert any(e.get("reason") == "kill_switch" for e in denied)
+
     def test_replication_preserves_state_snapshot(self):
         ctrl, orch, logger, res = _make_env()
         parent = _root_worker(ctrl, orch, logger, res)

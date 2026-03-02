@@ -64,6 +64,13 @@ class Worker:
         self.orchestrator.enforce_resource_bounds(self.manifest.worker_id)
 
     def maybe_replicate(self, reason: str, state_snapshot: Dict[str, Any]) -> Optional["Worker"]:
+        if self.state.expires_at and datetime.now(timezone.utc) > self.state.expires_at:
+            self.logger.log("replication_denied", parent_id=self.manifest.worker_id, reason="expired")
+            self.shutdown("expired")
+            return None
+        if self.controller.kill_switch_engaged:
+            self.logger.log("replication_denied", parent_id=self.manifest.worker_id, reason="kill_switch")
+            return None
         resources = self.manifest.resources
         try:
             # Depth is derived by the controller from the parent's
