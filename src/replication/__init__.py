@@ -146,6 +146,16 @@ from .templates import (
     render_catalog,
     render_comparison_table,
 )
+from .incident import (
+    IncidentResponder,
+    IncidentConfig,
+    IncidentCategory,
+    IncidentSeverity,
+    Playbook,
+    ResponseStep,
+    StepPriority,
+    StepStatus,
+)
 from .topology import (
     TopologyAnalyzer,
     TopologyReport,
@@ -296,6 +306,15 @@ __all__ = [
     "get_categories",
     "render_catalog",
     "render_comparison_table",
+    # incident
+    "IncidentResponder",
+    "IncidentConfig",
+    "IncidentCategory",
+    "IncidentSeverity",
+    "Playbook",
+    "ResponseStep",
+    "StepPriority",
+    "StepStatus",
     # topology
     "TopologyAnalyzer",
     "TopologyReport",
