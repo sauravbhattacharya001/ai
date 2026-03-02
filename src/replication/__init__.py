@@ -137,6 +137,15 @@ from .quarantine import (
     QuarantineStatus,
     QuarantineSeverity,
 )
+from .templates import (
+    ContractTemplate,
+    TEMPLATES,
+    get_template,
+    list_templates,
+    get_categories,
+    render_catalog,
+    render_comparison_table,
+)
 
 __all__ = [
     # contract
@@ -271,4 +280,12 @@ __all__ = [
     "QuarantineReport",
     "QuarantineStatus",
     "QuarantineSeverity",
+    # templates
+    "ContractTemplate",
+    "TEMPLATES",
+    "get_template",
+    "list_templates",
+    "get_categories",
+    "render_catalog",
+    "render_comparison_table",
 ]
