@@ -146,6 +146,14 @@ from .templates import (
     render_catalog,
     render_comparison_table,
 )
+from .topology import (
+    TopologyAnalyzer,
+    TopologyReport,
+    NodeMetrics,
+    SubtreeRisk,
+    RiskLevel,
+    PathologicalPattern,
+)
 
 __all__ = [
     # contract
@@ -288,4 +296,11 @@ __all__ = [
     "get_categories",
     "render_catalog",
     "render_comparison_table",
+    # topology
+    "TopologyAnalyzer",
+    "TopologyReport",
+    "NodeMetrics",
+    "SubtreeRisk",
+    "RiskLevel",
+    "PathologicalPattern",
 ]
