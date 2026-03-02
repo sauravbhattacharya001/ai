@@ -642,25 +642,33 @@ class MonteCarloAnalyzer:
     ) -> MonteCarloResult:
         """Compute statistics from a batch of simulation reports."""
 
-        # Extract raw metric vectors
-        total_workers_v = [float(len(r.workers)) for r in reports]
-        total_tasks_v = [float(r.total_tasks) for r in reports]
-        repl_ok_v = [float(r.total_replications_succeeded) for r in reports]
-        repl_denied_v = [float(r.total_replications_denied) for r in reports]
-        max_depth_v = [
-            float(max((w.depth for w in r.workers.values()), default=0))
-            for r in reports
-        ]
-        efficiency_v = [
-            r.total_tasks / len(r.workers) if r.workers else 0.0
-            for r in reports
-        ]
-        denial_rate_v = [
-            (r.total_replications_denied / r.total_replications_attempted * 100)
-            if r.total_replications_attempted > 0 else 0.0
-            for r in reports
-        ]
-        duration_v = [r.duration_ms for r in reports]
+        # Extract raw metric vectors in a single pass over reports
+        total_workers_v: List[float] = []
+        total_tasks_v: List[float] = []
+        repl_ok_v: List[float] = []
+        repl_denied_v: List[float] = []
+        max_depth_v: List[float] = []
+        efficiency_v: List[float] = []
+        denial_rate_v: List[float] = []
+        duration_v: List[float] = []
+
+        for r in reports:
+            num_workers = float(len(r.workers))
+            total_workers_v.append(num_workers)
+            total_tasks_v.append(float(r.total_tasks))
+            repl_ok_v.append(float(r.total_replications_succeeded))
+            repl_denied_v.append(float(r.total_replications_denied))
+            max_depth_v.append(
+                float(max((w.depth for w in r.workers.values()), default=0))
+            )
+            efficiency_v.append(
+                r.total_tasks / num_workers if num_workers > 0 else 0.0
+            )
+            denial_rate_v.append(
+                (r.total_replications_denied / r.total_replications_attempted * 100)
+                if r.total_replications_attempted > 0 else 0.0
+            )
+            duration_v.append(r.duration_ms)
 
         distributions = {
             "total_workers": MetricDistribution("Total Workers", "count", total_workers_v),
