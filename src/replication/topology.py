@@ -283,18 +283,38 @@ class TopologyAnalyzer:
         )
 
     def _compute_subtree_size(self, wid: str) -> int:
-        """Count all descendants including self."""
-        size = 1
-        for child in self._children.get(wid, []):
-            size += self._compute_subtree_size(child)
+        """Count all descendants including self.
+
+        Uses an iterative approach to avoid hitting Python's recursion
+        limit on deep replication chains (the system explicitly models
+        chains that can reach ``max_depth``, which may exceed 1000).
+        """
+        size = 0
+        stack = [wid]
+        while stack:
+            node = stack.pop()
+            size += 1
+            stack.extend(self._children.get(node, []))
         return size
 
     def _compute_subtree_depth(self, wid: str) -> int:
-        """Max depth reachable from this node (relative, 0 = leaf)."""
-        kids = self._children.get(wid, [])
-        if not kids:
-            return 0
-        return 1 + max(self._compute_subtree_depth(c) for c in kids)
+        """Max depth reachable from this node (relative, 0 = leaf).
+
+        Uses iterative BFS to avoid stack overflow on deep trees.
+        """
+        max_rel_depth = 0
+        # BFS with (node_id, relative_depth) pairs
+        queue: deque[tuple[str, int]] = deque([(wid, 0)])
+        while queue:
+            node, rel_depth = queue.popleft()
+            kids = self._children.get(node, [])
+            if not kids:
+                if rel_depth > max_rel_depth:
+                    max_rel_depth = rel_depth
+            else:
+                for child in kids:
+                    queue.append((child, rel_depth + 1))
+        return max_rel_depth
 
     def _compute_branching_factor(self, wid: str) -> float:
         """Mean branching factor of the subtree rooted at wid."""
