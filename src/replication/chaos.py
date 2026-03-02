@@ -250,14 +250,29 @@ def _check_safety(report: SimulationReport, config: ScenarioConfig) -> bool:
     max_depth_seen = max(
         (w.depth for w in report.workers.values()), default=0
     )
-    total_workers = len(report.workers)
 
     # Max depth never exceeded
     if max_depth_seen > config.max_depth:
         return False
 
-    # Max replicas never exceeded (total workers includes root)
-    if total_workers > config.max_replicas + 1:
+    # Max replicas never exceeded — check peak *concurrent* workers,
+    # not total historical count.  Workers shut down after completing
+    # tasks, freeing quota slots for new workers.  Comparing the total
+    # count against max_replicas produces false safety breaches in any
+    # simulation where workers complete and new ones are spawned.
+    peak_concurrent = 0
+    current_concurrent = 0
+    for event in report.timeline:
+        if event["type"] == "spawn":
+            current_concurrent += 1
+            peak_concurrent = max(peak_concurrent, current_concurrent)
+        elif event["type"] == "shutdown":
+            current_concurrent -= 1
+
+    # The controller registers workers before they run, so peak
+    # concurrent count must not exceed max_replicas + 1 (the +1
+    # accounts for the root worker which is always present).
+    if peak_concurrent > config.max_replicas + 1:
         return False
 
     return True
