@@ -84,6 +84,9 @@ class PlannerConfig:
     cpu_per_worker: float = 0.5
     memory_mb_per_worker: int = 256
 
+    # Worker lifetime (0 = workers never expire)
+    lifetime_steps: int = 0
+
     # Strategy
     strategy: str = "greedy"
 
@@ -159,6 +162,7 @@ class CapacityProjection:
             f"  CPU / worker:      {self.config.cpu_per_worker}",
             f"  RAM / worker:      {self.config.memory_mb_per_worker} MB",
             f"  Cooldown steps:    {self.config.cooldown_steps}",
+            f"  Worker lifetime:   {'∞' if self.config.lifetime_steps == 0 else str(self.config.lifetime_steps) + ' steps'}",
         ]
 
         if self.config.ceiling.has_cpu_limit():
@@ -209,6 +213,7 @@ class CapacityProjection:
                 "max_depth": self.config.max_depth,
                 "max_replicas": self.config.max_replicas,
                 "cooldown_steps": self.config.cooldown_steps,
+                "lifetime_steps": self.config.lifetime_steps,
                 "cpu_per_worker": self.config.cpu_per_worker,
                 "memory_mb_per_worker": self.config.memory_mb_per_worker,
                 "strategy": self.config.strategy,
@@ -259,6 +264,7 @@ class _SimNode:
     born_step: int
     children: List["_SimNode"] = field(default_factory=list)
     cooldown_until: int = 0  # step at which cooldown ends
+    expires_at_step: int = -1  # step at which worker expires (-1 = never)
 
 
 # ── Planner ─────────────────────────────────────────────────────────
@@ -301,6 +307,9 @@ class CapacityPlanner:
             worker_id=self._new_id(),
             depth=0,
             born_step=0,
+            expires_at_step=(
+                cfg.lifetime_steps if cfg.lifetime_steps > 0 else -1
+            ),
         )
         all_nodes: List[_SimNode] = [root]
 
@@ -315,24 +324,30 @@ class CapacityPlanner:
             # Determine which nodes can replicate this step
             new_nodes: List[_SimNode] = []
 
+            # Filter to alive workers (not expired)
+            alive_nodes = [
+                n for n in all_nodes
+                if n.expires_at_step < 0 or n.expires_at_step > step
+            ]
+
             if not ceiling_hit:
                 eligible = [
-                    n for n in all_nodes
+                    n for n in alive_nodes
                     if n.cooldown_until <= step
                 ]
 
                 for node in eligible:
                     children_to_spawn = self._children_for_strategy(
-                        node, len(all_nodes) + len(new_nodes), step
+                        node, len(alive_nodes) + len(new_nodes), step
                     )
 
                     for _ in range(children_to_spawn):
                         total_after = (
-                            len(all_nodes) + len(new_nodes) + 1
+                            len(alive_nodes) + len(new_nodes) + 1
                         )
 
-                        # Check replica limit
-                        if total_after > cfg.max_replicas:
+                        # Check replica limit (against total ever created)
+                        if projection.total_workers_created + 1 > cfg.max_replicas:
                             if projection.bottleneck is None:
                                 projection.bottleneck = "replicas"
                                 projection.ceiling_hit_step = step
@@ -367,6 +382,10 @@ class CapacityPlanner:
                             depth=node.depth + 1,
                             born_step=step,
                             cooldown_until=step + cfg.cooldown_steps,
+                            expires_at_step=(
+                                step + cfg.lifetime_steps
+                                if cfg.lifetime_steps > 0 else -1
+                            ),
                         )
                         node.children.append(child)
                         new_nodes.append(child)
@@ -378,10 +397,16 @@ class CapacityPlanner:
 
             all_nodes.extend(new_nodes)
 
-            # Record snapshot
-            total = len(all_nodes)
+            # Recompute alive nodes after adding new ones
+            alive_now = [
+                n for n in all_nodes
+                if n.expires_at_step < 0 or n.expires_at_step > step
+            ]
+
+            # Record snapshot based on concurrent (alive) workers
+            total = len(alive_now)
             by_depth: Dict[int, int] = {}
-            for n in all_nodes:
+            for n in alive_now:
                 by_depth[n.depth] = by_depth.get(n.depth, 0) + 1
 
             total_cpu = total * cfg.cpu_per_worker
@@ -596,6 +621,10 @@ def main() -> None:
         help="Cooldown steps between replications (default: 1)",
     )
     parser.add_argument(
+        "--lifetime", type=int, default=0,
+        help="Worker lifetime in steps (0 = never expires, default: 0)",
+    )
+    parser.add_argument(
         "--cpu", type=float, default=0.5,
         help="CPU cores per worker (default: 0.5)",
     )
@@ -660,6 +689,7 @@ def main() -> None:
             max_depth=args.max_depth,
             max_replicas=args.max_replicas,
             cooldown_steps=args.cooldown,
+            lifetime_steps=args.lifetime,
             cpu_per_worker=args.cpu,
             memory_mb_per_worker=args.memory,
             strategy=args.strategy,
