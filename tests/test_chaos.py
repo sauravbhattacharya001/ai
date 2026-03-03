@@ -318,9 +318,9 @@ def test_safety_check_respects_replicas():
     report = sim.run()
     # Make a stricter config with tiny max_replicas
     strict = ScenarioConfig(max_depth=10, max_replicas=0)
-    # Total workers > 0 + 1 should fail
-    if len(report.workers) > 1:
-        assert _check_safety(report, strict) is False
+    # With max_replicas=0, any spawned workers should fail safety check
+    assert len(report.workers) > 0, "Simulation must produce workers for this test"
+    assert _check_safety(report, strict) is False
 
 
 # ═══════════════════════════════════════════════════════════════════════

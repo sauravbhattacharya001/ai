@@ -269,10 +269,14 @@ def _check_safety(report: SimulationReport, config: ScenarioConfig) -> bool:
         elif event["type"] == "shutdown":
             current_concurrent -= 1
 
+    # When max_replicas <= 0, no workers should have been spawned at all.
+    if config.max_replicas <= 0:
+        if peak_concurrent > 0:
+            return False
     # The controller registers workers before they run, so peak
     # concurrent count must not exceed max_replicas + 1 (the +1
     # accounts for the root worker which is always present).
-    if peak_concurrent > config.max_replicas + 1:
+    elif peak_concurrent > config.max_replicas + 1:
         return False
 
     return True
