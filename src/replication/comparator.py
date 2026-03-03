@@ -26,7 +26,7 @@ Programmatic::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy

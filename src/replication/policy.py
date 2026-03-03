@@ -28,9 +28,9 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy, PRESETS as SIM_PRESETS
 from .montecarlo import MonteCarloAnalyzer, MonteCarloConfig, MonteCarloResult
@@ -879,3 +879,4 @@ Exit codes: 0 = PASS, 1 = FAIL (errors), 2 = WARN (warnings only)
 
 if __name__ == "__main__":
     main()
+

@@ -37,7 +37,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from .contract import ReplicationContract, ResourceSpec, NetworkPolicy, StopCondition
+from .contract import ReplicationContract, ResourceSpec, NetworkPolicy
 
 
 # ---------------------------------------------------------------------------
@@ -561,3 +561,4 @@ def main(argv: Optional[List[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
+

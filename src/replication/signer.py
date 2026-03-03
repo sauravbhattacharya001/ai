@@ -3,7 +3,7 @@ from __future__ import annotations
 import hmac
 import json
 from hashlib import sha256
-from typing import Optional
+
 
 from .contract import Manifest
 
@@ -70,3 +70,4 @@ class ManifestSigner:
             sha256,
         ).hexdigest()
         return hmac.compare_digest(expected, manifest.signature)
+

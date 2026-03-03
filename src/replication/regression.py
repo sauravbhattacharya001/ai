@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
+from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator
 from .montecarlo import MonteCarloAnalyzer, MonteCarloConfig, MonteCarloResult
 
 
@@ -570,3 +570,4 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

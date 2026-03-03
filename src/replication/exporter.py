@@ -48,9 +48,8 @@ import csv
 import io
 import json
 import os
-import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Sequence
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator

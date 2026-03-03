@@ -37,11 +37,10 @@ from __future__ import annotations
 import random
 import secrets
 import time
-from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .contract import Manifest, ReplicationContract, ResourceSpec
 from .controller import Controller, ReplicationDenied

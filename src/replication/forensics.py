@@ -28,11 +28,10 @@ Programmatic::
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Tuple
 
-from .simulator import ScenarioConfig, Simulator, SimulationReport, Strategy, WorkerRecord
+from .simulator import ScenarioConfig, Simulator, SimulationReport, Strategy
 
 
 # ── Helpers ──────────────────────────────────────────────────────

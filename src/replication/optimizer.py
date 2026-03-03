@@ -40,11 +40,11 @@ Programmatic::
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from .policy import SafetyPolicy, PolicyResult, POLICY_PRESETS
+from .policy import SafetyPolicy, POLICY_PRESETS
 from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
 
 
@@ -441,3 +441,4 @@ Examples:
 
 if __name__ == "__main__":
     main()
+

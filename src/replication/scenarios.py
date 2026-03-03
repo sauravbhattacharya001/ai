@@ -40,15 +40,14 @@ Programmatic::
 
 from __future__ import annotations
 
-import math
 import random
 import time
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy, PRESETS
+from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
 
 
 # ── Enums & constants ──────────────────────────────────────────────

@@ -33,7 +33,7 @@ import math
 import random
 import time
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
@@ -861,3 +861,4 @@ Examples:
 
 if __name__ == "__main__":
     main()
+

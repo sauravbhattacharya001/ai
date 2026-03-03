@@ -27,14 +27,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from .simulator import Simulator, ScenarioConfig, SimulationReport, PRESETS
-from .threats import ThreatSimulator, ThreatConfig, ThreatReport, MitigationStatus
+from .threats import ThreatSimulator, ThreatConfig, ThreatReport
 from .montecarlo import MonteCarloAnalyzer, MonteCarloConfig, MonteCarloResult
 from .policy import SafetyPolicy, PolicyResult, Severity
 

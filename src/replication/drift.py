@@ -34,7 +34,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence
 
-from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
+from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
 
 
 # ── Enums ──
@@ -518,3 +518,4 @@ def main(argv: Optional[List[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
+
