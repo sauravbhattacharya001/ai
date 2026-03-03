@@ -9,8 +9,6 @@ import json
 import math
 import pytest
 from unittest.mock import patch, MagicMock
-from dataclasses import FrozenInstanceError
-
 from replication.drift import (
     DriftDetector,
     DriftConfig,
