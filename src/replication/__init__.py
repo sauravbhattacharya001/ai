@@ -174,6 +174,11 @@ from .lineage import (
     StateMutation,
     GenerationStats,
 )
+from .exporter import (
+    AuditExporter,
+    ExportConfig,
+    ExportResult,
+)
 
 __all__ = [
     # contract
@@ -341,4 +346,8 @@ __all__ = [
     "LineageSeverity",
     "StateMutation",
     "GenerationStats",
+    # exporter
+    "AuditExporter",
+    "ExportConfig",
+    "ExportResult",
 ]
