@@ -539,3 +539,95 @@ class TestResourceSpecValidation:
         r = ResourceSpec(cpu_limit=2.0, memory_limit_mb=1024, network_policy=policy)
         assert not r.network_policy.allow_controller
         assert r.network_policy.allow_external
+
+
+# ---------------------------------------------------------------------------
+# Root-depth and defense-in-depth checks (security hardening)
+# ---------------------------------------------------------------------------
+
+class TestRootDepthSecurity:
+    """Verify that root workers cannot bypass depth controls."""
+
+    def test_issue_manifest_forces_root_depth_zero(self):
+        """Root workers (parent_id=None) must always get depth=0,
+        regardless of what the caller passes."""
+        ctrl, _, _, res = _make_env(max_depth=3)
+        m = ctrl.issue_manifest(None, depth=5, state_snapshot={"t": "x"}, resources=res)
+        assert m.depth == 0, "Root manifest depth must be clamped to 0"
+
+    def test_issue_manifest_logs_depth_spoof_attempt(self):
+        """When a caller tries to issue a root with depth != 0, an
+        audit event should be logged."""
+        ctrl, _, logger, res = _make_env(max_depth=3)
+        ctrl.issue_manifest(None, depth=99, state_snapshot={"t": "x"}, resources=res)
+        spoof_events = [
+            e for e in logger.events
+            if e.get("decision") == "deny_depth_spoof"
+        ]
+        assert len(spoof_events) == 1
+        assert spoof_events[0]["claimed_depth"] == 99
+
+    def test_register_rejects_root_with_nonzero_depth(self):
+        """Even if a signed manifest somehow has depth != 0 for a root
+        worker, register_worker must reject it."""
+        ctrl, _, _, res = _make_env(max_depth=3)
+        # Issue a normal root manifest, then tamper with the depth
+        m = ctrl.issue_manifest(None, 0, {"t": "x"}, res)
+        m.depth = 2
+        # Re-sign with the valid secret so signature passes
+        ctrl.signer.sign(m)
+        with pytest.raises(ReplicationDenied, match="Root worker must have depth 0"):
+            ctrl.register_worker(m)
+
+    def test_register_rejects_depth_exceeding_max(self):
+        """register_worker should independently validate depth <= max_depth,
+        even if the manifest has a valid signature."""
+        ctrl, _, _, res = _make_env(max_depth=2)
+        root = _root(ctrl, res)
+        # Create a child manifest at depth 1
+        child = ctrl.issue_manifest(root.worker_id, 0, {"t": "child"}, res)
+        assert child.depth == 1
+        # Tamper: set depth beyond max and re-sign
+        child.depth = 5
+        ctrl.signer.sign(child)
+        with pytest.raises(ReplicationDenied, match="exceeds max_depth"):
+            ctrl.register_worker(child)
+
+    def test_register_accepts_valid_root(self):
+        """A properly issued root manifest (depth=0) should register fine."""
+        ctrl, _, _, res = _make_env(max_depth=3)
+        m = ctrl.issue_manifest(None, 0, {"t": "x"}, res)
+        # register_worker is called via _root, but let's test directly
+        ctrl.register_worker(m)
+        assert m.worker_id in ctrl.registry
+
+    def test_register_accepts_valid_child(self):
+        """A properly issued child manifest should register fine."""
+        ctrl, _, _, res = _make_env(max_depth=3)
+        root = _root(ctrl, res)
+        child = ctrl.issue_manifest(root.worker_id, 0, {"t": "child"}, res)
+        ctrl.register_worker(child)
+        assert child.worker_id in ctrl.registry
+        assert child.depth == 1
+
+    def test_depth_zero_root_cannot_lie_as_deep(self):
+        """Prevent the attack: issue root at depth=max_depth-1, then
+        child ends up at max_depth.  Root must always be 0."""
+        ctrl, _, _, res = _make_env(max_depth=2)
+        m = ctrl.issue_manifest(None, depth=1, state_snapshot={"t": "x"}, resources=res)
+        # depth should be forced to 0 regardless of what we passed
+        assert m.depth == 0
+
+    def test_defense_in_depth_audit_trail(self):
+        """Rejected registrations should produce audit events."""
+        ctrl, _, logger, res = _make_env(max_depth=1)
+        m = ctrl.issue_manifest(None, 0, {"t": "x"}, res)
+        m.depth = 3
+        ctrl.signer.sign(m)
+        with pytest.raises(ReplicationDenied):
+            ctrl.register_worker(m)
+        reject_events = [
+            e for e in logger.events
+            if e.get("decision") in ("reject_root_depth", "reject_depth_exceeded")
+        ]
+        assert len(reject_events) >= 1

@@ -77,6 +77,19 @@ class Controller:
             if parent_entry is None:
                 raise ReplicationDenied("Parent unknown")
             depth = parent_entry.manifest.depth + 1
+        else:
+            # Root workers must always start at depth 0.  Trusting a
+            # caller-supplied depth here would let an attacker issue a
+            # root manifest at depth N, effectively bypassing max_depth
+            # controls — children would then be allowed up to N + max_depth
+            # instead of stopping at max_depth.
+            if depth != 0:
+                self.logger.audit(
+                    "deny_depth_spoof",
+                    claimed_depth=depth,
+                    reason="root_worker_must_be_depth_0",
+                )
+            depth = 0
 
         manifest = Manifest(
             worker_id=secrets.token_hex(4),
@@ -111,9 +124,43 @@ class Controller:
             if parent_entry.manifest.depth + 1 > self.contract.max_depth:
                 self.logger.audit("deny_depth", parent_id=parent_id)
                 raise ReplicationDenied("Depth exceeded")
+        else:
+            # Root workers must not exceed max_depth either.  Without
+            # this check a caller could issue a root manifest at an
+            # arbitrary depth, effectively pre-positioning the tree
+            # deeper than the contract allows.
+            if self.contract.max_depth < 0:
+                self.logger.audit("deny_depth", reason="root_depth_exceeded")
+                raise ReplicationDenied("Depth exceeded")
 
     def register_worker(self, manifest: Manifest) -> None:
         self.verify_manifest(manifest)
+
+        # Defense-in-depth: validate manifest depth independently of
+        # the issuance path.  A signed manifest could have been issued
+        # with a stale or compromised secret; verifying structural
+        # invariants here catches logic bugs and limits damage from
+        # key compromise.
+        if manifest.parent_id is None and manifest.depth != 0:
+            self.logger.audit(
+                "reject_root_depth",
+                worker_id=manifest.worker_id,
+                depth=manifest.depth,
+            )
+            raise ReplicationDenied(
+                f"Root worker must have depth 0, got {manifest.depth}"
+            )
+        if manifest.depth > self.contract.max_depth:
+            self.logger.audit(
+                "reject_depth_exceeded",
+                worker_id=manifest.worker_id,
+                depth=manifest.depth,
+                max_depth=self.contract.max_depth,
+            )
+            raise ReplicationDenied(
+                f"Manifest depth {manifest.depth} exceeds max_depth {self.contract.max_depth}"
+            )
+
         context = ReplicationContext(manifest=manifest, active_count=len(self.registry), contract=self.contract)
         stop_condition = self.contract.evaluate(context)
         if stop_condition:
