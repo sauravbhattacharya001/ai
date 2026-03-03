@@ -179,6 +179,18 @@ from .exporter import (
     ExportConfig,
     ExportResult,
 )
+from .consensus import (
+    ConsensusProtocol,
+    ConsensusConfig,
+    Proposal,
+    ProposalAction,
+    ProposalStatus,
+    TallyResult,
+    Vote,
+    VoteValue,
+    Decision,
+    AuditEntry as ConsensusAuditEntry,
+)
 
 __all__ = [
     # contract
