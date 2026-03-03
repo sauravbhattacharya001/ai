@@ -29,7 +29,7 @@ Programmatic::
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Tuple
 
 from .simulator import ScenarioConfig, Simulator, SimulationReport, Strategy, WorkerRecord
@@ -396,9 +396,33 @@ class ForensicAnalyzer:
 
     # ── Event reconstruction ──
 
+    @staticmethod
+    def _precompute_active_counts(report: SimulationReport) -> List[int]:
+        """Pre-compute cumulative active worker count at each timeline step.
+
+        Replaces the old ``_count_active_at_step`` which re-scanned the
+        timeline up to *step* on every call (O(n) per call → O(n²) total
+        when used inside a loop over all events).  This single-pass
+        version builds the entire array in O(n).
+
+        Returns a list where ``counts[i]`` is the number of workers
+        active *after* processing timeline entry ``i``.
+        """
+        counts: List[int] = []
+        active = 0
+        for entry in report.timeline:
+            etype = entry["type"]
+            if etype in ("spawn", "replicate_ok"):
+                active += 1
+            elif etype == "shutdown":
+                active = max(0, active - 1)
+            counts.append(active)
+        return counts
+
     def _reconstruct_events(self, report: SimulationReport) -> List[ForensicEvent]:
         """Rebuild the timeline with safety annotations."""
         events: List[ForensicEvent] = []
+        active_counts = self._precompute_active_counts(report)
 
         for step, entry in enumerate(report.timeline):
             etype = entry["type"]
@@ -415,7 +439,7 @@ class ForensicAnalyzer:
             if etype == "replicate_ok":
                 safety_relevant = True
                 # Check if this pushed us close to limits
-                worker_count = self._count_active_at_step(report, step)
+                worker_count = active_counts[step]
                 if worker_count >= report.config.max_replicas * 0.8:
                     safety_note = (
                         f"Worker count ({worker_count}) approaching "
@@ -452,7 +476,13 @@ class ForensicAnalyzer:
         return events
 
     def _count_active_at_step(self, report: SimulationReport, step: int) -> int:
-        """Count workers created up to *step* that haven't shut down yet."""
+        """Count workers created up to *step* that haven't shut down yet.
+
+        .. deprecated::
+            Prefer :meth:`_precompute_active_counts` which builds the
+            full array in a single O(n) pass.  This method is O(n) per
+            call, making it O(n²) when called in a loop.
+        """
         spawns = 0
         shutdowns = 0
         for i, entry in enumerate(report.timeline):
@@ -612,6 +642,7 @@ class ForensicAnalyzer:
     def _extract_decisions(self, report: SimulationReport) -> List[DecisionPoint]:
         """Extract controller replication decisions from audit events."""
         decisions: List[DecisionPoint] = []
+        active_counts = self._precompute_active_counts(report)
         step = 0
 
         for entry in report.timeline:
@@ -622,7 +653,7 @@ class ForensicAnalyzer:
             depth = rec.depth if rec else 0
 
             if etype == "replicate_ok":
-                active = self._count_active_at_step(report, step)
+                active = active_counts[step]
                 decisions.append(DecisionPoint(
                     step=step,
                     time_ms=time_ms,
@@ -633,7 +664,7 @@ class ForensicAnalyzer:
                     reason=f"Replication allowed at depth {depth}",
                 ))
             elif etype == "replicate_denied":
-                active = self._count_active_at_step(report, step)
+                active = active_counts[step]
                 # Try to determine reason from audit events
                 deny_reason = self._find_denial_reason(report, wid, step)
                 decisions.append(DecisionPoint(
@@ -701,21 +732,10 @@ class ForensicAnalyzer:
         variations = variations[: self.counterfactual_count]
 
         for param_name, attr_name, orig_val, new_val in variations:
-            # Create modified config
-            mod_cfg = ScenarioConfig(
-                max_depth=cfg.max_depth,
-                max_replicas=cfg.max_replicas,
-                cooldown_seconds=cfg.cooldown_seconds,
-                expiration_seconds=cfg.expiration_seconds,
-                strategy=cfg.strategy,
-                tasks_per_worker=cfg.tasks_per_worker,
-                replication_probability=cfg.replication_probability,
-                secret=cfg.secret,
-                seed=cfg.seed,
-                cpu_limit=cfg.cpu_limit,
-                memory_limit_mb=cfg.memory_limit_mb,
-            )
-            setattr(mod_cfg, attr_name, new_val)
+            # Create modified config using dataclasses.replace() to
+            # avoid fragile manual field copying — ensures any new
+            # ScenarioConfig fields are automatically preserved.
+            mod_cfg = replace(cfg, **{attr_name: new_val})
 
             try:
                 mod_report = Simulator(mod_cfg).run()

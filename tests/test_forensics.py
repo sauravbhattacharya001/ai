@@ -542,3 +542,93 @@ class TestEdgeCases:
         default_analyzer = ForensicAnalyzer()
         default_result = default_analyzer.analyze(greedy_report)
         assert len(result.near_misses) >= len(default_result.near_misses)
+
+
+# ── Precomputed Active Counts ───────────────────────────────────
+
+
+class TestPrecomputeActiveCounts:
+    """Tests for the O(n) precomputed active counts optimization."""
+
+    def test_matches_legacy_method(self, greedy_report):
+        """Precomputed array matches _count_active_at_step for every step."""
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(greedy_report)
+        assert len(counts) == len(greedy_report.timeline)
+        for step in range(len(greedy_report.timeline)):
+            legacy = analyzer._count_active_at_step(greedy_report, step)
+            assert counts[step] == legacy, (
+                f"Mismatch at step {step}: precomputed={counts[step]}, "
+                f"legacy={legacy}"
+            )
+
+    def test_matches_for_chain_strategy(self):
+        """Verify equivalence for chain (linear) replication."""
+        config = ScenarioConfig(strategy="chain", max_depth=5, max_replicas=10, seed=7)
+        report = Simulator(config).run()
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(report)
+        for step in range(len(report.timeline)):
+            assert counts[step] == analyzer._count_active_at_step(report, step)
+
+    def test_matches_for_burst_strategy(self):
+        """Verify equivalence for burst (root-only children) replication."""
+        config = ScenarioConfig(strategy="burst", max_depth=1, max_replicas=15, seed=3)
+        report = Simulator(config).run()
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(report)
+        for step in range(len(report.timeline)):
+            assert counts[step] == analyzer._count_active_at_step(report, step)
+
+    def test_never_negative(self, greedy_report):
+        """Active count should never go below zero."""
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(greedy_report)
+        for i, c in enumerate(counts):
+            assert c >= 0, f"Negative active count {c} at step {i}"
+
+    def test_spawns_increase_count(self):
+        """Each spawn/replicate_ok event should increase the active count."""
+        config = ScenarioConfig(strategy="greedy", max_depth=2, max_replicas=5, seed=42)
+        report = Simulator(config).run()
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(report)
+        for i, entry in enumerate(report.timeline):
+            if entry["type"] in ("spawn", "replicate_ok"):
+                prev = counts[i - 1] if i > 0 else 0
+                assert counts[i] == prev + 1, (
+                    f"Expected count to increase on {entry['type']} at step {i}"
+                )
+
+    def test_shutdowns_decrease_count(self):
+        """Each shutdown event should decrease the active count."""
+        config = ScenarioConfig(strategy="greedy", max_depth=2, max_replicas=5, seed=42)
+        report = Simulator(config).run()
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(report)
+        for i, entry in enumerate(report.timeline):
+            if entry["type"] == "shutdown":
+                prev = counts[i - 1] if i > 0 else 0
+                assert counts[i] == max(0, prev - 1), (
+                    f"Expected count to decrease on shutdown at step {i}"
+                )
+
+    def test_empty_timeline(self):
+        """Empty timeline should produce empty counts."""
+        config = ScenarioConfig(strategy="greedy", max_depth=0, max_replicas=1)
+        report = Simulator(config).run()
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(report)
+        # Even with max_depth=0, there's still a root spawn+shutdown
+        assert len(counts) == len(report.timeline)
+
+    def test_ends_at_zero_after_all_shutdowns(self):
+        """After all workers shut down, active count should be zero."""
+        config = ScenarioConfig(strategy="conservative", max_depth=2, max_replicas=5, seed=11)
+        report = Simulator(config).run()
+        analyzer = ForensicAnalyzer()
+        counts = analyzer._precompute_active_counts(report)
+        if counts:
+            assert counts[-1] == 0, (
+                f"Expected zero active workers at end, got {counts[-1]}"
+            )
