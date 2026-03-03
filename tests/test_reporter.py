@@ -157,6 +157,24 @@ class TestThreatReport:
         assert "threatChart" in html
         assert "Block Rate by Threat Scenario" in html
 
+    def test_threat_chart_uses_shared_drawBarChart(self, reporter, threat_report):
+        """Verify threat chart uses the shared drawBarChart function, not inline JS."""
+        html = reporter.threat_report(threat_report)
+        # Should call drawBarChart with options for per-bar colors and fixed scale
+        assert "drawBarChart('threatChart'" in html
+        assert "maxValue: 100" in html
+        assert "barColors" in html
+        assert "rotateLabels: true" in html
+
+    def test_drawBarChart_options_in_js(self, reporter, threat_report):
+        """Verify the shared drawBarChart JS supports barColors and maxValue."""
+        html = reporter.threat_report(threat_report)
+        # The _js() function defines drawBarChart with options support
+        assert "options.barColors" in html
+        assert "options.maxValue" in html
+        assert "options.ySuffix" in html
+        assert "options.rotateLabels" in html
+
     def test_contains_mitigation_donut(self, reporter, threat_report):
         html = reporter.threat_report(threat_report)
         assert "mitigationDonut" in html

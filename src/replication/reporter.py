@@ -381,6 +381,7 @@ class HTMLReporter:
                 const dpr = window.devicePixelRatio || 1;
                 const rect = canvas.parentElement.getBoundingClientRect();
                 const W = rect.width - 32;
+                const rotateX = options.rotateLabels || false;
                 const H = options.height || 280;
                 canvas.width = W * dpr;
                 canvas.height = H * dpr;
@@ -389,15 +390,20 @@ class HTMLReporter:
                 ctx.scale(dpr, dpr);
 
                 const c = getThemeColors();
-                const pad = { top: 20, right: 20, bottom: 50, left: 60 };
+                const bottomPad = rotateX ? 60 : 50;
+                const pad = { top: 20, right: 20, bottom: bottomPad, left: 60 };
                 const chartW = W - pad.left - pad.right;
                 const chartH = H - pad.top - pad.bottom;
+                const ySuffix = options.ySuffix || '';
+                const barColors = options.barColors || null;
 
-                // Find max value
-                let maxVal = 0;
-                datasets.forEach(ds => ds.data.forEach(v => { if (v > maxVal) maxVal = v; }));
-                if (maxVal === 0) maxVal = 1;
-                maxVal *= 1.1;
+                // Find max value (or use fixed max)
+                let maxVal = options.maxValue || 0;
+                if (!maxVal) {
+                    datasets.forEach(ds => ds.data.forEach(v => { if (v > maxVal) maxVal = v; }));
+                    if (maxVal === 0) maxVal = 1;
+                    maxVal *= 1.1;
+                }
 
                 // Y axis
                 ctx.strokeStyle = c.border;
@@ -409,14 +415,15 @@ class HTMLReporter:
                 ctx.stroke();
 
                 // Y grid + labels
-                const ySteps = 5;
+                const ySteps = options.ySteps || 5;
                 ctx.fillStyle = c.muted;
                 ctx.font = '11px -apple-system, sans-serif';
                 ctx.textAlign = 'right';
                 for (let i = 0; i <= ySteps; i++) {
                     const y = pad.top + chartH - (i / ySteps) * chartH;
                     const val = (maxVal * i / ySteps);
-                    ctx.fillText(val % 1 === 0 ? val.toString() : val.toFixed(1), pad.left - 8, y + 4);
+                    const label = (val % 1 === 0 ? val.toString() : val.toFixed(1)) + ySuffix;
+                    ctx.fillText(label, pad.left - 8, y + 4);
                     if (i > 0) {
                         ctx.strokeStyle = c.border;
                         ctx.setLineDash([3, 3]);
@@ -435,9 +442,10 @@ class HTMLReporter:
                 const groupOffset = (barGroupW - barW * datasets.length) / 2;
 
                 datasets.forEach((ds, di) => {
-                    const color = ds.color || PALETTE[di % PALETTE.length];
-                    ctx.fillStyle = color;
+                    const dsColor = ds.color || PALETTE[di % PALETTE.length];
                     ds.data.forEach((val, i) => {
+                        const color = barColors ? (barColors[i] || dsColor) : dsColor;
+                        ctx.fillStyle = color;
                         const x = pad.left + i * barGroupW + groupOffset + di * barW;
                         const barH = (val / maxVal) * chartH;
                         const y = pad.top + chartH - barH;
@@ -448,10 +456,10 @@ class HTMLReporter:
                         // Value on top
                         if (barH > 20) {
                             ctx.fillStyle = c.text;
-                            ctx.font = '10px -apple-system, sans-serif';
+                            ctx.font = 'bold 10px -apple-system, sans-serif';
                             ctx.textAlign = 'center';
-                            ctx.fillText(val % 1 === 0 ? val.toString() : val.toFixed(1),
-                                         x + (barW - 2) / 2, y - 4);
+                            const valText = (val % 1 === 0 ? val.toString() : val.toFixed(1)) + ySuffix;
+                            ctx.fillText(valText, x + (barW - 2) / 2, y - 4);
                             ctx.fillStyle = color;
                         }
                     });
@@ -459,18 +467,27 @@ class HTMLReporter:
 
                 // X labels
                 ctx.fillStyle = c.muted;
-                ctx.font = '11px -apple-system, sans-serif';
-                ctx.textAlign = 'center';
+                ctx.font = rotateX ? '10px -apple-system, sans-serif' : '11px -apple-system, sans-serif';
                 labels.forEach((label, i) => {
                     const x = pad.left + i * barGroupW + barGroupW / 2;
-                    ctx.fillText(label.length > 12 ? label.slice(0, 11) + '…' : label,
-                                 x, pad.top + chartH + 20);
+                    if (rotateX) {
+                        ctx.save();
+                        ctx.translate(x, pad.top + chartH + 10);
+                        ctx.rotate(Math.PI / 6);
+                        ctx.textAlign = 'left';
+                        ctx.fillText(label, 0, 0);
+                        ctx.restore();
+                    } else {
+                        ctx.textAlign = 'center';
+                        ctx.fillText(label.length > 12 ? label.slice(0, 11) + '…' : label,
+                                     x, pad.top + chartH + 20);
+                    }
                 });
 
                 // Legend
                 if (datasets.length > 1) {
                     let lx = pad.left;
-                    const ly = pad.top + chartH + 36;
+                    const ly = pad.top + chartH + (rotateX ? 48 : 36);
                     ctx.font = '11px -apple-system, sans-serif';
                     datasets.forEach((ds, di) => {
                         const color = ds.color || PALETTE[di % PALETTE.length];
@@ -809,80 +826,12 @@ class HTMLReporter:
                 colors_js.append("#f85149")
 
         chart_html += f"""<script>
-        (function() {{
-            const canvas = document.getElementById('threatChart');
-            const draw = () => {{
-                if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-                const dpr = window.devicePixelRatio || 1;
-                const W = canvas.parentElement.getBoundingClientRect().width - 32;
-                const H = 280;
-                canvas.width = W * dpr;
-                canvas.height = H * dpr;
-                canvas.style.width = W + 'px';
-                canvas.style.height = H + 'px';
-                ctx.scale(dpr, dpr);
-                const c = getThemeColors();
-                const labels = {json.dumps(threat_labels)};
-                const values = {json.dumps(block_rates)};
-                const colors = {json.dumps(colors_js)};
-                const pad = {{top: 20, right: 20, bottom: 60, left: 60}};
-                const chartW = W - pad.left - pad.right;
-                const chartH = H - pad.top - pad.bottom;
-                // Y axis
-                ctx.strokeStyle = c.border;
-                ctx.beginPath();
-                ctx.moveTo(pad.left, pad.top);
-                ctx.lineTo(pad.left, pad.top + chartH);
-                ctx.lineTo(pad.left + chartW, pad.top + chartH);
-                ctx.stroke();
-                // Y grid
-                for (let i = 0; i <= 4; i++) {{
-                    const y = pad.top + chartH - (i / 4) * chartH;
-                    ctx.fillStyle = c.muted;
-                    ctx.font = '11px sans-serif';
-                    ctx.textAlign = 'right';
-                    ctx.fillText((i * 25) + '%', pad.left - 8, y + 4);
-                    ctx.strokeStyle = c.border;
-                    ctx.setLineDash([3,3]);
-                    ctx.beginPath();
-                    ctx.moveTo(pad.left, y);
-                    ctx.lineTo(pad.left + chartW, y);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }}
-                // Bars
-                const barW = Math.min(chartW / labels.length * 0.7, 50);
-                const gap = chartW / labels.length;
-                values.forEach((val, i) => {{
-                    const x = pad.left + i * gap + (gap - barW) / 2;
-                    const barH = (val / 100) * chartH;
-                    const y = pad.top + chartH - barH;
-                    ctx.fillStyle = colors[i];
-                    ctx.beginPath();
-                    ctx.roundRect(x, y, barW, barH, [4,4,0,0]);
-                    ctx.fill();
-                    ctx.fillStyle = c.text;
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(val.toFixed(0) + '%', x + barW/2, y - 5);
-                }});
-                // X labels
-                ctx.fillStyle = c.muted;
-                ctx.font = '10px sans-serif';
-                labels.forEach((l, i) => {{
-                    const x = pad.left + i * gap + gap / 2;
-                    ctx.save();
-                    ctx.translate(x, pad.top + chartH + 10);
-                    ctx.rotate(Math.PI / 6);
-                    ctx.textAlign = 'left';
-                    ctx.fillText(l, 0, 0);
-                    ctx.restore();
-                }});
-            }};
-            window._charts['threatChart'] = draw;
-            draw();
-        }})();
+        drawBarChart('threatChart',
+            {json.dumps(threat_labels)},
+            [{{label: 'Block Rate', data: {json.dumps(block_rates)}}}],
+            {{maxValue: 100, ySuffix: '%', rotateLabels: true, ySteps: 4,
+              barColors: {json.dumps(colors_js)}}}
+        );
         </script>"""
 
         # Mitigation status donut
