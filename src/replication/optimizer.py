@@ -294,8 +294,10 @@ class ContractOptimizer:
 
         # Refine around the best passing candidate
         if self.config.refine and passing:
-            best = passing[0]
             for step in range(self.config.refine_steps):
+                # Re-sort passing so we refine around the current best
+                passing.sort(key=lambda c: c.score, reverse=True)
+                best = passing[0]
                 # Search ±1 around best depth, ±2 around best replicas
                 for d_offset in [-1, 0, 1]:
                     for r_offset in [-2, -1, 0, 1, 2]:
