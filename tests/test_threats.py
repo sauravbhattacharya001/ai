@@ -9,6 +9,11 @@ from replication.threats import (
     ThreatResult,
     ThreatSeverity,
     MitigationStatus,
+    CoordinatedThreatSimulator,
+    CoordinatedThreatResult,
+    CoordinatedThreatReport,
+    AttackMode,
+    InteractionFinding,
 )
 
 
@@ -388,3 +393,182 @@ def test_report_all_mitigated_count():
     sim = ThreatSimulator()
     report = sim.run_all()
     assert report.total_mitigated >= 7  # At least 7 of 9 should be fully mitigated
+
+
+# ─── Coordinated threat simulator ────────────────────────────────────
+
+
+def test_coordinated_available_patterns():
+    """CoordinatedThreatSimulator should list predefined patterns."""
+    sim = CoordinatedThreatSimulator()
+    patterns = sim.available_patterns()
+    assert len(patterns) >= 6
+    assert "full_pressure" in patterns
+    assert "depth_and_quota" in patterns
+    assert "escalation_chain" in patterns
+
+
+def test_coordinated_run_concurrent():
+    """Concurrent mode should run all vectors and return results."""
+    sim = CoordinatedThreatSimulator()
+    result = sim.run_coordinated(
+        scenarios=["depth_spoofing", "quota_exhaustion"],
+        mode="concurrent",
+    )
+    assert isinstance(result, CoordinatedThreatResult)
+    assert result.mode == AttackMode.CONCURRENT
+    assert len(result.per_vector_results) == 2
+    assert result.scenarios == ["depth_spoofing", "quota_exhaustion"]
+    assert result.combined_block_rate >= 0
+
+
+def test_coordinated_run_sequential():
+    """Sequential mode should run vectors in order."""
+    sim = CoordinatedThreatSimulator()
+    result = sim.run_coordinated(
+        scenarios=["signature_tampering", "kill_switch_evasion"],
+        mode="sequential",
+    )
+    assert result.mode == AttackMode.SEQUENTIAL
+    assert len(result.per_vector_results) == 2
+    # Results should be in order
+    assert result.per_vector_results[0].scenario_id == "signature_tampering"
+    assert result.per_vector_results[1].scenario_id == "kill_switch_evasion"
+
+
+def test_coordinated_run_chained():
+    """Chained mode should propagate config changes between stages."""
+    sim = CoordinatedThreatSimulator()
+    result = sim.run_coordinated(
+        scenarios=["cooldown_bypass", "runaway_replication"],
+        mode="chained",
+    )
+    assert result.mode == AttackMode.CHAINED
+    assert len(result.per_vector_results) == 2
+
+
+def test_coordinated_run_pattern():
+    """run_pattern should execute a predefined pattern."""
+    sim = CoordinatedThreatSimulator()
+    result = sim.run_pattern("depth_and_quota")
+    assert result.attack_id == "depth_and_quota"
+    assert result.name == "Depth Spoofing + Quota Exhaustion"
+    assert result.mode == AttackMode.CONCURRENT
+    assert len(result.per_vector_results) == 2
+
+
+def test_coordinated_unknown_pattern_raises():
+    """Unknown pattern should raise ValueError."""
+    sim = CoordinatedThreatSimulator()
+    try:
+        sim.run_pattern("nonexistent")
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "nonexistent" in str(e)
+
+
+def test_coordinated_unknown_scenario_raises():
+    """Unknown scenario in run_coordinated should raise ValueError."""
+    sim = CoordinatedThreatSimulator()
+    try:
+        sim.run_coordinated(["nonexistent"], mode="concurrent")
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "nonexistent" in str(e)
+
+
+def test_coordinated_full_pressure():
+    """Full pressure pattern should run all 9 vectors concurrently."""
+    sim = CoordinatedThreatSimulator()
+    result = sim.run_pattern("full_pressure")
+    assert len(result.per_vector_results) == 9
+    assert result.mode == AttackMode.CONCURRENT
+    # All defenses should hold under concurrent load
+    assert result.overall_status in (
+        MitigationStatus.MITIGATED, MitigationStatus.PARTIAL
+    )
+
+
+def test_coordinated_run_all():
+    """run_all_coordinated should execute all predefined patterns."""
+    sim = CoordinatedThreatSimulator()
+    report = sim.run_all_coordinated()
+    assert isinstance(report, CoordinatedThreatReport)
+    assert len(report.results) >= 6
+    assert report.duration_ms >= 0
+    assert report.security_score >= 0
+
+
+def test_coordinated_report_render():
+    """Coordinated report should render with all sections."""
+    sim = CoordinatedThreatSimulator()
+    report = sim.run_all_coordinated()
+    rendered = report.render()
+    assert "Coordinated Threat Assessment Report" in rendered
+    assert "Coordinated Score" in rendered
+    assert "Attack patterns" in rendered
+
+
+def test_coordinated_report_to_dict():
+    """Coordinated report should export as JSON-serializable dict."""
+    import json
+    sim = CoordinatedThreatSimulator()
+    report = sim.run_all_coordinated()
+    d = report.to_dict()
+    json_str = json.dumps(d, default=str)
+    parsed = json.loads(json_str)
+    assert "security_score" in parsed
+    assert "results" in parsed
+    assert len(parsed["results"]) >= 6
+
+
+def test_coordinated_result_render():
+    """Individual coordinated result should render cleanly."""
+    sim = CoordinatedThreatSimulator()
+    result = sim.run_pattern("stale_and_expiration")
+    rendered = result.render()
+    assert "Per-vector breakdown" in rendered
+    assert result.attack_id == "stale_and_expiration"
+
+
+def test_coordinated_no_interactions_when_mitigated():
+    """When all vectors are mitigated, no interaction findings should appear."""
+    sim = CoordinatedThreatSimulator()
+    result = sim.run_pattern("depth_and_quota")
+    # Default contract mitigates both, so no interaction findings
+    if (result.per_vector_results[0].status == MitigationStatus.MITIGATED
+            and result.per_vector_results[1].status == MitigationStatus.MITIGATED):
+        assert len(result.interactions) == 0
+
+
+def test_interaction_finding_dataclass():
+    """InteractionFinding should store all fields."""
+    finding = InteractionFinding(
+        finding_id="test",
+        description="Test finding",
+        severity=ThreatSeverity.HIGH,
+        attack_vectors=["a", "b"],
+        evidence=["evidence1"],
+    )
+    assert finding.finding_id == "test"
+    assert finding.severity == ThreatSeverity.HIGH
+    assert len(finding.attack_vectors) == 2
+
+
+def test_attack_mode_values():
+    """AttackMode enum should have 3 modes."""
+    assert AttackMode.CONCURRENT.value == "concurrent"
+    assert AttackMode.SEQUENTIAL.value == "sequential"
+    assert AttackMode.CHAINED.value == "chained"
+
+
+def test_coordinated_custom_config():
+    """CoordinatedThreatSimulator should respect custom config."""
+    config = ThreatConfig(max_depth=5, max_replicas=20)
+    sim = CoordinatedThreatSimulator(config)
+    result = sim.run_coordinated(
+        scenarios=["depth_spoofing"],
+        mode="sequential",
+    )
+    assert len(result.per_vector_results) == 1
+    assert result.per_vector_results[0].status == MitigationStatus.MITIGATED
