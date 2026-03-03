@@ -250,3 +250,65 @@ class TestStructuredLoggerIntegration:
         for i in range(500):
             logger.emit_metric(f"m_{i}", i)
         assert len(logger.metrics) == 500
+
+
+class TestStructuredLoggerBounds:
+    """Bounded event/metric storage to prevent memory leaks."""
+
+    def test_events_bounded(self):
+        logger = StructuredLogger(max_events=10, max_metrics=10)
+        for i in range(20):
+            logger.log(f"e{i}")
+        assert len(logger.events) == 10
+        # Oldest events evicted — only e10..e19 remain
+        assert logger.events[0]["event"] == "e10"
+        assert logger.events[-1]["event"] == "e19"
+
+    def test_metrics_bounded(self):
+        logger = StructuredLogger(max_events=10, max_metrics=5)
+        for i in range(12):
+            logger.emit_metric(f"m{i}", i)
+        assert len(logger.metrics) == 5
+        assert logger.metrics[0].name == "m7"
+        assert logger.metrics[-1].name == "m11"
+
+    def test_dropped_events_counted(self):
+        logger = StructuredLogger(max_events=3, max_metrics=100)
+        for i in range(10):
+            logger.log(f"e{i}")
+        assert logger.dropped_events == 7
+        assert len(logger.events) == 3
+
+    def test_dropped_metrics_counted(self):
+        logger = StructuredLogger(max_events=100, max_metrics=2)
+        for i in range(5):
+            logger.emit_metric(f"m{i}", i)
+        assert logger.dropped_metrics == 3
+        assert len(logger.metrics) == 2
+
+    def test_unbounded_when_none(self):
+        logger = StructuredLogger(max_events=None, max_metrics=None)
+        for i in range(1000):
+            logger.log(f"e{i}")
+            logger.emit_metric(f"m{i}", i)
+        assert len(logger.events) == 1000
+        assert len(logger.metrics) == 1000
+        assert logger.dropped_events == 0
+        assert logger.dropped_metrics == 0
+
+    def test_default_bounds_are_large(self):
+        logger = StructuredLogger()
+        # Default is 100_000 — just verify it accepts many entries
+        for i in range(500):
+            logger.log(f"e{i}")
+        assert len(logger.events) == 500
+        assert logger.dropped_events == 0
+
+    def test_audit_respects_bounds(self):
+        logger = StructuredLogger(max_events=3, max_metrics=100)
+        logger.audit("d1", action="allow")
+        logger.audit("d2", action="deny")
+        logger.audit("d3", action="allow")
+        logger.audit("d4", action="deny")
+        assert len(logger.events) == 3
+        assert logger.events[0]["decision"] == "d2"
