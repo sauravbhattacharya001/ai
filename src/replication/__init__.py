@@ -208,6 +208,20 @@ from .consensus import (
     Decision,
     AuditEntry as ConsensusAuditEntry,
 )
+from .game_theory import (
+    GameTheoryAnalyzer,
+    GameConfig,
+    GameReport,
+    GameType,
+    Move,
+    Payoffs,
+    PairStats,
+    StrategyProfile,
+    StrategyType,
+    StrategicAlert,
+    AlertLevel,
+    Interaction,
+)
 
 __all__ = [
     # contract
@@ -379,4 +393,17 @@ __all__ = [
     "AuditExporter",
     "ExportConfig",
     "ExportResult",
+    # game_theory
+    "GameTheoryAnalyzer",
+    "GameConfig",
+    "GameReport",
+    "GameType",
+    "Move",
+    "Payoffs",
+    "PairStats",
+    "StrategyProfile",
+    "StrategyType",
+    "StrategicAlert",
+    "AlertLevel",
+    "Interaction",
 ]
