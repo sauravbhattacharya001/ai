@@ -118,3 +118,7 @@ Every security-sensitive action is recorded in the structured logger's audit tra
 | `replication_requested` | Replication approved (with parent/child IDs) |
 | `kill_switch_engaged` | Emergency kill switch activated |
 | `reap_stale` | Worker reaped for missing heartbeats |
+
+## Privilege Escalation Detection
+
+The sandbox includes a dedicated [Privilege Escalation Detection](escalation.md) module that monitors agent actions for scope and authority expansion beyond assigned permissions. It covers filesystem traversal, network boundary violations, process injection, API scope creep, and cross-tenant data access. See the [escalation detection docs](escalation.md) for detection rules, scoring, and integration details.
