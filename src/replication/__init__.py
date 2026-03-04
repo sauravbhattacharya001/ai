@@ -222,6 +222,15 @@ from .game_theory import (
     AlertLevel,
     Interaction,
 )
+from .covert_channels import (
+    CovertChannelDetector,
+    DetectorConfig,
+    ChannelReport,
+    CovertSignal,
+    AgentMessage,
+    PairProfile,
+    ChannelType,
+)
 
 __all__ = [
     # contract
@@ -406,4 +415,12 @@ __all__ = [
     "StrategicAlert",
     "AlertLevel",
     "Interaction",
+    # covert_channels
+    "CovertChannelDetector",
+    "DetectorConfig",
+    "ChannelReport",
+    "CovertSignal",
+    "AgentMessage",
+    "PairProfile",
+    "ChannelType",
 ]
