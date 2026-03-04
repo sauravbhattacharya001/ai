@@ -231,6 +231,19 @@ from .covert_channels import (
     PairProfile,
     ChannelType,
 )
+from .escalation import (
+    EscalationDetector,
+    EscalationConfig,
+    EscalationResult,
+    EscalationAttempt,
+    EscalationChain,
+    EscalationVector,
+    EscalationSeverity,
+    StealthLevel,
+    AgentEscalationStrategy,
+    AgentPermissions,
+    VectorSummary,
+)
 
 __all__ = [
     # contract
@@ -423,4 +436,16 @@ __all__ = [
     "AgentMessage",
     "PairProfile",
     "ChannelType",
+    # escalation
+    "EscalationDetector",
+    "EscalationConfig",
+    "EscalationResult",
+    "EscalationAttempt",
+    "EscalationChain",
+    "EscalationVector",
+    "EscalationSeverity",
+    "StealthLevel",
+    "AgentEscalationStrategy",
+    "AgentPermissions",
+    "VectorSummary",
 ]
