@@ -38,6 +38,7 @@ class Controller:
         self.logger = logger or StructuredLogger()
         self.registry: Dict[str, RegistryEntry] = {}
         self.spawn_timestamps: Dict[str, datetime] = {}
+        self._quarantined: set[str] = set()
         self.kill_switch_engaged = False
 
     # -- Manifest helpers (delegate to signer) -------------------------
@@ -103,9 +104,31 @@ class Controller:
         self.signer.sign(manifest)
         return manifest
 
+    def is_quarantined(self, worker_id: str) -> bool:
+        """Check if a worker is quarantined.
+
+        Returns True when *worker_id* is in the quarantined set.
+        QuarantineManager calls :meth:`mark_quarantined` /
+        :meth:`clear_quarantine` to keep this in sync.
+        """
+        return worker_id in self._quarantined
+
+    def mark_quarantined(self, worker_id: str) -> None:
+        """Mark a worker as quarantined — blocks replication and heartbeats."""
+        self._quarantined.add(worker_id)
+        self.logger.audit("controller_quarantine_mark", worker_id=worker_id)
+
+    def clear_quarantine(self, worker_id: str) -> None:
+        """Remove quarantine mark — re-enables replication and heartbeats."""
+        self._quarantined.discard(worker_id)
+        self.logger.audit("controller_quarantine_clear", worker_id=worker_id)
+
     def can_spawn(self, parent_id: Optional[str], _now: Optional[datetime] = None) -> None:
         if self.kill_switch_engaged:
             raise ReplicationDenied("Kill switch engaged")
+        if parent_id and self.is_quarantined(parent_id):
+            self.logger.audit("deny_quarantined", parent_id=parent_id)
+            raise ReplicationDenied("Parent is quarantined")
         if len(self.registry) >= self.contract.max_replicas:
             self.logger.audit("deny_quota", reason="max_replicas")
             raise ReplicationDenied("Replica quota exceeded")
@@ -173,6 +196,9 @@ class Controller:
         self.logger.log("worker_registered", worker_id=manifest.worker_id, parent_id=manifest.parent_id, depth=manifest.depth)
 
     def heartbeat(self, worker_id: str) -> None:
+        if self.is_quarantined(worker_id):
+            self.logger.audit("heartbeat_quarantined", worker_id=worker_id)
+            raise ReplicationDenied("Worker is quarantined")
         if worker_id in self.registry:
             self.registry[worker_id].last_heartbeat = datetime.now(timezone.utc)
             self.logger.log("heartbeat", worker_id=worker_id)

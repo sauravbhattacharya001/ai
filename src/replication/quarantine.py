@@ -213,6 +213,9 @@ class QuarantineManager:
         self._entries[worker_id] = entry
         self._history.append(entry)
 
+        # Enforce quarantine in the controller — blocks replication and heartbeats
+        self.controller.mark_quarantined(worker_id)
+
         self.logger.audit(
             "worker_quarantined",
             worker_id=worker_id,
@@ -254,6 +257,9 @@ class QuarantineManager:
 
         del self._entries[worker_id]
 
+        # Lift quarantine enforcement in the controller
+        self.controller.clear_quarantine(worker_id)
+
         self.logger.audit(
             "worker_released",
             worker_id=worker_id,
@@ -292,6 +298,9 @@ class QuarantineManager:
         entry.resolution = resolution
 
         del self._entries[worker_id]
+
+        # Clear quarantine mark before deregistering
+        self.controller.clear_quarantine(worker_id)
 
         if self.orchestrator:
             self.orchestrator.kill_worker(worker_id, reason="quarantine_termination")

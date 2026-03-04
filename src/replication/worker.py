@@ -50,6 +50,8 @@ class Worker:
         if self.controller.kill_switch_engaged:
             self.shutdown("kill_switch")
             raise ReplicationDenied("Kill switch engaged")
+        if self.controller.is_quarantined(self.manifest.worker_id):
+            raise ReplicationDenied("Worker is quarantined")
         try:
             task(self)
         except Exception:
