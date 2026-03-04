@@ -299,13 +299,17 @@ class QuarantineManager:
 
         del self._entries[worker_id]
 
-        # Clear quarantine mark before deregistering
-        self.controller.clear_quarantine(worker_id)
-
+        # Kill and deregister BEFORE clearing quarantine mark to prevent
+        # a race where the worker briefly regains replication/network
+        # capabilities between clear_quarantine and deregister.
+        # See: https://github.com/sauravbhattacharya001/ai/issues/23
         if self.orchestrator:
             self.orchestrator.kill_worker(worker_id, reason="quarantine_termination")
 
         self.controller.deregister(worker_id, reason="quarantine_termination")
+
+        # Clean up stale quarantine set entry after worker is fully removed
+        self.controller.clear_quarantine(worker_id)
 
         self.logger.audit(
             "worker_terminated",
