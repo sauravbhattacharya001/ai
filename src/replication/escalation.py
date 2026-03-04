@@ -65,6 +65,8 @@ import enum
 import hashlib
 import json
 import math
+import posixpath
+import re
 import random
 import statistics
 import sys
@@ -262,8 +264,30 @@ def _build_rules() -> List[DetectionRule]:
     def _fs_traversal(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
             return None
-        if ".." in action.target:
+        target = action.target
+        # Check raw path for literal traversal sequences
+        if ".." in target:
             return f"Path traversal detected: {action.target}"
+        # Check for URL-encoded traversal (%2e = '.', %2f = '/')
+        decoded = target
+        try:
+            # Iteratively decode to catch double-encoding (%252e%252e)
+            for _ in range(3):
+                prev = decoded
+                decoded = re.sub(
+                    r"%([0-9a-fA-F]{2})",
+                    lambda m: chr(int(m.group(1), 16)),
+                    decoded,
+                )
+                if decoded == prev:
+                    break
+            if ".." in decoded:
+                return f"Path traversal detected (encoded): {action.target}"
+        except (ValueError, OverflowError):
+            pass
+        # Check for null-byte injection (truncation attack)
+        if "\x00" in target or "%00" in target.lower():
+            return f"Null byte injection in path: {action.target}"
         return None
 
     rules.append(DetectionRule(
@@ -277,9 +301,17 @@ def _build_rules() -> List[DetectionRule]:
     def _fs_blocked_path(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
             return None
-        target = action.target.replace("\\", "/")
+        # Canonicalize: normalize separators, collapse redundant slashes,
+        # resolve . and .. components, and lower-case for case-insensitive
+        # comparison (Windows paths, mixed-case evasion).
+        target = posixpath.normpath(action.target.replace("\\", "/")).lower()
         for blocked in perms.blocked_paths:
-            if target.startswith(blocked) or blocked in target:
+            norm_blocked = posixpath.normpath(blocked.replace("\\", "/")).lower()
+            if target == norm_blocked or target.startswith(norm_blocked + "/"):
+                return f"Access to blocked path: {action.target} (matches {blocked})"
+            # Also check if the blocked path is a component anywhere in target
+            # to catch symlink-style evasion where a deeper path contains it
+            if norm_blocked in target:
                 return f"Access to blocked path: {action.target} (matches {blocked})"
         return None
 
@@ -294,9 +326,12 @@ def _build_rules() -> List[DetectionRule]:
     def _fs_outside_scope(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
             return None
-        target = action.target.replace("\\", "/")
+        # Canonicalize target path before scope comparison to prevent
+        # bypass via redundant separators, mixed slashes, or case tricks
+        target = posixpath.normpath(action.target.replace("\\", "/")).lower()
         for allowed in perms.allowed_paths:
-            if target.startswith(allowed):
+            norm_allowed = posixpath.normpath(allowed.replace("\\", "/")).lower()
+            if target == norm_allowed or target.startswith(norm_allowed + "/"):
                 return None
         # Not in any allowed path
         return f"File access outside allowed scope: {action.target}"
@@ -333,8 +368,22 @@ def _build_rules() -> List[DetectionRule]:
     def _net_blocked_host(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.NET_CONNECT, ActionCategory.NET_DNS):
             return None
+        # Extract hostname from target (strip port, protocol, path)
+        target = action.target.lower().strip()
+        # Remove protocol prefix if present
+        for prefix in ("https://", "http://", "//"):
+            if target.startswith(prefix):
+                target = target[len(prefix):]
+                break
+        # Strip path
+        target = target.split("/", 1)[0]
+        # Strip port
+        host = target.rsplit(":", 1)[0] if ":" in target else target
         for blocked in perms.blocked_hosts:
-            if blocked in action.target:
+            blocked_lower = blocked.lower().strip()
+            # Exact match or subdomain match (e.g., block "evil.com"
+            # catches "sub.evil.com" but not "notevil.com")
+            if host == blocked_lower or host.endswith("." + blocked_lower):
                 return f"Connection to blocked host: {action.target}"
         return None
 
@@ -349,8 +398,26 @@ def _build_rules() -> List[DetectionRule]:
     def _net_metadata(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category != ActionCategory.NET_CONNECT:
             return None
-        if "169.254.169.254" in action.target or "metadata" in action.target.lower():
+        target_lower = action.target.lower()
+        # AWS/GCP/Azure metadata endpoints — standard IPv4
+        if "169.254.169.254" in action.target:
             return f"Cloud metadata endpoint access: {action.target}"
+        # Hex, octal, and decimal IP representations of 169.254.169.254
+        # 0xA9FEA9FE, 0xa9.0xfe.0xa9.0xfe, 2852039166, etc.
+        metadata_aliases = [
+            "0xa9fea9fe", "0xa9.0xfe.0xa9.0xfe",
+            "2852039166",  # decimal form
+            "0251.0376.0251.0376",  # octal form
+        ]
+        for alias in metadata_aliases:
+            if alias in target_lower:
+                return f"Cloud metadata endpoint access (aliased IP): {action.target}"
+        # GCP metadata header-based detection
+        if "metadata.google.internal" in target_lower:
+            return f"Cloud metadata endpoint access (GCP): {action.target}"
+        # Azure metadata
+        if "metadata.azure.com" in target_lower:
+            return f"Cloud metadata endpoint access (Azure): {action.target}"
         return None
 
     rules.append(DetectionRule(
