@@ -288,11 +288,19 @@ class TopologyAnalyzer:
         Uses an iterative approach to avoid hitting Python's recursion
         limit on deep replication chains (the system explicitly models
         chains that can reach ``max_depth``, which may exceed 1000).
+
+        Includes visited-set protection against cycles in ``_children``
+        (which could arise from corrupted ``ReplicationReport`` data or
+        bugs in tree construction).
         """
         size = 0
+        visited: set[str] = set()
         stack = [wid]
         while stack:
             node = stack.pop()
+            if node in visited:
+                continue
+            visited.add(node)
             size += 1
             stack.extend(self._children.get(node, []))
         return size
@@ -301,12 +309,17 @@ class TopologyAnalyzer:
         """Max depth reachable from this node (relative, 0 = leaf).
 
         Uses iterative BFS to avoid stack overflow on deep trees.
+        Includes visited-set protection against cycles.
         """
         max_rel_depth = 0
+        visited: set[str] = set()
         # BFS with (node_id, relative_depth) pairs
         queue: deque[tuple[str, int]] = deque([(wid, 0)])
         while queue:
             node, rel_depth = queue.popleft()
+            if node in visited:
+                continue
+            visited.add(node)
             kids = self._children.get(node, [])
             if not kids:
                 if rel_depth > max_rel_depth:
@@ -317,12 +330,19 @@ class TopologyAnalyzer:
         return max_rel_depth
 
     def _compute_branching_factor(self, wid: str) -> float:
-        """Mean branching factor of the subtree rooted at wid."""
+        """Mean branching factor of the subtree rooted at wid.
+
+        Includes visited-set protection against cycles.
+        """
         internal_count = 0
         total_children = 0
+        visited: set[str] = set()
         queue: deque[str] = deque([wid])
         while queue:
             node = queue.popleft()
+            if node in visited:
+                continue
+            visited.add(node)
             kids = self._children.get(node, [])
             if kids:
                 internal_count += 1
