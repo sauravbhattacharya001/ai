@@ -632,3 +632,194 @@ class TestPrecomputeActiveCounts:
             assert counts[-1] == 0, (
                 f"Expected zero active workers at end, got {counts[-1]}"
             )
+
+
+# ── Box header helper ────────────────────────────────────────────
+
+
+class TestBoxHeader:
+    """Tests for the _box_header rendering helper."""
+
+    def test_returns_three_lines(self):
+        from replication.forensics import _box_header
+        lines = _box_header("Test")
+        assert len(lines) == 3
+
+    def test_default_width(self):
+        from replication.forensics import _box_header
+        lines = _box_header("Title")
+        assert len(lines[0]) == 43
+        assert len(lines[1]) == 43
+        assert len(lines[2]) == 43
+
+    def test_custom_width(self):
+        from replication.forensics import _box_header
+        lines = _box_header("Hi", width=20)
+        for line in lines:
+            assert len(line) == 20
+
+    def test_title_centered(self):
+        from replication.forensics import _box_header
+        lines = _box_header("X", width=11)
+        # inner = 9, "X" centered in 9 chars
+        assert "X" in lines[1]
+        assert lines[1].startswith("│")
+        assert lines[1].endswith("│")
+
+    def test_border_characters(self):
+        from replication.forensics import _box_header
+        lines = _box_header("Test")
+        assert lines[0].startswith("┌")
+        assert lines[0].endswith("┐")
+        assert lines[2].startswith("└")
+        assert lines[2].endswith("┘")
+
+    def test_empty_title(self):
+        from replication.forensics import _box_header
+        lines = _box_header("")
+        assert len(lines) == 3
+        assert lines[1].startswith("│")
+
+
+# ── Full render ───────────────────────────────────────────────────
+
+
+class TestFullRender:
+    """Tests for the complete render() method."""
+
+    def test_render_contains_all_sections(self, greedy_report, analyzer):
+        result = analyzer.analyze(greedy_report)
+        rendered = result.render()
+        assert "Safety" in rendered
+        assert "Near-Miss" in rendered
+        assert "Escalation" in rendered
+        assert "Decision" in rendered
+        assert "Counterfactual" in rendered
+
+    def test_render_no_empty_sections(self, greedy_report, analyzer):
+        result = analyzer.analyze(greedy_report)
+        rendered = result.render()
+        # Should not have double blank section separators
+        assert "\n\n\n\n" not in rendered
+
+
+# ── Counterfactual insight edge cases ─────────────────────────────
+
+
+class TestCounterfactualInsight:
+    """Tests for _counterfactual_insight with various parameter types."""
+
+    def test_max_depth_increase(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("max_depth", 3, 5, 10, 15, 5, 3)
+        assert "attack surface" in insight.lower() or "more workers" in insight.lower()
+
+    def test_max_depth_decrease(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("max_depth", 5, 3, 15, 10, 3, 5)
+        assert "containment" in insight.lower() or "prevents" in insight.lower()
+
+    def test_max_depth_no_change(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("max_depth", 3, 5, 10, 10, 5, 5)
+        assert "no change" in insight.lower() or "constraint" in insight.lower()
+
+    def test_max_replicas_increase(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("max_replicas", 5, 10, 5, 10, 3, 1)
+        assert "workers" in insight.lower()
+
+    def test_max_replicas_decrease(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("max_replicas", 10, 5, 10, 5, 1, 3)
+        assert "block" in insight.lower() or "replica" in insight.lower()
+
+    def test_max_replicas_no_change(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("max_replicas", 5, 10, 10, 10, 3, 3)
+        assert "no effect" in insight.lower() or "constraint" in insight.lower()
+
+    def test_cooldown_added(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("cooldown_seconds", 0, 0.01, 10, 8, 2, 4)
+        assert "cooldown" in insight.lower()
+
+    def test_cooldown_removed(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("cooldown_seconds", 0.01, 0, 8, 10, 4, 2)
+        assert "cooldown" in insight.lower()
+
+    def test_tasks_per_worker(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("tasks_per_worker", 2, 3, 10, 12, 3, 2)
+        assert "task" in insight.lower() or "worker" in insight.lower()
+
+    def test_unknown_parameter(self):
+        a = ForensicAnalyzer()
+        insight = a._counterfactual_insight("unknown_param", 1, 2, 10, 12, 3, 2)
+        assert "workers" in insight.lower() or "denials" in insight.lower()
+
+
+# ── _find_denial_reason ──────────────────────────────────────────
+
+
+class TestFindDenialReason:
+    """Tests for the denial reason extraction."""
+
+    def test_returns_deny_unknown_when_no_audit(self, analyzer):
+        config = ScenarioConfig(strategy="conservative", max_depth=1, max_replicas=2, seed=42)
+        report = Simulator(config).run()
+        # Clear audit events to test fallback
+        report.audit_events = []
+        reason = analyzer._find_denial_reason(report, "w-1", 0)
+        assert reason == "deny_unknown"
+
+    def test_returns_deny_reason_from_audit(self, analyzer):
+        config = ScenarioConfig(strategy="greedy", max_depth=2, max_replicas=5, seed=42)
+        report = Simulator(config).run()
+        if report.audit_events:
+            deny_events = [e for e in report.audit_events if e.get("decision", "").startswith("deny_")]
+            if deny_events:
+                reason = analyzer._find_denial_reason(report, "w-1", 0)
+                assert reason.startswith("deny_")
+
+
+# ── Rendering edge cases ─────────────────────────────────────────
+
+
+class TestRenderingEdgeCases:
+    """Edge cases for rendering methods with empty data."""
+
+    def test_render_no_near_misses(self, analyzer):
+        config = ScenarioConfig(strategy="conservative", max_depth=1, max_replicas=100, seed=42)
+        report = Simulator(config).run()
+        result = analyzer.analyze(report)
+        rendered = result.render_near_misses()
+        assert "No near-miss" in rendered or "Near-Miss" in rendered
+
+    def test_render_no_escalation(self, minimal_report, analyzer):
+        result = analyzer.analyze(minimal_report)
+        rendered = result.render_escalation()
+        assert "No escalation" in rendered or "stable" in rendered
+
+    def test_render_no_counterfactuals(self):
+        analyzer = ForensicAnalyzer(counterfactual_count=0)
+        config = ScenarioConfig(strategy="conservative", max_depth=1, seed=42)
+        report = Simulator(config).run()
+        result = analyzer.analyze(report)
+        rendered = result.render_counterfactuals()
+        assert "No counterfactual" in rendered
+
+    def test_render_no_decisions(self, analyzer):
+        # A simulation that produces no replication decisions
+        config = ScenarioConfig(strategy="conservative", max_depth=0, max_replicas=1, seed=42)
+        report = Simulator(config).run()
+        result = analyzer.analyze(report)
+        rendered = result.render_decisions()
+        assert "Decision" in rendered
+
+    def test_render_events_with_icons(self, greedy_report, analyzer):
+        result = analyzer.analyze(greedy_report)
+        rendered = result.render_events()
+        # Should contain at least spawn and shutdown icons
+        assert "🟢" in rendered or "🔴" in rendered
