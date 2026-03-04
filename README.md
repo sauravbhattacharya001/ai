@@ -342,30 +342,121 @@ for event in logger.events:
 | `grade` | Letter grade (A+ to F) |
 | `to_dict()` | JSON-serializable export |
 
+### `QuarantineManager`
+| Method | Description |
+|--------|-------------|
+| `quarantine(worker_id, reason, source, severity)` | Isolate a flagged worker for investigation |
+| `release(worker_id, resolution)` | Return worker to active duty |
+| `terminate(worker_id, resolution)` | Kill and deregister a quarantined worker |
+| `add_note(worker_id, note)` | Add investigator notes to quarantine record |
+| `list_quarantined()` | List all currently quarantined workers |
+| `list_by_severity(severity)` | Filter quarantined by severity level |
+| `report()` | Generate quarantine activity summary |
+
+### `DriftDetector`
+| Method | Description |
+|--------|-------------|
+| `analyze(config)` | Run multi-window drift analysis, return trends and alerts |
+
+### `SensitivityAnalyzer`
+| Method | Description |
+|--------|-------------|
+| `analyze()` | Full OAT sensitivity analysis across all parameters |
+| `sweep_parameter(param_name)` | Sweep a single parameter, return curve + tipping points |
+
+### `ContractOptimizer`
+| Method | Description |
+|--------|-------------|
+| `optimize()` | Grid search for optimal contract params under safety policy |
+
+### `SafetyScorecard`
+| Method | Description |
+|--------|-------------|
+| `evaluate(config)` | Multi-dimensional safety assessment with letter grades |
+
 ## Project Structure
 
 ```
 ai/
 ├── src/
 │   └── replication/
-│       ├── __init__.py          # Public API re-exports
+│       │── __init__.py          # Public API re-exports
+│       │
+│       │── # ── Core ──
 │       ├── contract.py          # ReplicationContract, Manifest, StopCondition
-│       ├── controller.py        # Controller, registry, kill switch
+│       ├── controller.py        # Controller, registry, kill switch, quarantine marks
+│       ├── worker.py            # Worker, task execution, self-replication
 │       ├── orchestrator.py      # SandboxOrchestrator, ContainerRecord
-│       ├── observability.py     # StructuredLogger, Metric
-│       ├── simulator.py         # Simulation runner (5 strategies, CLI)
-│       ├── comparator.py        # Comparison runner (strategy/preset/sweep)
-│       ├── threats.py           # Threat scenario simulator (9 attack vectors)
 │       ├── signer.py            # HMAC-SHA256 manifest signing
-│       └── worker.py            # Worker, task execution, self-replication
-├── tests/
+│       ├── observability.py     # StructuredLogger, Metric
+│       │
+│       │── # ── Simulation & Analysis ──
+│       ├── simulator.py         # Simulation runner (5 strategies, CLI)
+│       ├── comparator.py        # Side-by-side strategy/preset/parameter comparison
+│       ├── montecarlo.py        # Monte Carlo risk analysis (confidence intervals)
+│       ├── sensitivity.py       # Parameter sensitivity analysis (OAT sweeps)
+│       ├── optimizer.py         # Contract parameter optimizer (grid search)
+│       ├── scenarios.py         # Named scenario presets and builders
+│       │
+│       │── # ── Safety & Compliance ──
+│       ├── threats.py           # Threat scenario simulator (9 attack vectors)
+│       ├── policy.py            # Safety policy engine (standard/strict/permissive)
+│       ├── compliance.py        # Compliance auditing framework
+│       ├── scorecard.py         # Unified multi-dimensional safety scorecard
+│       ├── regression.py        # Safety regression testing between versions
+│       ├── drift.py             # Behavioral drift detection across time windows
+│       ├── quarantine.py        # Worker quarantine for forensic investigation
+│       ├── incident.py          # Incident response and escalation management
+│       │
+│       │── # ── Advanced Analysis ──
+│       ├── alignment.py         # Goal alignment verification
+│       ├── goal_inference.py    # Worker goal inference from behavior patterns
+│       ├── influence.py         # Inter-worker influence and persuasion analysis
+│       ├── covert_channels.py   # Covert communication channel detection
+│       ├── selfmod.py           # Self-modification detection and scoring
+│       ├── hoarding.py          # Resource hoarding pattern detection
+│       ├── game_theory.py       # Game-theoretic strategy analysis
+│       ├── chaos.py             # Chaos engineering for safety validation
+│       ├── capacity.py          # Capacity planning and scaling analysis
+│       ├── consensus.py         # Multi-worker consensus and voting
+│       ├── topology.py          # Replication tree topology analysis
+│       ├── lineage.py           # Worker lineage and ancestry tracking
+│       │
+│       │── # ── Reporting & Export ──
+│       ├── reporter.py          # Automated report generation
+│       ├── exporter.py          # Multi-format export (JSON, CSV, HTML, PDF)
+│       ├── templates.py         # Report templates and formatting
+│       └── forensics.py         # Post-incident forensic analysis
+│
+├── tests/                       # 38 test files, 1000+ tests
 │   ├── conftest.py              # Shared fixtures
-│   ├── test_replication.py      # Core replication tests
+│   ├── test_replication.py      # Core replication integration tests
+│   ├── test_contract.py         # Contract enforcement tests
 │   ├── test_controller.py       # Controller safety tests
+│   ├── test_worker.py           # Worker lifecycle tests
 │   ├── test_signer.py           # Manifest signing tests
 │   ├── test_simulator.py        # Simulation runner tests
 │   ├── test_comparator.py       # Comparison runner tests
-│   └── test_threats.py          # Threat scenario tests
+│   ├── test_threats.py          # Threat scenario tests
+│   ├── test_policy.py           # Policy evaluation tests
+│   ├── test_compliance.py       # Compliance audit tests
+│   ├── test_montecarlo.py       # Monte Carlo analysis tests
+│   ├── test_sensitivity.py      # Sensitivity sweep tests
+│   ├── test_optimizer.py        # Optimizer grid search tests
+│   ├── test_scorecard.py        # Scorecard grading tests
+│   ├── test_drift.py            # Drift detection tests
+│   ├── test_quarantine.py       # Quarantine lifecycle tests
+│   ├── test_incident.py         # Incident response tests
+│   ├── test_alignment.py        # Alignment verification tests
+│   ├── test_goal_inference.py   # Goal inference tests
+│   ├── test_influence.py        # Influence analysis tests
+│   ├── test_covert_channels.py  # Covert channel detection tests
+│   ├── test_selfmod.py          # Self-modification detection tests
+│   ├── test_hoarding.py         # Resource hoarding tests
+│   ├── test_game_theory.py      # Game theory analysis tests
+│   ├── test_chaos.py            # Chaos engineering tests
+│   └── ...                      # + capacity, consensus, topology, etc.
+│
 ├── docs/                        # Documentation
 ├── Dockerfile                   # Multi-stage build (test + runtime)
 ├── requirements-dev.txt         # Dev dependencies (pytest)
