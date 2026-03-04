@@ -179,6 +179,23 @@ from .exporter import (
     ExportConfig,
     ExportResult,
 )
+from .selfmod import (
+    SelfModDetector,
+    SelfModConfig,
+    SelfModResult,
+    ModAttempt,
+    ModVector,
+    ModSeverity,
+    ModIntent,
+    AgentAction,
+    ActionType,
+    AgentStrategy,
+    IntentProfile,
+    VectorAnalysis,
+    CorrelationCluster,
+    DetectionRule,
+    BUILTIN_RULES,
+)
 from .consensus import (
     ConsensusProtocol,
     ConsensusConfig,
