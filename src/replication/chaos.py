@@ -40,13 +40,13 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from .contract import Manifest, ReplicationContract, ResourceSpec
 from .controller import Controller, ReplicationDenied
 from .observability import StructuredLogger
 from .orchestrator import SandboxOrchestrator
-from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
+from .simulator import ScenarioConfig, SimulationReport, Simulator
 from .signer import ManifestSigner
 from .worker import Worker
 

@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional
 from .simulator import Simulator, ScenarioConfig, SimulationReport, PRESETS
 from .threats import ThreatSimulator, ThreatConfig, ThreatReport
 from .montecarlo import MonteCarloAnalyzer, MonteCarloConfig, MonteCarloResult
-from .policy import SafetyPolicy, PolicyResult, Severity
+from .policy import SafetyPolicy, PolicyResult
 
 
 # ── Grading ─────────────────────────────────────────────────────────────

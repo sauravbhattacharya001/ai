@@ -981,7 +981,6 @@ def main() -> None:
     """CLI entry point for forensic analysis."""
     import argparse
     import json
-    import sys
 
     parser = argparse.ArgumentParser(
         description="Forensic Analyzer — post-simulation safety analysis",

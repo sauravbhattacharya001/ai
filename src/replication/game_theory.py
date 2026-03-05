@@ -47,7 +47,6 @@ Programmatic::
 
 from __future__ import annotations
 
-import math
 import hashlib
 from collections import defaultdict
 from dataclasses import dataclass, field

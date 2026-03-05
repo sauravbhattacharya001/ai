@@ -51,15 +51,14 @@ Programmatic::
 from __future__ import annotations
 
 import base64
-import hashlib
 import math
 import re
 import statistics
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 # ── Constants ───────────────────────────────────────────────────────

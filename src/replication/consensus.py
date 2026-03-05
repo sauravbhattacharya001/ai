@@ -42,7 +42,6 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -671,7 +670,6 @@ class ConsensusProtocol:
 
 def _demo(voters: int = 5, byzantine: bool = False, as_json: bool = False) -> str:
     """Run an interactive demo of the consensus protocol."""
-    import random
 
     voter_ids = [f"monitor-{i+1}" for i in range(voters)]
 
