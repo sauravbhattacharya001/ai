@@ -412,7 +412,7 @@ class ConsensusProtocol:
         # Decision
         if not quorum_met:
             decision = Decision.NO_QUORUM
-        elif total_weight > 0 and (approve_weight / total_weight) > threshold:
+        elif total_weight > 0 and (approve_weight / total_weight) >= threshold:
             decision = Decision.APPROVED
         elif total_weight > 0 and (reject_weight / total_weight) >= (1 - threshold):
             decision = Decision.REJECTED
