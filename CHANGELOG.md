@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] — 2026-03-04
+
+### Added
+
+- **Privilege Escalation Detector** — Detects agent attempts to access system paths, admin endpoints, or gain elevated privileges beyond their contract scope.
+- **Monte Carlo performance optimization** — `MetricDistribution` now lazily caches sorted values, eliminating redundant O(n log n) sorts on repeated percentile/median lookups (7× fewer sorts in `to_dict()`).
+
+### Security
+
+- **Escalation detector hardening** — Fixed path traversal bypass (e.g. `/../root`), case-insensitive hostname matching, and URL-encoded payloads that could evade detection.
+- **Root depth spoofing prevention** — Controller now denies registration with spoofed root depth instead of silently clamping, preventing agents from bypassing depth limits.
+- **Consensus re-tally tampering** — Fixed vulnerability where agents could manipulate consensus results by re-triggering tally after votes were cast.
+
+### Documentation
+
+- Added privilege escalation detection guide with examples and configuration.
+- Updated project structure and API reference in README.
+
 ## [1.0.0] — 2026-02-14
 
 ### Initial Release

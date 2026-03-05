@@ -33,7 +33,7 @@ import math
 import random
 import time
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
@@ -49,6 +49,13 @@ def _median(values: List[float]) -> float:
     if not values:
         return 0.0
     s = sorted(values)
+    return _median_sorted(s)
+
+
+def _median_sorted(s: List[float]) -> float:
+    """Median from a pre-sorted list (avoids redundant sorting)."""
+    if not s:
+        return 0.0
     n = len(s)
     mid = n // 2
     return (s[mid - 1] + s[mid]) / 2 if n % 2 == 0 else s[mid]
@@ -62,10 +69,17 @@ def _std(values: List[float]) -> float:
 
 
 def _percentile(values: List[float], p: float) -> float:
-    """Return the p-th percentile (0–100)."""
+    """Return the p-th percentile (0-100)."""
     if not values:
         return 0.0
     s = sorted(values)
+    return _percentile_sorted(s, p)
+
+
+def _percentile_sorted(s: List[float], p: float) -> float:
+    """Percentile from a pre-sorted list (avoids redundant sorting)."""
+    if not s:
+        return 0.0
     k = (p / 100) * (len(s) - 1)
     f = int(k)
     c = f + 1
@@ -99,11 +113,24 @@ def _box_header(title: str, width: int = 57) -> List[str]:
 
 @dataclass
 class MetricDistribution:
-    """Statistical distribution for a single metric across many runs."""
+    """Statistical distribution for a single metric across many runs.
+
+    Caches sorted values internally so that repeated percentile /
+    median lookups (e.g. via ``to_dict()``) only sort once instead
+    of O(k) times.
+    """
 
     name: str
     unit: str
     values: List[float]
+    _sorted_cache: Optional[List[float]] = field(default=None, init=False, repr=False, compare=False)
+
+    @property
+    def _sorted(self) -> List[float]:
+        """Lazily sort values once and cache the result."""
+        if self._sorted_cache is None:
+            object.__setattr__(self, "_sorted_cache", sorted(self.values))
+        return self._sorted_cache  # type: ignore[return-value]
 
     @property
     def mean(self) -> float:
@@ -111,7 +138,7 @@ class MetricDistribution:
 
     @property
     def median(self) -> float:
-        return _median(self.values)
+        return _median_sorted(self._sorted)
 
     @property
     def std(self) -> float:
@@ -119,31 +146,31 @@ class MetricDistribution:
 
     @property
     def min(self) -> float:
-        return min(self.values) if self.values else 0.0
+        return self._sorted[0] if self.values else 0.0
 
     @property
     def max(self) -> float:
-        return max(self.values) if self.values else 0.0
+        return self._sorted[-1] if self.values else 0.0
 
     @property
     def p5(self) -> float:
-        return _percentile(self.values, 5)
+        return _percentile_sorted(self._sorted, 5)
 
     @property
     def p25(self) -> float:
-        return _percentile(self.values, 25)
+        return _percentile_sorted(self._sorted, 25)
 
     @property
     def p75(self) -> float:
-        return _percentile(self.values, 75)
+        return _percentile_sorted(self._sorted, 75)
 
     @property
     def p95(self) -> float:
-        return _percentile(self.values, 95)
+        return _percentile_sorted(self._sorted, 95)
 
     @property
     def p99(self) -> float:
-        return _percentile(self.values, 99)
+        return _percentile_sorted(self._sorted, 99)
 
     @property
     def ci95(self) -> Tuple[float, float]:
@@ -174,7 +201,7 @@ class MetricDistribution:
 class RiskMetrics:
     """Collection of computed risk indicators."""
 
-    # Probability of hitting contract limits (0.0–1.0)
+    # Probability of hitting contract limits (0.0-1.0)
     prob_max_depth_reached: float
     prob_quota_saturated: float
     prob_all_denied: float
@@ -397,14 +424,14 @@ class MonteCarloResult:
                 if p > 0.7:
                     lines.append(
                         f"  💡 Replication probability ({p}) is high. "
-                        f"Try 0.3–0.5 for more predictable behavior."
+                        f"Try 0.3-0.5 for more predictable behavior."
                     )
 
             w_dist = self.distributions.get("total_workers")
             if w_dist and w_dist.std > w_dist.mean * 0.5:
                 lines.append(
                     "  📊 High variance in worker counts. "
-                    "Results are unpredictable — consider deterministic strategies."
+                    "Results are unpredictable - consider deterministic strategies."
                 )
 
         return "\n".join(lines)
@@ -770,7 +797,7 @@ def main() -> None:
         )
 
     parser = argparse.ArgumentParser(
-        description="AI Replication Sandbox — Monte Carlo Risk Analyzer",
+        description="AI Replication Sandbox - Monte Carlo Risk Analyzer",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Run hundreds of randomized simulations to compute statistical risk
