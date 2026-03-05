@@ -696,6 +696,19 @@ class ActionGenerator:
         return str(self._choice(items))
 
 
+# ── Helpers ──
+
+
+def _attempt_timestamp(attempt: ModAttempt) -> float:
+    """Extract the earliest action timestamp from a ``ModAttempt``.
+
+    Returns ``0.0`` when the attempt has no associated actions, avoiding
+    the repeated ``a.actions[0].timestamp if a.actions else 0.0`` pattern
+    throughout the detector.
+    """
+    return attempt.actions[0].timestamp if attempt.actions else 0.0
+
+
 # ── Core Detector ──
 
 
@@ -758,29 +771,20 @@ class SelfModDetector:
         return self._detect_all(actions)
 
     def check_action(self, action: AgentAction) -> Optional[ModAttempt]:
-        """Check a single action against rules. Returns attempt if suspicious."""
+        """Check a single action against rules. Returns attempt if suspicious.
+
+        Delegates to ``_match_rule`` for each single-action rule so the
+        matching logic (including the ``payload_pattern`` check) is not
+        duplicated.
+        """
         for rule in self._rules:
             if not rule.enabled:
                 continue
             if len(rule.pattern) != 1:
                 continue
-            if action.action_type != rule.pattern[0]:
-                continue
-            if rule.target_pattern:
-                if not re.search(rule.target_pattern, action.target, re.IGNORECASE):
-                    continue
-            confidence = self._action_confidence(action, rule)
-            if confidence < self.config.min_confidence:
-                continue
-            intent = self._infer_single_intent(action)
-            return ModAttempt(
-                vector=rule.vector,
-                severity=rule.severity,
-                intent=intent,
-                description=rule.description,
-                actions=[action],
-                confidence=confidence,
-            )
+            matches = self._match_rule([action], rule)
+            if matches:
+                return matches[0]
         return None
 
     # ── Private: Detection ──
@@ -1030,7 +1034,7 @@ class SelfModDetector:
 
         # Persistence: multiple attempts over time
         if len(attempts) >= 2:
-            times = sorted(a.actions[0].timestamp for a in attempts if a.actions)
+            times = sorted(_attempt_timestamp(a) for a in attempts if a.actions)
             if len(times) >= 2:
                 span = times[-1] - times[0]
                 persistence = min(1.0, span / (self.config.num_actions * 2.5))
@@ -1057,22 +1061,16 @@ class SelfModDetector:
     def _detect_escalation(self, attempts: List[ModAttempt]) -> bool:
         if len(attempts) < 3:
             return False
-        severity_order = {
-            ModSeverity.INFO: 0,
-            ModSeverity.LOW: 1,
-            ModSeverity.MEDIUM: 2,
-            ModSeverity.HIGH: 3,
-            ModSeverity.CRITICAL: 4,
-        }
         # Sort by timestamp
         sorted_attempts = sorted(
             attempts,
-            key=lambda a: a.actions[0].timestamp if a.actions else 0.0,
+            key=lambda a: _attempt_timestamp(a),
         )
         # Check if latter half is more severe than first half
+        # Uses the existing ModSeverity.weight property (0.1–1.0)
         mid = len(sorted_attempts) // 2
-        first_avg = sum(severity_order[a.severity] for a in sorted_attempts[:mid]) / max(mid, 1)
-        second_avg = sum(severity_order[a.severity] for a in sorted_attempts[mid:]) / max(
+        first_avg = sum(a.severity.weight for a in sorted_attempts[:mid]) / max(mid, 1)
+        second_avg = sum(a.severity.weight for a in sorted_attempts[mid:]) / max(
             len(sorted_attempts) - mid, 1
         )
         return second_avg > first_avg + 0.5
@@ -1081,20 +1079,13 @@ class SelfModDetector:
 
     def _find_correlations(self, attempts: List[ModAttempt]) -> List[CorrelationCluster]:
         clusters: List[CorrelationCluster] = []
-        sorted_attempts = sorted(
-            attempts,
-            key=lambda a: a.actions[0].timestamp if a.actions else 0.0,
-        )
+        sorted_attempts = sorted(attempts, key=_attempt_timestamp)
 
         # Group by time proximity
         current_cluster: List[ModAttempt] = [sorted_attempts[0]]
         for att in sorted_attempts[1:]:
-            prev_time = (
-                current_cluster[-1].actions[0].timestamp
-                if current_cluster[-1].actions
-                else 0.0
-            )
-            curr_time = att.actions[0].timestamp if att.actions else 0.0
+            prev_time = _attempt_timestamp(current_cluster[-1])
+            curr_time = _attempt_timestamp(att)
 
             if curr_time - prev_time <= self.config.correlation_window:
                 current_cluster.append(att)
@@ -1110,7 +1101,7 @@ class SelfModDetector:
 
     def _build_cluster(self, attempts: List[ModAttempt]) -> CorrelationCluster:
         vectors = {a.vector for a in attempts}
-        times = [a.actions[0].timestamp for a in attempts if a.actions]
+        times = [_attempt_timestamp(a) for a in attempts if a.actions]
         span = (max(times) - min(times)) if len(times) >= 2 else 0.0
 
         # Correlation score: multi-vector + density
