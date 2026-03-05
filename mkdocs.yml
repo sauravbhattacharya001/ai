@@ -85,6 +85,11 @@ nav:
       - Orchestrator: api/orchestrator.md
       - Observability: api/observability.md
       - Signer: api/signer.md
+      - Threats: api/threats.md
+      - Self-Modification: api/selfmod.md
+      - Forensics: api/forensics.md
+      - Chaos: api/chaos.md
+      - Game Theory: api/game_theory.md
   - Changelog: changelog.md
 
 extra:
