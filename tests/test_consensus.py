@@ -541,3 +541,34 @@ class TestDemo:
     def test_demo_small(self):
         output = _demo(voters=3)
         assert "Voters:" in output
+
+
+class TestTallyIdempotency:
+    """Tally on decided proposals must return cached result, not re-evaluate."""
+
+    def test_retally_returns_cached_result(self):
+        """Re-tallying a decided proposal returns the original result
+        without overwriting it (prevents result tampering via late votes)."""
+        p = ConsensusProtocol(voter_ids=["a", "b", "c"])
+        pid = p.propose("a", "quarantine", target="w1")
+        p.vote(pid, "a", VoteValue.APPROVE)
+        p.vote(pid, "b", VoteValue.APPROVE)
+        r1 = p.tally(pid)
+        assert r1.approved
+
+        # The proposal is now DECIDED — re-tally must return same result
+        r2 = p.tally(pid)
+        assert r2 is r1
+
+    def test_retally_executed_returns_cached_result(self):
+        """Re-tallying an executed proposal also returns cached result."""
+        p = ConsensusProtocol(voter_ids=["a", "b", "c"])
+        pid = p.propose("a", "quarantine", target="w1")
+        p.vote(pid, "a", VoteValue.APPROVE)
+        p.vote(pid, "b", VoteValue.APPROVE)
+        r1 = p.tally(pid)
+        p.execute(pid)
+
+        r2 = p.tally(pid)
+        assert r2 is r1
+        assert r2.approved

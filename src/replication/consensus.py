@@ -357,6 +357,12 @@ class ConsensusProtocol:
         if proposal is None:
             raise KeyError(f"Unknown proposal: {proposal_id}")
 
+        # Prevent re-tallying already decided/executed proposals — return
+        # the cached result to avoid overwriting the original decision.
+        if proposal.status in (ProposalStatus.DECIDED, ProposalStatus.EXECUTED):
+            if proposal.result is not None:
+                return proposal.result
+
         # Check expiry
         if proposal.expires_at and time.time() > proposal.expires_at:
             proposal.status = ProposalStatus.EXPIRED

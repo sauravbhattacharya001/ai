@@ -90,7 +90,9 @@ class Controller:
                     claimed_depth=depth,
                     reason="root_worker_must_be_depth_0",
                 )
-            depth = 0
+                raise ReplicationDenied(
+                    f"Root worker must request depth 0, got {depth}"
+                )
 
         manifest = Manifest(
             worker_id=secrets.token_hex(4),

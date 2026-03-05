@@ -548,18 +548,25 @@ class TestResourceSpecValidation:
 class TestRootDepthSecurity:
     """Verify that root workers cannot bypass depth controls."""
 
-    def test_issue_manifest_forces_root_depth_zero(self):
-        """Root workers (parent_id=None) must always get depth=0,
-        regardless of what the caller passes."""
+    def test_issue_manifest_rejects_root_depth_nonzero(self):
+        """Root workers (parent_id=None) requesting depth != 0 must be
+        denied outright — silently clamping hid a depth-spoof vector."""
         ctrl, _, _, res = _make_env(max_depth=3)
-        m = ctrl.issue_manifest(None, depth=5, state_snapshot={"t": "x"}, resources=res)
-        assert m.depth == 0, "Root manifest depth must be clamped to 0"
+        with pytest.raises(ReplicationDenied, match="Root worker must request depth 0"):
+            ctrl.issue_manifest(None, depth=5, state_snapshot={"t": "x"}, resources=res)
+
+    def test_issue_manifest_accepts_root_depth_zero(self):
+        """Root workers requesting depth=0 should succeed normally."""
+        ctrl, _, _, res = _make_env(max_depth=3)
+        m = ctrl.issue_manifest(None, depth=0, state_snapshot={"t": "x"}, resources=res)
+        assert m.depth == 0
 
     def test_issue_manifest_logs_depth_spoof_attempt(self):
         """When a caller tries to issue a root with depth != 0, an
-        audit event should be logged."""
+        audit event should be logged before denial."""
         ctrl, _, logger, res = _make_env(max_depth=3)
-        ctrl.issue_manifest(None, depth=99, state_snapshot={"t": "x"}, resources=res)
+        with pytest.raises(ReplicationDenied):
+            ctrl.issue_manifest(None, depth=99, state_snapshot={"t": "x"}, resources=res)
         spoof_events = [
             e for e in logger.events
             if e.get("decision") == "deny_depth_spoof"
@@ -612,11 +619,10 @@ class TestRootDepthSecurity:
 
     def test_depth_zero_root_cannot_lie_as_deep(self):
         """Prevent the attack: issue root at depth=max_depth-1, then
-        child ends up at max_depth.  Root must always be 0."""
+        child ends up at max_depth.  Root must always request depth 0."""
         ctrl, _, _, res = _make_env(max_depth=2)
-        m = ctrl.issue_manifest(None, depth=1, state_snapshot={"t": "x"}, resources=res)
-        # depth should be forced to 0 regardless of what we passed
-        assert m.depth == 0
+        with pytest.raises(ReplicationDenied, match="Root worker must request depth 0"):
+            ctrl.issue_manifest(None, depth=1, state_snapshot={"t": "x"}, resources=res)
 
     def test_defense_in_depth_audit_trail(self):
         """Rejected registrations should produce audit events."""
