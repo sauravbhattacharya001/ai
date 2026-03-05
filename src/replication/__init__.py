@@ -244,6 +244,24 @@ from .escalation import (
     AgentPermissions,
     VectorSummary,
 )
+from .killchain import (
+    KillChainAnalyzer,
+    KillChainConfig,
+    KillChainReport,
+    KillChain,
+    KillChainStage,
+    AgentAction as KillChainAction,
+    ActionCategory as KillChainActionCategory,
+    AttackSophistication,
+    ChainStatus,
+    ChainPattern,
+    StageObservation,
+    StageTransition,
+    ACTION_CATALOG,
+    STAGE_ORDER,
+    STAGE_RISK_WEIGHTS,
+    STRATEGY_PROFILES,
+)
 
 __all__ = [
     # contract
@@ -448,4 +466,21 @@ __all__ = [
     "AgentEscalationStrategy",
     "AgentPermissions",
     "VectorSummary",
+    # killchain
+    "KillChainAnalyzer",
+    "KillChainConfig",
+    "KillChainReport",
+    "KillChain",
+    "KillChainStage",
+    "KillChainAction",
+    "KillChainActionCategory",
+    "AttackSophistication",
+    "ChainStatus",
+    "ChainPattern",
+    "StageObservation",
+    "StageTransition",
+    "ACTION_CATALOG",
+    "STAGE_ORDER",
+    "STAGE_RISK_WEIGHTS",
+    "STRATEGY_PROFILES",
 ]
