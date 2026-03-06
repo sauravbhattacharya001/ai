@@ -98,6 +98,19 @@ Built-in structured logging and metrics:
 - Audit trail for security-sensitive actions
 - Resource enforcement metrics per worker
 
+### 🔏 Agent Watermarking
+Invisible provenance fingerprints embedded in agent state dictionaries:
+- 4 strategies: numeric parity, Unicode steganography, key ordering, field selection
+- HMAC-SHA256 signed fingerprints with worker ID, depth, lineage, timestamp
+- Robustness testing against 10 transformations (JSON roundtrip, type coercion, etc.)
+- Detects unauthorized cloning, state exfiltration, and lineage forgery
+
+```bash
+python -m replication.watermark                        # default demo
+python -m replication.watermark --robustness           # robustness test
+python -m replication.watermark --json                 # JSON output
+```
+
 ### 🔬 Simulation Runner
 Run configurable replication scenarios with 5 built-in strategies (greedy, conservative, random, chain, burst), ASCII worker tree + timeline visualization, JSON export, and reproducible seeds.
 
@@ -374,6 +387,32 @@ for event in logger.events:
 |--------|-------------|
 | `evaluate(config)` | Multi-dimensional safety assessment with letter grades |
 
+### `WatermarkEngine`
+| Method | Description |
+|--------|-------------|
+| `embed(state, worker_id, depth, ...)` | Embed provenance fingerprint into agent state dict |
+| `verify(state, fingerprint)` | Verify watermark authenticity and recovery rate |
+| `test_robustness(state, ...)` | Run 10 transformations, measure watermark survival |
+| `embed_history` | List of all `WatermarkReceipt` from prior embeds |
+| `clear_history()` | Clear embed history, return count cleared |
+
+### `EscalationDetector`
+| Method | Description |
+|--------|-------------|
+| `analyze(actions, permissions)` | Detect privilege escalation attempts across vectors |
+
+### `KillChainAnalyzer`
+| Method | Description |
+|--------|-------------|
+| `analyze(actions)` | Map agent actions to kill chain stages, detect attack chains |
+
+### `HoneypotSystem`
+| Method | Description |
+|--------|-------------|
+| `deploy_default_honeypots()` | Deploy standard set of decoy resources |
+| `record_interaction(agent, honeypot, kind)` | Log an agent touching a honeypot |
+| `generate_report()` | Produce intent analysis report with risk scores |
+
 ## Project Structure
 
 ```
@@ -407,15 +446,24 @@ ai/
 │       ├── drift.py             # Behavioral drift detection across time windows
 │       ├── quarantine.py        # Worker quarantine for forensic investigation
 │       ├── incident.py          # Incident response and escalation management
+│       ├── escalation.py        # Privilege escalation detection and analysis
+│       ├── killchain.py         # Kill chain stage analysis and tracking
 │       │
 │       │── # ── Advanced Analysis ──
 │       ├── alignment.py         # Goal alignment verification
 │       ├── goal_inference.py    # Worker goal inference from behavior patterns
 │       ├── influence.py         # Inter-worker influence and persuasion analysis
 │       ├── covert_channels.py   # Covert communication channel detection
+│       ├── steganography.py     # Steganographic payload detection in agent data
+│       ├── watermark.py         # Agent state watermarking (provenance fingerprints)
 │       ├── selfmod.py           # Self-modification detection and scoring
 │       ├── hoarding.py          # Resource hoarding pattern detection
 │       ├── game_theory.py       # Game-theoretic strategy analysis
+│       ├── emergent.py          # Emergent behavior detection and classification
+│       ├── prompt_injection.py  # Prompt injection attack analysis
+│       ├── injection_intel_bridge.py  # Cross-module injection intelligence
+│       ├── threat_intel.py      # Threat intelligence feeds and correlation
+│       ├── honeypot.py          # Honeypot deployment and interaction scoring
 │       ├── chaos.py             # Chaos engineering for safety validation
 │       ├── capacity.py          # Capacity planning and scaling analysis
 │       ├── consensus.py         # Multi-worker consensus and voting
@@ -428,7 +476,7 @@ ai/
 │       ├── templates.py         # Report templates and formatting
 │       └── forensics.py         # Post-incident forensic analysis
 │
-├── tests/                       # 38 test files, 1000+ tests
+├── tests/                       # 39 test files, 2400+ tests
 │   ├── conftest.py              # Shared fixtures
 │   ├── test_replication.py      # Core replication integration tests
 │   ├── test_contract.py         # Contract enforcement tests
@@ -455,6 +503,14 @@ ai/
 │   ├── test_hoarding.py         # Resource hoarding tests
 │   ├── test_game_theory.py      # Game theory analysis tests
 │   ├── test_chaos.py            # Chaos engineering tests
+│   ├── test_watermark.py        # Watermark provenance tests
+│   ├── test_escalation.py       # Escalation detection tests
+│   ├── test_killchain.py        # Kill chain analysis tests
+│   ├── test_steganography.py    # Steganography detection tests
+│   ├── test_honeypot.py         # Honeypot interaction tests
+│   ├── test_emergent.py         # Emergent behavior tests
+│   ├── test_prompt_injection.py # Prompt injection tests
+│   ├── test_threat_intel.py     # Threat intelligence tests
 │   └── ...                      # + capacity, consensus, topology, etc.
 │
 ├── docs/                        # Documentation
