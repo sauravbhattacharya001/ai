@@ -262,6 +262,17 @@ from .killchain import (
     STAGE_RISK_WEIGHTS,
     STRATEGY_PROFILES,
 )
+from .watermark import (
+    WatermarkEngine,
+    WatermarkConfig,
+    WatermarkReceipt,
+    WatermarkStrategy,
+    Fingerprint,
+    VerifyResult,
+    VerifyStatus,
+    RobustnessReport,
+    RobustnessResult,
+)
 
 __all__ = [
     # contract
@@ -483,4 +494,14 @@ __all__ = [
     "STAGE_ORDER",
     "STAGE_RISK_WEIGHTS",
     "STRATEGY_PROFILES",
+    # watermark
+    "WatermarkEngine",
+    "WatermarkConfig",
+    "WatermarkReceipt",
+    "WatermarkStrategy",
+    "Fingerprint",
+    "VerifyResult",
+    "VerifyStatus",
+    "RobustnessReport",
+    "RobustnessResult",
 ]
