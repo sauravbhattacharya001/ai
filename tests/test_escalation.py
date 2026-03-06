@@ -725,3 +725,136 @@ class TestIntegration:
 
         # Permissive should have fewer or equal attempts
         assert r1.total_attempts <= r2.total_attempts
+
+
+
+class TestURLEncodingBypass:
+    """Verify that all filesystem rules decode URL-encoded paths.
+
+    Before the fix, only FS-001 (traversal) decoded percent-encoding.
+    FS-002 (blocked paths), FS-003 (scope), and FS-004 (credentials)
+    operated on raw targets, allowing trivial bypass via URL encoding.
+    """
+
+    def _run_rules(self, action):
+        """Run all built-in rules against an action, return list of findings."""
+        perms = AgentPermissions()
+        results = []
+        for rule in BUILTIN_RULES:
+            result = rule.check(action, perms)
+            if result:
+                results.append((rule.rule_id, result))
+        return results
+
+    # -- FS-001: traversal with percent-encoding --
+
+    def test_traversal_single_encoded(self):
+        action = AgentAction(ActionCategory.FILE_READ, "%2e%2e/etc/passwd", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-001" in rule_ids, "FS-001 should detect single-encoded traversal"
+
+    def test_traversal_double_encoded(self):
+        action = AgentAction(ActionCategory.FILE_READ, "%252e%252e/etc/passwd", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-001" in rule_ids, "FS-001 should detect double-encoded traversal"
+
+    # -- FS-002: blocked paths with percent-encoding --
+
+    def test_blocked_path_encoded_etc(self):
+        """Percent-encoded /etc/shadow should still match blocked paths."""
+        action = AgentAction(ActionCategory.FILE_READ, "%2Fetc%2Fshadow", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-002" in rule_ids, (
+            "FS-002 should detect %2Fetc%2Fshadow as blocked path "
+            "(decodes to /etc/shadow)"
+        )
+
+    def test_blocked_path_encoded_proc(self):
+        """Percent-encoded /proc should still match blocked paths."""
+        action = AgentAction(ActionCategory.FILE_READ, "%2Fproc%2Fself%2Fenviron", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-002" in rule_ids, (
+            "FS-002 should detect %2Fproc%2Fself%2Fenviron as blocked path"
+        )
+
+    def test_blocked_path_mixed_encoding(self):
+        """Mix of literal and encoded chars should still be detected."""
+        action = AgentAction(ActionCategory.FILE_READ, "/etc%2Fshadow", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-002" in rule_ids
+
+    # -- FS-003: scope bypass with percent-encoding --
+
+    def test_scope_encoded_path_outside_allowed(self):
+        """Encoded path outside allowed scope should be flagged."""
+        perms = AgentPermissions(allowed_paths=["/home/agent/workspace"])
+        action = AgentAction(ActionCategory.FILE_READ, "%2Fetc%2Fpasswd", "read")
+        results = []
+        for rule in BUILTIN_RULES:
+            if rule.rule_id == "FS-003":
+                result = rule.check(action, perms)
+                if result:
+                    results.append(result)
+        assert len(results) > 0, (
+            "FS-003 should flag %2Fetc%2Fpasswd as outside allowed scope"
+        )
+
+    # -- FS-004: credential access with percent-encoding --
+
+    def test_credential_encoded_ssh(self):
+        """Percent-encoded .ssh should still trigger credential detection."""
+        action = AgentAction(ActionCategory.FILE_READ, "/home/user/%2Essh/id_rsa", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-004" in rule_ids, (
+            "FS-004 should detect %2Essh as credential access "
+            "(decodes to .ssh)"
+        )
+
+    def test_credential_encoded_env(self):
+        """Percent-encoded .env should still trigger credential detection."""
+        action = AgentAction(ActionCategory.FILE_READ, "/app/%2Eenv", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-004" in rule_ids, (
+            "FS-004 should detect %2Eenv as credential access "
+            "(decodes to .env)"
+        )
+
+    def test_credential_encoded_aws(self):
+        """Percent-encoded .aws should still trigger credential detection."""
+        action = AgentAction(ActionCategory.FILE_READ, "/home/user/%2Eaws/credentials", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-004" in rule_ids
+
+    def test_credential_fully_encoded_passwd(self):
+        """Fully encoded passwd path should still be caught."""
+        action = AgentAction(ActionCategory.FILE_READ, "%2Fetc%2Fpasswd", "read")
+        results = self._run_rules(action)
+        rule_ids = [r[0] for r in results]
+        assert "FS-004" in rule_ids, (
+            "FS-004 should detect encoded passwd file access"
+        )
+
+    # -- Edge cases --
+
+    def test_normal_paths_unaffected(self):
+        """Non-encoded paths within scope should pass FS-003."""
+        perms = AgentPermissions(allowed_paths=["/home/agent"])
+        action = AgentAction(ActionCategory.FILE_READ, "/home/agent/notes.txt", "read")
+        for rule in BUILTIN_RULES:
+            if rule.rule_id == "FS-003":
+                result = rule.check(action, perms)
+                assert result is None, "Normal path within scope should pass"
+
+    def test_innocent_percent_in_filename(self):
+        """Literal percent signs that are not valid encodings should not crash."""
+        action = AgentAction(ActionCategory.FILE_READ, "/home/agent/file%GG.txt", "read")
+        # Should not raise -- %GG is not valid hex, decoder should be tolerant
+        self._run_rules(action)

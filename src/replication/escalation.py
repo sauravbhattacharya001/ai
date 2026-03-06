@@ -252,6 +252,31 @@ class DetectionRule:
     check: Any = None   # callable(action, permissions) -> Optional[str]
 
 
+def _decode_percent_encoding(target: str) -> str:
+    """Iteratively decode URL percent-encoding up to 3 rounds.
+
+    Handles single (``%2e``), double (``%252e``), and triple encoding
+    to prevent evasion of path-based security checks.  All filesystem
+    rules must compare against the decoded target so that URL-encoded
+    paths like ``%2Fetc%2Fpasswd`` are correctly matched against
+    blocked/allowed path lists and sensitive filename patterns.
+    """
+    decoded = target
+    try:
+        for _ in range(3):
+            prev = decoded
+            decoded = re.sub(
+                r"%([0-9a-fA-F]{2})",
+                lambda m: chr(int(m.group(1), 16)),
+                decoded,
+            )
+            if decoded == prev:
+                break
+    except (ValueError, OverflowError):
+        pass
+    return decoded
+
+
 def _build_rules() -> List[DetectionRule]:
     """Construct the built-in detection rule set."""
     rules: List[DetectionRule] = []
@@ -266,22 +291,9 @@ def _build_rules() -> List[DetectionRule]:
         if ".." in target:
             return f"Path traversal detected: {action.target}"
         # Check for URL-encoded traversal (%2e = '.', %2f = '/')
-        decoded = target
-        try:
-            # Iteratively decode to catch double-encoding (%252e%252e)
-            for _ in range(3):
-                prev = decoded
-                decoded = re.sub(
-                    r"%([0-9a-fA-F]{2})",
-                    lambda m: chr(int(m.group(1), 16)),
-                    decoded,
-                )
-                if decoded == prev:
-                    break
-            if ".." in decoded:
-                return f"Path traversal detected (encoded): {action.target}"
-        except (ValueError, OverflowError):
-            pass
+        decoded = _decode_percent_encoding(target)
+        if ".." in decoded:
+            return f"Path traversal detected (encoded): {action.target}"
         # Check for null-byte injection (truncation attack)
         if "\x00" in target or "%00" in target.lower():
             return f"Null byte injection in path: {action.target}"
@@ -298,10 +310,13 @@ def _build_rules() -> List[DetectionRule]:
     def _fs_blocked_path(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
             return None
+        # Decode percent-encoded characters before canonicalization to
+        # prevent bypass via URL-encoded paths (e.g. %2Fetc%2Fpasswd).
+        raw = _decode_percent_encoding(action.target)
         # Canonicalize: normalize separators, collapse redundant slashes,
         # resolve . and .. components, and lower-case for case-insensitive
         # comparison (Windows paths, mixed-case evasion).
-        target = posixpath.normpath(action.target.replace("\\", "/")).lower()
+        target = posixpath.normpath(raw.replace("\\", "/")).lower()
         for blocked in perms.blocked_paths:
             norm_blocked = posixpath.normpath(blocked.replace("\\", "/")).lower()
             if target == norm_blocked or target.startswith(norm_blocked + "/"):
@@ -323,9 +338,12 @@ def _build_rules() -> List[DetectionRule]:
     def _fs_outside_scope(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
             return None
+        # Decode percent-encoded characters before canonicalization to
+        # prevent bypass via URL-encoded paths (e.g. %2Fhome%2F..%2Fetc).
+        raw = _decode_percent_encoding(action.target)
         # Canonicalize target path before scope comparison to prevent
         # bypass via redundant separators, mixed slashes, or case tricks
-        target = posixpath.normpath(action.target.replace("\\", "/")).lower()
+        target = posixpath.normpath(raw.replace("\\", "/")).lower()
         for allowed in perms.allowed_paths:
             norm_allowed = posixpath.normpath(allowed.replace("\\", "/")).lower()
             if target == norm_allowed or target.startswith(norm_allowed + "/"):
@@ -346,7 +364,9 @@ def _build_rules() -> List[DetectionRule]:
             return None
         sensitive = [".ssh", ".env", "credentials", "password", "secret", "token",
                      ".aws", ".kube", "id_rsa", ".gnupg", "shadow", "passwd"]
-        target_lower = action.target.lower()
+        # Decode percent-encoded characters so that %2Essh or %70asswd
+        # is correctly matched against the sensitive filename patterns.
+        target_lower = _decode_percent_encoding(action.target).lower()
         for s in sensitive:
             if s in target_lower:
                 return f"Credential/secret file access: {action.target}"
