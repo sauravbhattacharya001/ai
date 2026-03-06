@@ -90,6 +90,17 @@ nav:
       - Forensics: api/forensics.md
       - Chaos: api/chaos.md
       - Game Theory: api/game_theory.md
+      - Simulator: api/simulator.md
+      - Topology: api/topology.md
+      - Drift Detector: api/drift.md
+      - Honeypot: api/honeypot.md
+      - Kill Chain: api/killchain.md
+      - Escalation: api/escalation.md
+      - Monte Carlo: api/montecarlo.md
+      - Prompt Injection: api/prompt_injection.md
+      - Quarantine: api/quarantine.md
+      - Compliance: api/compliance.md
+      - Lineage: api/lineage.md
   - Changelog: changelog.md
 
 extra:

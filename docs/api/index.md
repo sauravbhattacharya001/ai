@@ -22,6 +22,9 @@ Auto-generated documentation from source code docstrings.
 | [Forensics](forensics.md) | Post-incident forensic analysis, timeline reconstruction, root cause identification |
 | [Chaos](chaos.md) | Chaos engineering — controlled fault injection to test safety invariants |
 | [Game Theory](game_theory.md) | Strategic interaction analysis, Nash equilibria, collusion/defection detection |
+| [Simulator](simulator.md) | Core simulation engine — configurable strategies, timeline reports, worker trees |
+| [Topology](topology.md) | Structural analysis of replication trees — branching, balance, pathological patterns |
+| [Drift Detector](drift.md) | Sliding-window trend detection — catch gradual behavioral drift across runs |
 | [Prompt Injection](prompt_injection.md) | Detect and classify prompt injection attacks — 8 attack vectors, encoding evasion, risk scoring |
 | [Escalation](escalation.md) | Detect privilege escalation patterns — multi-vector analysis, stealth assessment, chain detection |
 | [Kill Chain](killchain.md) | Map agent behavior to cyber kill chain stages — attack progression and sophistication rating |
