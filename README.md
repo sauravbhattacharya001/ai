@@ -283,6 +283,46 @@ for event in logger.events:
     print(event)
 ```
 
+### Unified CLI
+
+All tools are accessible through a single entry point:
+
+```bash
+# List all 36 available subcommands
+python -m replication --list
+
+# Run a simulation
+python -m replication simulate --strategy greedy --max-depth 5
+
+# Threat assessment
+python -m replication threats --category resource_abuse
+
+# Compliance audit
+python -m replication compliance --framework nist_ai_rmf
+
+# Chaos testing
+python -m replication chaos --faults kill_worker,delay
+
+# Monte Carlo risk analysis
+python -m replication montecarlo --runs 500
+
+# Safety scorecard
+python -m replication scorecard
+
+# Game-theoretic analysis
+python -m replication game-theory --rounds 50
+
+# Get help for any subcommand
+python -m replication simulate --help
+```
+
+After `pip install`, the `replication` command is also available:
+
+```bash
+replication simulate --scenario balanced
+replication info
+```
+
 ## API Reference
 
 ### `ReplicationContract`

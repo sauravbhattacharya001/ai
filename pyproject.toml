@@ -33,6 +33,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+[project.scripts]
+replication = "replication.__main__:main"
+
 [project.urls]
 Homepage = "https://github.com/sauravbhattacharya001/ai"
 Documentation = "https://sauravbhattacharya001.github.io/ai/"

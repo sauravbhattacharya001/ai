@@ -1,0 +1,246 @@
+"""Unified CLI entry point for AI Replication Sandbox.
+
+Run any tool via a single command::
+
+    python -m replication simulate --strategy greedy
+    python -m replication threats --category resource_abuse
+    python -m replication compliance --framework nist_ai_rmf
+    python -m replication chaos --faults kill_worker,delay
+    python -m replication montecarlo --runs 500
+    python -m replication scorecard
+    python -m replication drift --window 20
+    python -m replication forensics
+    python -m replication policy --preset strict
+    python -m replication templates --list
+    python -m replication export --format json
+    python -m replication topology
+    python -m replication lineage
+    python -m replication escalation
+    python -m replication killchain
+    python -m replication watermark --strategy structural
+    python -m replication game-theory --rounds 50
+    python -m replication covert-channels
+    python -m replication selfmod
+    python -m replication consensus --voters 5
+    python -m replication scenarios --count 10
+    python -m replication sensitivity --param max_depth
+    python -m replication optimizer --objective safety_first
+    python -m replication regression
+    python -m replication quarantine
+    python -m replication report --output report.html
+    python -m replication info
+
+Instead of remembering ``python -m replication.simulator``,
+``python -m replication.threats``, etc., everything lives under
+one roof with tab-completable subcommands.
+"""
+
+from __future__ import annotations
+
+import argparse
+import io
+import runpy
+import sys
+from typing import Callable, Dict, List, Optional, Tuple, Union
+
+
+def _ensure_utf8() -> None:
+    """Force UTF-8 stdout on Windows."""
+    if sys.stdout.encoding != "utf-8":
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, encoding="utf-8", errors="replace"
+        )
+
+
+# ── dispatch helpers ─────────────────────────────────────────────────
+
+def _call_main(module_name: str, args: List[str]) -> None:
+    """Call the main() function in a submodule."""
+    import importlib
+    mod = importlib.import_module(f".{module_name}", package="replication")
+    sys.argv = [f"replication {module_name}"] + args
+    mod.main()  # type: ignore[attr-defined]
+
+
+def _run_module(module_name: str, args: List[str]) -> None:
+    """Run a submodule as __main__ (for modules with inline __main__ blocks)."""
+    sys.argv = [f"replication {module_name}"] + args
+    runpy.run_module(
+        f"replication.{module_name}", run_name="__main__", alter_sys=True
+    )
+
+
+# Handler type: either a callable or a module name string for _run_module
+Handler = Union[Callable[[List[str]], None], str]
+
+
+def _cmd_info(_args: List[str]) -> None:
+    """Print version, module count, and available subcommands."""
+    from . import __version__
+    print(f"AI Replication Sandbox v{__version__}")
+    print(f"Python {sys.version}")
+    print(f"\n{len(SUBCOMMANDS)} subcommands available:")
+    max_name = max(len(name) for name in SUBCOMMANDS)
+    for name, (_, desc) in sorted(SUBCOMMANDS.items()):
+        print(f"  {name:<{max_name}}  {desc}")
+
+
+# ── subcommand registry ──────────────────────────────────────────────
+# Format: "cli-name": (handler, description)
+# handler is either:
+#   - a module name (str) → dispatched via _call_main or _run_module
+#   - a callable → called directly
+#
+# Modules with a main() function use _call_main; those with only
+# inline __main__ blocks use _run_module.
+
+# Modules that export a main() function
+_HAS_MAIN = {
+    "alignment", "capacity", "chaos", "comparator", "compliance",
+    "drift", "escalation", "exporter", "forensics", "goal_inference",
+    "influence", "killchain", "lineage", "montecarlo", "optimizer",
+    "policy", "prompt_injection", "regression", "reporter", "scenarios",
+    "scorecard", "sensitivity", "simulator", "templates", "threat_intel",
+    "threats", "watermark",
+}
+
+# Modules with inline __main__ blocks only (no main())
+_INLINE_ONLY = {
+    "consensus", "covert_channels", "game_theory", "hoarding",
+    "selfmod",
+}
+
+# Modules with _main() (private main)
+_PRIVATE_MAIN = {"honeypot"}
+
+# Modules with no CLI at all
+_NO_CLI = {"quarantine", "topology"}
+
+
+def _make_handler(module_name: str) -> Callable[[List[str]], None]:
+    """Create a dispatch function for a module."""
+    if module_name in _HAS_MAIN:
+        return lambda args, m=module_name: _call_main(m, args)
+    elif module_name in _INLINE_ONLY:
+        return lambda args, m=module_name: _run_module(m, args)
+    elif module_name in _PRIVATE_MAIN:
+        def _handler(args: List[str], m: str = module_name) -> None:
+            import importlib
+            mod = importlib.import_module(f".{m}", package="replication")
+            sys.argv = [f"replication {m}"] + args
+            mod._main()  # type: ignore[attr-defined]
+        return _handler
+    else:
+        return lambda args, m=module_name: _run_module(m, args)
+
+
+# (handler, description)
+SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
+    "simulate":         (_make_handler("simulator"),        "Run replication simulations"),
+    "threats":          (_make_handler("threats"),           "Simulate threat scenarios"),
+    "compliance":       (_make_handler("compliance"),        "Run compliance audits"),
+    "chaos":            (_make_handler("chaos"),             "Chaos/fault-injection testing"),
+    "montecarlo":       (_make_handler("montecarlo"),        "Monte Carlo risk analysis"),
+    "scorecard":        (_make_handler("scorecard"),         "Safety scorecard evaluation"),
+    "drift":            (_make_handler("drift"),             "Detect behavioral drift"),
+    "forensics":        (_make_handler("forensics"),         "Post-incident forensic analysis"),
+    "policy":           (_make_handler("policy"),            "Evaluate safety policies"),
+    "templates":        (_make_handler("templates"),         "Browse contract templates"),
+    "export":           (_make_handler("exporter"),          "Export audit data"),
+    "topology":         (_make_handler("topology"),          "Analyze replication topology"),
+    "lineage":          (_make_handler("lineage"),           "Track agent lineage"),
+    "escalation":       (_make_handler("escalation"),        "Detect privilege escalation"),
+    "killchain":        (_make_handler("killchain"),         "Kill chain analysis"),
+    "watermark":        (_make_handler("watermark"),         "Agent state watermarking"),
+    "game-theory":      (_make_handler("game_theory"),       "Game-theoretic analysis"),
+    "covert-channels":  (_make_handler("covert_channels"),   "Detect covert channels"),
+    "selfmod":          (_make_handler("selfmod"),           "Self-modification detection"),
+    "consensus":        (_make_handler("consensus"),         "Multi-agent consensus protocol"),
+    "scenarios":        (_make_handler("scenarios"),         "Generate test scenarios"),
+    "sensitivity":      (_make_handler("sensitivity"),       "Parameter sensitivity analysis"),
+    "optimizer":        (_make_handler("optimizer"),         "Contract parameter optimization"),
+    "regression":       (_make_handler("regression"),        "Safety regression detection"),
+    "quarantine":       (_make_handler("quarantine"),        "Quarantine management"),
+    "report":           (_make_handler("reporter"),          "Generate HTML reports"),
+    "alignment":        (_make_handler("alignment"),         "Alignment verification"),
+    "capacity":         (_make_handler("capacity"),          "Capacity planning analysis"),
+    "honeypot":         (_make_handler("honeypot"),          "Honeypot deployment & detection"),
+    "goal-inference":   (_make_handler("goal_inference"),    "Infer agent goals"),
+    "hoarding":         (_make_handler("hoarding"),          "Resource hoarding detection"),
+    "influence":        (_make_handler("influence"),         "Influence propagation analysis"),
+    "prompt-injection": (_make_handler("prompt_injection"),  "Prompt injection testing"),
+    "threat-intel":     (_make_handler("threat_intel"),      "Threat intelligence feeds"),
+    "comparator":       (_make_handler("comparator"),        "Compare simulation runs"),
+    "info":             (_cmd_info,                          "Show version and available commands"),
+}
+
+
+# ── main ─────────────────────────────────────────────────────────────
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    """Unified CLI dispatcher."""
+    _ensure_utf8()
+
+    parser = argparse.ArgumentParser(
+        prog="python -m replication",
+        description="AI Replication Sandbox — unified command-line interface",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=_build_epilog(),
+    )
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=list(SUBCOMMANDS.keys()),
+        metavar="COMMAND",
+        help="subcommand to run (see list below)",
+    )
+    parser.add_argument(
+        "subargs",
+        nargs=argparse.REMAINDER,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--version", "-V",
+        action="store_true",
+        help="show version and exit",
+    )
+    parser.add_argument(
+        "--list", "-l",
+        action="store_true",
+        dest="list_commands",
+        help="list all available subcommands",
+    )
+
+    args = parser.parse_args(argv)
+
+    if args.version:
+        from . import __version__
+        print(f"ai-replication-sandbox {__version__}")
+        return
+
+    if args.list_commands:
+        _cmd_info([])
+        return
+
+    if args.command is None:
+        parser.print_help()
+        return
+
+    handler, _desc = SUBCOMMANDS[args.command]
+    handler(args.subargs)
+
+
+def _build_epilog() -> str:
+    lines = ["Available commands:\n"]
+    max_name = max(len(n) for n in SUBCOMMANDS)
+    for name, (_fn, desc) in sorted(SUBCOMMANDS.items()):
+        lines.append(f"  {name:<{max_name}}  {desc}")
+    lines.append(
+        "\nRun 'python -m replication COMMAND --help' for command-specific options."
+    )
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    main()
