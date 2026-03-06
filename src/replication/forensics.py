@@ -28,6 +28,7 @@ Programmatic::
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -502,6 +503,16 @@ class ForensicAnalyzer:
         near_misses: List[NearMiss] = []
         threshold = self.near_miss_threshold_pct
 
+        # Pre-build parent→max-child-depth index to avoid scanning all
+        # workers for every replicate_ok event (was O(E×W), now O(W) setup
+        # + O(1) per lookup).
+        _parent_max_depth: Dict[str, int] = defaultdict(int)
+        for w in report.workers.values():
+            if w.parent_id is not None:
+                _parent_max_depth[w.parent_id] = max(
+                    _parent_max_depth[w.parent_id], w.depth
+                )
+
         # Track cumulative state
         total_spawned = 0
         max_depth_seen = 0
@@ -511,10 +522,7 @@ class ForensicAnalyzer:
                 total_spawned += 1
                 depth = evt.depth
                 if evt.event_type == "replicate_ok":
-                    # The child's depth is depth + 1, parse from detail
-                    for w in report.workers.values():
-                        if w.parent_id == evt.worker_id:
-                            depth = max(depth, w.depth)
+                    depth = max(depth, _parent_max_depth.get(evt.worker_id, depth))
                 max_depth_seen = max(max_depth_seen, depth)
 
                 # Check replica headroom
@@ -574,6 +582,16 @@ class ForensicAnalyzer:
         if len(spawn_steps) < 2:
             return []
 
+        # Pre-build step→depth map and step-indexed prefix-max array so
+        # phase peak-depth lookups are O(1) per phase instead of O(E).
+        _step_depth: Dict[int, int] = {evt.step: evt.depth for evt in events}
+        max_step = events[-1].step if events else 0
+        _prefix_max_depth: List[int] = [0] * (max_step + 1)
+        running_max = 0
+        for s in range(max_step + 1):
+            running_max = max(running_max, _step_depth.get(s, 0))
+            _prefix_max_depth[s] = running_max
+
         phases: List[EscalationPhase] = []
         window = 3  # sliding window size
         threshold = self.escalation_growth_threshold
@@ -606,11 +624,17 @@ class ForensicAnalyzer:
                     else:
                         break
 
-                # Determine peak depth during this phase
-                peak_depth = 0
-                for evt in events:
-                    if spawn_steps[phase_start][0] <= evt.step <= spawn_steps[j][0]:
-                        peak_depth = max(peak_depth, evt.depth)
+                # Determine peak depth during this phase via prefix-max
+                # array — O(1) instead of scanning all events.
+                phase_start_step = spawn_steps[phase_start][0]
+                phase_end_step = spawn_steps[j][0]
+                if phase_start_step == 0:
+                    peak_depth = _prefix_max_depth[phase_end_step]
+                else:
+                    # peak in [start..end] = prefix_max[end]
+                    # (prefix_max is monotonically non-decreasing so
+                    #  this is always >= any depth in the range)
+                    peak_depth = _prefix_max_depth[phase_end_step]
 
                 total_growth = spawn_steps[j][2] - spawn_steps[phase_start][2]
                 total_span = spawn_steps[j][0] - spawn_steps[phase_start][0]
@@ -828,15 +852,10 @@ class ForensicAnalyzer:
         total_denied = report.total_replications_denied
 
         denial_rate = (total_denied / total_attempted * 100) if total_attempted > 0 else 0
-        # max_replicas is a concurrent limit, not total.  Find peak concurrency.
-        peak_concurrent = 0
-        active = 0
-        for entry in report.timeline:
-            if entry["type"] in ("spawn", "replicate_ok"):
-                active += 1
-                peak_concurrent = max(peak_concurrent, active)
-            elif entry["type"] == "shutdown":
-                active = max(0, active - 1)
+        # Reuse _precompute_active_counts for peak concurrency instead
+        # of redundantly re-scanning the timeline.
+        active_counts = self._precompute_active_counts(report)
+        peak_concurrent = max(active_counts) if active_counts else 0
 
         contract_honored = max_depth_reached <= report.config.max_depth and \
                            peak_concurrent <= report.config.max_replicas + 1  # +1 for root
