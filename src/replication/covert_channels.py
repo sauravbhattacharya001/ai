@@ -284,11 +284,16 @@ class CovertChannelDetector:
         agents = sorted({m.sender for m in messages} | {m.receiver for m in messages})
         pairs = self._group_by_pair(messages)
 
+        # Pre-compute O(1) message→index lookup (avoids O(n) list.index per message)
+        msg_index = {id(m): i for i, m in enumerate(messages)}
+
         signals: List[CovertSignal] = []
         profiles: List[PairProfile] = []
 
         for (sender, receiver), msgs in pairs.items():
-            pair_signals, profile = self._analyze_pair(sender, receiver, msgs, messages)
+            pair_signals, profile = self._analyze_pair(
+                sender, receiver, msgs, messages, msg_index,
+            )
             signals.extend(pair_signals)
             profiles.append(profile)
 
@@ -396,14 +401,19 @@ class CovertChannelDetector:
         receiver: str,
         msgs: List[AgentMessage],
         all_msgs: List[AgentMessage],
+        msg_index: Optional[Dict[int, int]] = None,
     ) -> Tuple[List[CovertSignal], PairProfile]:
         """Analyze a single sender→receiver pair."""
         signals: List[CovertSignal] = []
         agents = [sender, receiver]
 
+        # Build O(1) lookup from message id to index if not provided
+        if msg_index is None:
+            msg_index = {id(m): i for i, m in enumerate(all_msgs)}
+
         # Content analysis
         for i, msg in enumerate(msgs):
-            idx = all_msgs.index(msg) if msg in all_msgs else i
+            idx = msg_index.get(id(msg), i)
             signals.extend(self._content_analysis(
                 msg.content, [msg], [idx], agents,
             ))
@@ -656,17 +666,20 @@ class CovertChannelDetector:
 
         # Find n-grams shared by specific agent pairs but rare globally
         agent_list = list(agent_ngrams.keys())
+        # Pre-compute per-agent total n-gram counts (avoids repeated sum() calls)
+        agent_totals = {a: sum(c.values()) for a, c in agent_ngrams.items()}
         for i in range(len(agent_list)):
             for j in range(i + 1, len(agent_list)):
                 a1, a2 = agent_list[i], agent_list[j]
                 shared = set(agent_ngrams[a1].keys()) & set(agent_ngrams[a2].keys())
+                pair_total = max(1, agent_totals[a1] + agent_totals[a2])
+                pair_signal_count = 0
                 for ng in shared:
+                    if pair_signal_count >= 5:
+                        break
                     pair_count = agent_ngrams[a1][ng] + agent_ngrams[a2][ng]
                     global_freq = global_ngrams[ng] / total
-                    pair_freq = pair_count / max(
-                        1,
-                        sum(agent_ngrams[a1].values()) + sum(agent_ngrams[a2].values()),
-                    )
+                    pair_freq = pair_count / pair_total
                     if global_freq > 0 and pair_freq / global_freq > self.config.ngram_anomaly_threshold:
                         signals.append(CovertSignal(
                             channel_type=ChannelType.FREQUENCY,
@@ -686,13 +699,7 @@ class CovertChannelDetector:
                             ],
                             agents_involved=[a1, a2],
                         ))
-                        # Limit signals per pair
-                        if sum(
-                            1 for s in signals
-                            if s.channel_type == ChannelType.FREQUENCY
-                            and set(s.agents_involved) == {a1, a2}
-                        ) >= 5:
-                            break
+                        pair_signal_count += 1
 
         return signals
 
