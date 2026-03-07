@@ -819,12 +819,13 @@ class DependencyGraph:
             ResourceKind.EXTERNAL: "diamond",
             ResourceKind.CACHE: "hexagon",
         }
+        # Pre-compute SPOFs once instead of calling _find_spofs() per resource
+        spof_names: FrozenSet[str] = frozenset(
+            s["resource"] for s in self._find_spofs()
+        )
         for res in self._resources.values():
             shape = kind_shapes.get(res.kind, "box")
-            color = "red" if any(
-                s["resource"] == res.name
-                for s in self._find_spofs()
-            ) else "black"
+            color = "red" if res.name in spof_names else "black"
             lines.append(
                 f'  "{res.name}" [shape={shape}, color={color}, '
                 f'label="{res.name}\\n({res.kind.value})"];'
