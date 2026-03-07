@@ -173,6 +173,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "comparator":       (_make_handler("comparator"),        "Compare simulation runs"),
     "what-if":          (_make_handler("what_if"),            "What-if analysis for config changes"),
     "attack-tree":      (_make_handler("attack_tree"),       "Attack tree threat modeling"),
+    "dep-graph":        (_make_handler("dependency_graph"),  "Resource dependency & cascade analysis"),
     "info":             (_cmd_info,                          "Show version and available commands"),
 }
 
