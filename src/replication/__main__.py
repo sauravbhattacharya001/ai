@@ -96,12 +96,12 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alignment", "capacity", "chaos", "comparator", "compliance",
-    "drift", "escalation", "exporter", "forensics", "goal_inference",
-    "influence", "killchain", "lineage", "montecarlo", "optimizer",
-    "policy", "prompt_injection", "regression", "reporter", "scenarios",
-    "scorecard", "sensitivity", "simulator", "templates", "threat_intel",
-    "threats", "watermark", "what_if",
+    "alignment", "attack_tree", "capacity", "chaos", "comparator",
+    "compliance", "drift", "escalation", "exporter", "forensics",
+    "goal_inference", "influence", "killchain", "lineage", "montecarlo",
+    "optimizer", "policy", "prompt_injection", "regression", "reporter",
+    "scenarios", "scorecard", "sensitivity", "simulator", "templates",
+    "threat_intel", "threats", "watermark", "what_if",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -172,6 +172,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "threat-intel":     (_make_handler("threat_intel"),      "Threat intelligence feeds"),
     "comparator":       (_make_handler("comparator"),        "Compare simulation runs"),
     "what-if":          (_make_handler("what_if"),            "What-if analysis for config changes"),
+    "attack-tree":      (_make_handler("attack_tree"),       "Attack tree threat modeling"),
     "info":             (_cmd_info,                          "Show version and available commands"),
 }
 

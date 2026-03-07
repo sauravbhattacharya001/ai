@@ -1,0 +1,24 @@
+feat: add Attack Tree Generator for structured threat modeling
+
+Implement Schneier-style attack trees (1999) for decomposing adversarial
+goals against the replication sandbox into AND/OR sub-goal trees with
+cost, difficulty, and likelihood annotations per leaf node.
+
+5 built-in threat goals with hand-crafted trees:
+- Unauthorized Replication (manifest forgery, contract gaps, direct spawn)
+- Sandbox Escape (resource limits, network policy, container breakout)
+- State Exfiltration (covert channels, direct access, audit pipeline)
+- Controller Takeover (API exploit, state corruption, social engineering)
+- Stealth Persistence (kill switch evasion, state smuggling, timer exploit)
+
+Features:
+- Bottom-up risk propagation (cost, likelihood, difficulty)
+- Path enumeration with Cartesian product for AND nodes
+- Cheapest-path and most-likely-path analysis
+- Mitigation coverage tracking per goal
+- ASCII tree visualization with optional annotations
+- JSON output for programmatic consumption
+- CLI: python -m replication attack-tree [--goal X] [--json] [--min-paths N]
+- Registered as 'attack-tree' in unified CLI dispatcher
+
+72 new tests, all 2817 tests pass.
