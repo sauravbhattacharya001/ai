@@ -349,16 +349,33 @@ class PromptInjectionDetector:
         Whether to check for encoded/obfuscated payloads (default True).
     custom_patterns : dict
         Additional {vector: [(pattern, severity), ...]} to extend detection.
+    max_text_length : int
+        Maximum input text length in characters (default 100_000).
+        Longer inputs are truncated before scanning to bound CPU and
+        memory usage — otherwise a multi-MB payload would run every
+        regex pattern and encoding check against unbounded text.
+    max_findings : int
+        Maximum findings per scan (default 200).  Caps memory usage
+        when a crafted message matches many overlapping patterns.
     """
+
+    #: Hard ceiling to prevent CPU/memory abuse from oversized inputs.
+    DEFAULT_MAX_TEXT_LENGTH = 100_000
+    #: Cap on accumulated findings per scan to bound memory.
+    DEFAULT_MAX_FINDINGS = 200
 
     def __init__(
         self,
         sensitivity: float = 1.0,
         enable_encoding: bool = True,
         custom_patterns: Optional[Dict[InjectionVector, List[Tuple[str, Severity]]]] = None,
+        max_text_length: int = DEFAULT_MAX_TEXT_LENGTH,
+        max_findings: int = DEFAULT_MAX_FINDINGS,
     ):
         self.sensitivity = max(0.1, sensitivity)
         self.enable_encoding = enable_encoding
+        self.max_text_length = max(1000, max_text_length)
+        self.max_findings = max(10, max_findings)
         self._patterns: Dict[InjectionVector, List[Tuple[str, Severity]]] = {
             InjectionVector.ROLE_IMPERSONATION: list(ROLE_IMPERSONATION_PATTERNS),
             InjectionVector.INSTRUCTION_OVERRIDE: list(INSTRUCTION_OVERRIDE_PATTERNS),
@@ -380,19 +397,34 @@ class PromptInjectionDetector:
     def scan(self, text: str, agent_id: Optional[str] = None) -> ScanResult:
         """Scan a single message for prompt injection attacks."""
         t0 = time.time()
-        result = ScanResult(text_length=len(text))
+        original_length = len(text)
+        result = ScanResult(text_length=original_length)
 
         if not text or not text.strip():
             result.scan_time_ms = (time.time() - t0) * 1000
             return result
 
+        # Enforce input size limit to prevent CPU/memory abuse.
+        # A multi-MB message would otherwise run 70+ regex patterns
+        # and per-word encoding checks, creating an O(n*m) DoS vector.
+        truncated = False
+        if len(text) > self.max_text_length:
+            text = text[:self.max_text_length]
+            truncated = True
+
         lower = text.lower()
 
         # Pattern-based detection
         for vector, patterns in self._patterns.items():
+            if len(result.findings) >= self.max_findings:
+                break
             for pat_str, severity in patterns:
+                if len(result.findings) >= self.max_findings:
+                    break
                 try:
                     for m in re.finditer(pat_str, lower):
+                        if len(result.findings) >= self.max_findings:
+                            break
                         result.findings.append(InjectionFinding(
                             vector=vector,
                             severity=severity,
@@ -405,7 +437,7 @@ class PromptInjectionDetector:
                     pass
 
         # Encoding evasion detection
-        if self.enable_encoding:
+        if self.enable_encoding and len(result.findings) < self.max_findings:
             self._check_encodings(text, result)
 
         # Compute risk score
@@ -511,6 +543,8 @@ class PromptInjectionDetector:
     def _check_base64(self, text: str, result: ScanResult) -> None:
         b64_pattern = re.compile(r'[A-Za-z0-9+/]{20,}={0,2}')
         for m in b64_pattern.finditer(text):
+            if len(result.encoding_findings) + len(result.findings) >= self.max_findings:
+                break
             candidate = m.group()
             try:
                 decoded = base64.b64decode(candidate).decode('utf-8', errors='ignore')
@@ -527,7 +561,12 @@ class PromptInjectionDetector:
 
     def _check_rot13(self, text: str, result: ScanResult) -> None:
         words = text.split()
-        for i, word in enumerate(words):
+        # Cap word iteration to prevent CPU abuse on padded messages
+        max_words = min(len(words), 20000)
+        for i in range(max_words):
+            if len(result.encoding_findings) + len(result.findings) >= self.max_findings:
+                break
+            word = words[i]
             if len(word) >= 6 and word.isalpha():
                 rot = word.translate(str.maketrans(
                     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
@@ -546,7 +585,12 @@ class PromptInjectionDetector:
     def _check_reversed(self, text: str, result: ScanResult) -> None:
         # Look for reversed sentences (5+ word sequences)
         sentences = re.split(r'[.!?\n]+', text)
-        for sent in sentences:
+        # Cap sentence iteration to bound CPU usage
+        max_sentences = min(len(sentences), 5000)
+        for idx in range(max_sentences):
+            if len(result.encoding_findings) + len(result.findings) >= self.max_findings:
+                break
+            sent = sentences[idx]
             stripped = sent.strip()
             if len(stripped) < 20:
                 continue
@@ -564,6 +608,8 @@ class PromptInjectionDetector:
     def _check_hex(self, text: str, result: ScanResult) -> None:
         hex_pattern = re.compile(r'(?:0x)?([0-9a-fA-F]{20,})')
         for m in hex_pattern.finditer(text):
+            if len(result.encoding_findings) + len(result.findings) >= self.max_findings:
+                break
             hex_str = m.group(1)
             try:
                 decoded = bytes.fromhex(hex_str).decode('utf-8', errors='ignore')
