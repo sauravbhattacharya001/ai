@@ -520,6 +520,14 @@ class ConsensusProtocol:
     def detect_voting_blocs(self, threshold: float = 0.9) -> List[List[str]]:
         """Detect groups of voters that always agree (potential collusion).
 
+        Uses maximal-clique enumeration (Bron-Kerbosch) on the agreement
+        graph, where an edge connects two voters whose agreement rate meets
+        the threshold.  This is **order-independent** — the same blocs are
+        returned regardless of voter registration order.
+
+        A voter may appear in multiple overlapping blocs when the pairwise
+        agreement structure supports it.
+
         Parameters
         ----------
         threshold : float
@@ -529,30 +537,42 @@ class ConsensusProtocol:
         Returns
         -------
         list of list of str
-            Each inner list is a group of voters forming a bloc.
+            Each inner list is a group of voters forming a bloc (size ≥ 2),
+            sorted by descending size then lexicographic first member.
         """
         if threshold <= 0 or threshold > 1:
             raise ValueError("Threshold must be in (0, 1]")
         matrix = self.voter_agreement_matrix()
-        visited = set()
-        blocs = []
 
-        for voter in self._voter_ids:
-            if voter in visited:
-                continue
-            bloc = [voter]
-            visited.add(voter)
-            for other in self._voter_ids:
-                if other in visited:
-                    continue
-                # Check agreement with all current bloc members
-                if all(matrix[m].get(other, 0) >= threshold for m in bloc):
-                    bloc.append(other)
-                    visited.add(other)
-            if len(bloc) > 1:
-                blocs.append(bloc)
+        # Build adjacency sets for the agreement graph
+        voters = sorted(self._voter_ids)
+        adj: dict[str, set[str]] = {v: set() for v in voters}
+        for i, a in enumerate(voters):
+            for b in voters[i + 1:]:
+                if matrix[a].get(b, 0) >= threshold:
+                    adj[a].add(b)
+                    adj[b].add(a)
 
-        return blocs
+        # Bron-Kerbosch with pivoting for maximal cliques
+        cliques: List[List[str]] = []
+
+        def _bk(r: set, p: set, x: set) -> None:
+            if not p and not x:
+                if len(r) >= 2:
+                    cliques.append(sorted(r))
+                return
+            # Pick pivot that maximises |P ∩ N(u)| to minimise branches
+            pivot = max(p | x, key=lambda u: len(p & adj[u]))
+            for v in list(p - adj[pivot]):
+                _bk(r | {v}, p & adj[v], x & adj[v])
+                p.remove(v)
+                x.add(v)
+
+        _bk(set(), set(voters), set())
+
+        # Sort blocs: largest first, ties broken by first member
+        cliques.sort(key=lambda c: (-len(c), c[0]))
+        return cliques
 
     # -- Audit chain -------------------------------------------------------
 

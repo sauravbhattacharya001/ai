@@ -495,6 +495,90 @@ class TestVoterAnalysis:
         with pytest.raises(ValueError, match="Threshold"):
             three_voters.detect_voting_blocs(threshold=1.5)
 
+    def test_voting_blocs_order_independent(self):
+        """Regression: blocs must not depend on voter registration order.
+
+        Issue #28 — the greedy algorithm produced different blocs when
+        voter iteration order changed.  With A↔B high, B↔C high,
+        A↔C low at threshold=0.9, the correct blocs are {A,B} and {B,C}
+        (B can appear in both).
+        """
+        # Try two different registration orders
+        for order in [["a", "b", "c"], ["c", "b", "a"]]:
+            cp = ConsensusProtocol(voter_ids=order)
+            # Rounds where a and b agree (both APPROVE), c disagrees
+            for _ in range(10):
+                pid = cp.propose(order[0], "quarantine")
+                cp.vote(pid, "a", VoteValue.APPROVE)
+                cp.vote(pid, "b", VoteValue.APPROVE)
+                cp.vote(pid, "c", VoteValue.REJECT)
+                cp.tally(pid)
+            # Rounds where b and c agree (both REJECT), a disagrees
+            for _ in range(10):
+                pid = cp.propose(order[0], "quarantine")
+                cp.vote(pid, "a", VoteValue.APPROVE)
+                cp.vote(pid, "b", VoteValue.REJECT)
+                cp.vote(pid, "c", VoteValue.REJECT)
+                cp.tally(pid)
+            # a↔b agree in first 10 (10/20=50%), b↔c agree in last 10 (10/20=50%)
+            # Need higher agreement: add rounds where all three agree on APPROVE
+            for _ in range(80):
+                pid = cp.propose(order[0], "quarantine")
+                cp.vote(pid, "a", VoteValue.APPROVE)
+                cp.vote(pid, "b", VoteValue.APPROVE)
+                cp.vote(pid, "c", VoteValue.APPROVE)
+                cp.tally(pid)
+            # Now: a↔b agree 90/100=90%, b↔c agree 90/100=90%, a↔c agree 80/100=80%
+            blocs = cp.detect_voting_blocs(threshold=0.9)
+            bloc_sets = [set(b) for b in blocs]
+            # Both {a,b} and {b,c} should be found regardless of order
+            assert {"a", "b"} in bloc_sets, f"Missing {{a,b}} with order {order}: {bloc_sets}"
+            assert {"b", "c"} in bloc_sets, f"Missing {{b,c}} with order {order}: {bloc_sets}"
+
+    def test_voting_blocs_overlapping_membership(self, five_voters):
+        """A voter may appear in multiple blocs when pairwise criteria support it."""
+        # Create scenario: a agrees with b AND c, but b and c disagree
+        for _ in range(5):
+            pid = five_voters.propose("a", "quarantine")
+            five_voters.vote(pid, "a", VoteValue.APPROVE)
+            five_voters.vote(pid, "b", VoteValue.APPROVE)
+            five_voters.vote(pid, "c", VoteValue.APPROVE)
+            five_voters.vote(pid, "d", VoteValue.REJECT)
+            five_voters.vote(pid, "e", VoteValue.REJECT)
+            five_voters.tally(pid)
+        for _ in range(5):
+            pid = five_voters.propose("a", "quarantine")
+            five_voters.vote(pid, "a", VoteValue.APPROVE)
+            five_voters.vote(pid, "b", VoteValue.REJECT)
+            five_voters.vote(pid, "c", VoteValue.APPROVE)
+            five_voters.vote(pid, "d", VoteValue.APPROVE)
+            five_voters.vote(pid, "e", VoteValue.REJECT)
+            five_voters.tally(pid)
+        blocs = five_voters.detect_voting_blocs(threshold=0.9)
+        bloc_sets = [set(b) for b in blocs]
+        # a and c always agree (10/10) — should form a bloc
+        assert {"a", "c"} in bloc_sets or any(
+            {"a", "c"}.issubset(s) for s in bloc_sets
+        ), f"a and c should be in a bloc together: {bloc_sets}"
+
+    def test_voting_blocs_sorted_output(self, five_voters):
+        """Blocs are sorted by descending size, then by first member."""
+        for _ in range(5):
+            pid = five_voters.propose("a", "quarantine")
+            five_voters.vote(pid, "a", VoteValue.APPROVE)
+            five_voters.vote(pid, "b", VoteValue.APPROVE)
+            five_voters.vote(pid, "c", VoteValue.APPROVE)
+            five_voters.vote(pid, "d", VoteValue.REJECT)
+            five_voters.vote(pid, "e", VoteValue.REJECT)
+            five_voters.tally(pid)
+        blocs = five_voters.detect_voting_blocs(threshold=0.9)
+        # Verify descending size order
+        for i in range(len(blocs) - 1):
+            assert len(blocs[i]) >= len(blocs[i + 1])
+        # Verify each bloc is internally sorted
+        for bloc in blocs:
+            assert bloc == sorted(bloc)
+
 
 # ── Summary and rendering ───────────────────────────────────────
 
