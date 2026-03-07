@@ -238,6 +238,10 @@ class Controller:
     def deregister(self, worker_id: str, reason: str) -> None:
         if worker_id in self.registry:
             del self.registry[worker_id]
+            # Clean up ancillary state so deregistered workers don't
+            # leak memory in long-running controllers.
+            self.spawn_timestamps.pop(worker_id, None)
+            self._quarantined.discard(worker_id)
             self.logger.log("worker_deregistered", worker_id=worker_id, reason=reason)
 
     def kill_switch(self, orchestrator) -> None:
