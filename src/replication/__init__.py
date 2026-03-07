@@ -273,6 +273,17 @@ from .watermark import (
     RobustnessReport,
     RobustnessResult,
 )
+from .timeline import (
+    TimelineReconstructor,
+    TimelineConfig,
+    Timeline,
+    TimelineEvent,
+    TimelineStats,
+    TimelineSpan,
+    EventSource,
+    EventSeverity,
+    EventCategory,
+)
 
 __all__ = [
     # contract
@@ -504,4 +515,14 @@ __all__ = [
     "VerifyStatus",
     "RobustnessReport",
     "RobustnessResult",
+    # timeline
+    "TimelineReconstructor",
+    "TimelineConfig",
+    "Timeline",
+    "TimelineEvent",
+    "TimelineStats",
+    "TimelineSpan",
+    "EventSource",
+    "EventSeverity",
+    "EventCategory",
 ]
