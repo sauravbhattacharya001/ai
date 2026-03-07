@@ -101,7 +101,7 @@ _HAS_MAIN = {
     "influence", "killchain", "lineage", "montecarlo", "optimizer",
     "policy", "prompt_injection", "regression", "reporter", "scenarios",
     "scorecard", "sensitivity", "simulator", "templates", "threat_intel",
-    "threats", "watermark",
+    "threats", "timeline", "watermark",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -171,6 +171,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "prompt-injection": (_make_handler("prompt_injection"),  "Prompt injection testing"),
     "threat-intel":     (_make_handler("threat_intel"),      "Threat intelligence feeds"),
     "comparator":       (_make_handler("comparator"),        "Compare simulation runs"),
+    "timeline":         (_make_handler("timeline"),          "Reconstruct unified event timeline"),
     "info":             (_cmd_info,                          "Show version and available commands"),
 }
 
