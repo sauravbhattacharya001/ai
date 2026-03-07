@@ -294,30 +294,52 @@ class ContractOptimizer:
 
         # Refine around the best passing candidate
         if self.config.refine and passing:
+            # Build a set of already-tested parameter combos for O(1) dedup
+            tested = {
+                (c.max_depth, c.max_replicas, c.cooldown_seconds)
+                for c in candidates
+            }
+
             for step in range(self.config.refine_steps):
                 # Re-sort passing so we refine around the current best
                 passing.sort(key=lambda c: c.score, reverse=True)
                 best = passing[0]
-                # Search ±1 around best depth, ±2 around best replicas
+
+                # Compute cooldown refinement values: best ± half the gap
+                # to the nearest coarse-grid neighbours.
+                sorted_cvs = sorted(self.config.cooldown_values)
+                cooldown_offsets = {best.cooldown_seconds}
+                idx = None
+                for ci, cv in enumerate(sorted_cvs):
+                    if cv == best.cooldown_seconds:
+                        idx = ci
+                        break
+                if idx is not None:
+                    if idx > 0:
+                        half_lo = (sorted_cvs[idx] + sorted_cvs[idx - 1]) / 2.0
+                        cooldown_offsets.add(round(half_lo, 4))
+                    if idx < len(sorted_cvs) - 1:
+                        half_hi = (sorted_cvs[idx] + sorted_cvs[idx + 1]) / 2.0
+                        cooldown_offsets.add(round(half_hi, 4))
+
+                # Search ±1 depth, ±2 replicas, and refined cooldowns
                 for d_offset in [-1, 0, 1]:
                     for r_offset in [-2, -1, 0, 1, 2]:
                         rd = best.max_depth + d_offset
                         rr = best.max_replicas + r_offset
                         if rd < 1 or rr < 1:
                             continue
-                        # Check we haven't already tested this
-                        key = (rd, rr, best.cooldown_seconds)
-                        if any(
-                            (c.max_depth, c.max_replicas, c.cooldown_seconds) == key
-                            for c in candidates
-                        ):
-                            continue
-                        result = self._evaluate_candidate(
-                            rd, rr, best.cooldown_seconds, policy, objective,
-                        )
-                        candidates.append(result)
-                        if result.policy_passed:
-                            passing.append(result)
+                        for cd in cooldown_offsets:
+                            key = (rd, rr, cd)
+                            if key in tested:
+                                continue
+                            tested.add(key)
+                            result = self._evaluate_candidate(
+                                rd, rr, cd, policy, objective,
+                            )
+                            candidates.append(result)
+                            if result.policy_passed:
+                                passing.append(result)
 
             # Re-sort after refinement
             candidates.sort(key=lambda c: c.score, reverse=True)
