@@ -33,22 +33,12 @@ from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Tuple
 
 from .simulator import ScenarioConfig, Simulator, SimulationReport, Strategy
+from ._helpers import box_header
 
 
-# ── Helpers ──────────────────────────────────────────────────────
-
-
-def _box_header(title: str, width: int = 43) -> List[str]:
-    """Create a box-drawing header with centered title.
-
-    Returns 3 lines: top border, title line, bottom border.
-    """
-    inner = width - 2  # subtract 2 for the │ characters
-    return [
-        "┌" + "─" * inner + "┐",
-        "│" + title.center(inner) + "│",
-        "└" + "─" * inner + "┘",
-    ]
+def _box_header(title: str, width: int = 43):
+    """Forensic-width box header (narrower than the default 57)."""
+    return box_header(title, width)
 
 
 # ── Data models ──────────────────────────────────────────────────

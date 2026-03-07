@@ -33,19 +33,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
-
-
-# ── Statistics helpers (reuse from montecarlo where needed) ─────────────
-
-def _mean(values: List[float]) -> float:
-    return sum(values) / len(values) if values else 0.0
-
-
-def _std(values: List[float]) -> float:
-    if len(values) < 2:
-        return 0.0
-    m = _mean(values)
-    return math.sqrt(sum((x - m) ** 2 for x in values) / (len(values) - 1))
+from ._helpers import stats_mean as _mean, stats_std as _std
 
 
 # ── Parameter definitions ──────────────────────────────────────────────

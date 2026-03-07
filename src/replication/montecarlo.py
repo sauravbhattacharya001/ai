@@ -37,12 +37,11 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
+from ._helpers import stats_mean as _mean, stats_std as _std, box_header as _box_header
 
 
 # ── Statistics helpers ──────────────────────────────────────────────────
-
-def _mean(values: List[float]) -> float:
-    return sum(values) / len(values) if values else 0.0
+# _mean, _std, and _box_header are imported from ._helpers above.
 
 
 def _median(values: List[float]) -> float:
@@ -59,13 +58,6 @@ def _median_sorted(s: List[float]) -> float:
     n = len(s)
     mid = n // 2
     return (s[mid - 1] + s[mid]) / 2 if n % 2 == 0 else s[mid]
-
-
-def _std(values: List[float]) -> float:
-    if len(values) < 2:
-        return 0.0
-    m = _mean(values)
-    return math.sqrt(sum((x - m) ** 2 for x in values) / (len(values) - 1))
 
 
 def _percentile(values: List[float], p: float) -> float:
@@ -99,14 +91,6 @@ def _ci95(values: List[float]) -> Tuple[float, float]:
     return (m - margin, m + margin)
 
 
-def _box_header(title: str, width: int = 57) -> List[str]:
-    """Create a box-drawing header with centered title."""
-    inner = width - 2
-    return [
-        "┌" + "─" * inner + "┐",
-        "│" + title.center(inner) + "│",
-        "└" + "─" * inner + "┘",
-    ]
 
 
 # ── Data models ─────────────────────────────────────────────────────────

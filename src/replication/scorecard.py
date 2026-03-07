@@ -36,6 +36,7 @@ from .simulator import Simulator, ScenarioConfig, SimulationReport, PRESETS
 from .threats import ThreatSimulator, ThreatConfig, ThreatReport
 from .montecarlo import MonteCarloAnalyzer, MonteCarloConfig, MonteCarloResult
 from .policy import SafetyPolicy, PolicyResult
+from ._helpers import box_header as _box_header
 
 
 # ── Grading ─────────────────────────────────────────────────────────────
@@ -68,16 +69,6 @@ def _grade(score: float) -> str:
     if score >= 60:
         return "D-"
     return "F"
-
-
-def _box_header(title: str, width: int = 57) -> List[str]:
-    """Create a box-drawing header with centered title."""
-    inner = width - 2
-    return [
-        "┌" + "─" * inner + "┐",
-        "│" + title.center(inner) + "│",
-        "└" + "─" * inner + "┘",
-    ]
 
 
 # ── Data models ─────────────────────────────────────────────────────────
