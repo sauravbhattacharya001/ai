@@ -178,6 +178,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "dep-graph":        (_make_handler("dependency_graph"),  "Resource dependency & cascade analysis"),
     "canary":           (_make_handler("canary"),            "Canary token planting & exfiltration detection"),
     "info":             (_cmd_info,                          "Show version and available commands"),
+    "trust-propagation": (_make_handler("trust_propagation"), "Trust network propagation & Sybil detection"),
 }
 
 

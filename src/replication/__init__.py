@@ -262,6 +262,13 @@ from .killchain import (
     STAGE_RISK_WEIGHTS,
     STRATEGY_PROFILES,
 )
+from .trust_propagation import (
+    TrustNetwork,
+    TrustAgent,
+    TrustEdge,
+    TrustReport,
+    ThreatDetection,
+)
 from .watermark import (
     WatermarkEngine,
     WatermarkConfig,
@@ -494,6 +501,12 @@ __all__ = [
     "STAGE_ORDER",
     "STAGE_RISK_WEIGHTS",
     "STRATEGY_PROFILES",
+    # trust_propagation
+    "TrustNetwork",
+    "TrustAgent",
+    "TrustEdge",
+    "TrustReport",
+    "ThreatDetection",
     # watermark
     "WatermarkEngine",
     "WatermarkConfig",
