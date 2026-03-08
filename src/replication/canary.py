@@ -51,6 +51,7 @@ import argparse
 import hashlib
 import json
 import random
+import secrets
 import string
 import sys
 from dataclasses import dataclass, field
@@ -217,12 +218,26 @@ class CanaryConfig:
 # ── Token generators ─────────────────────────────────────────────────
 
 
-def _rand_hex(n: int, rng: random.Random) -> str:
-    return "".join(rng.choices("0123456789abcdef", k=n))
+def _rand_hex(n: int, rng: random.Random = None) -> str:  # noqa: ARG001
+    """Generate *n* cryptographically random hex characters.
+
+    Uses ``secrets.token_hex`` (CSPRNG) so that canary token values are
+    unpredictable even if an attacker recovers the Mersenne Twister state
+    from observed ``rng`` outputs (CWE-330).  The *rng* parameter is
+    accepted for backward compatibility but ignored.
+    """
+    # secrets.token_hex(k) returns 2*k hex chars; take first n
+    return secrets.token_hex((n + 1) // 2)[:n]
 
 
-def _rand_alnum(n: int, rng: random.Random) -> str:
-    return "".join(rng.choices(string.ascii_letters + string.digits, k=n))
+def _rand_alnum(n: int, rng: random.Random = None) -> str:  # noqa: ARG001
+    """Generate *n* cryptographically random alphanumeric characters.
+
+    Uses ``secrets.choice`` (CSPRNG) instead of ``random.choices`` to
+    prevent Mersenne Twister state recovery attacks (CWE-330).
+    """
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(n))
 
 
 _LOCATIONS = {
