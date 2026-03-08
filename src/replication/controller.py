@@ -65,16 +65,13 @@ class Controller:
         callers from lying about their position in the tree.
         """
         now = datetime.now(timezone.utc)
-        self.can_spawn(parent_id, _now=now)
+        parent_entry = self._can_spawn_returning_parent(parent_id, _now=now)
 
         # Derive depth from the parent's registry entry rather than
         # trusting the caller-supplied value.  This prevents depth
         # spoofing where a caller claims depth=0 while actually being
         # several levels deep.
         if parent_id:
-            parent_entry = self.registry.get(parent_id)
-            # can_spawn already verified parent existence, but guard
-            # against race conditions defensively.
             if parent_entry is None:
                 raise ReplicationDenied("Parent unknown")
             depth = parent_entry.manifest.depth + 1
@@ -126,6 +123,17 @@ class Controller:
         self.logger.audit("controller_quarantine_clear", worker_id=worker_id)
 
     def can_spawn(self, parent_id: Optional[str], _now: Optional[datetime] = None) -> None:
+        """Public check — raises :class:`ReplicationDenied` on policy violation."""
+        self._can_spawn_returning_parent(parent_id, _now=_now)
+
+    def _can_spawn_returning_parent(
+        self, parent_id: Optional[str], _now: Optional[datetime] = None
+    ) -> Optional[RegistryEntry]:
+        """Enforce spawn policy and return the parent's registry entry.
+
+        Returns *None* for root workers.  Used by :meth:`issue_manifest`
+        to avoid a redundant ``registry.get`` after the policy check.
+        """
         if self.kill_switch_engaged:
             raise ReplicationDenied("Kill switch engaged")
         if parent_id and self.is_quarantined(parent_id):
@@ -135,6 +143,9 @@ class Controller:
             self.logger.audit("deny_quota", reason="max_replicas")
             raise ReplicationDenied("Replica quota exceeded")
         if parent_id:
+            parent_entry = self.registry.get(parent_id)
+            if not parent_entry:
+                raise ReplicationDenied("Parent unknown")
             last_spawn = self.spawn_timestamps.get(parent_id)
             if last_spawn:
                 if _now is None:
@@ -143,20 +154,16 @@ class Controller:
                 if _now - last_spawn < cooldown:
                     self.logger.audit("deny_cooldown", parent_id=parent_id)
                     raise ReplicationDenied("Cooldown not satisfied")
-            parent_entry = self.registry.get(parent_id)
-            if not parent_entry:
-                raise ReplicationDenied("Parent unknown")
             if parent_entry.manifest.depth + 1 > self.contract.max_depth:
                 self.logger.audit("deny_depth", parent_id=parent_id)
                 raise ReplicationDenied("Depth exceeded")
+            return parent_entry
         else:
-            # Root workers must not exceed max_depth either.  Without
-            # this check a caller could issue a root manifest at an
-            # arbitrary depth, effectively pre-positioning the tree
-            # deeper than the contract allows.
+            # Root workers must not exceed max_depth either.
             if self.contract.max_depth < 0:
                 self.logger.audit("deny_depth", reason="root_depth_exceeded")
                 raise ReplicationDenied("Depth exceeded")
+            return None
 
     def register_worker(self, manifest: Manifest) -> None:
         self.verify_manifest(manifest)
@@ -192,9 +199,10 @@ class Controller:
             self.logger.audit("deny_stop_condition", condition=stop_condition.name, worker_id=manifest.worker_id)
             raise ReplicationDenied(f"Stop condition triggered: {stop_condition.name}")
 
-        self.registry[manifest.worker_id] = RegistryEntry(manifest=manifest, last_heartbeat=datetime.now(timezone.utc))
+        now = datetime.now(timezone.utc)
+        self.registry[manifest.worker_id] = RegistryEntry(manifest=manifest, last_heartbeat=now)
         if manifest.parent_id:
-            self.spawn_timestamps[manifest.parent_id] = datetime.now(timezone.utc)
+            self.spawn_timestamps[manifest.parent_id] = now
         self.logger.log("worker_registered", worker_id=manifest.worker_id, parent_id=manifest.parent_id, depth=manifest.depth)
 
     def heartbeat(self, worker_id: str) -> None:
