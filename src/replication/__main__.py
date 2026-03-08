@@ -181,6 +181,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "info":             (_cmd_info,                          "Show version and available commands"),
     "trust-propagation": (_make_handler("trust_propagation"), "Trust network propagation & Sybil detection"),
     "threat-correlate":  (_make_handler("threat_correlator"), "Cross-module threat signal correlation"),
+    "risk-profile":      (_make_handler("risk_profiler"),    "Unified agent risk profiling & fleet dossiers"),
 }
 
 

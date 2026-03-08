@@ -7,7 +7,7 @@ Convenience re-exports so consumers can write::
 instead of reaching into submodules.
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 __license__ = "MIT"
 
 from .contract import (
@@ -295,6 +295,19 @@ from .threat_correlator import (
     ResponseUrgency,
     BUILTIN_RULES as CORRELATION_RULES,
 )
+from .risk_profiler import (
+    RiskProfiler,
+    ProfilerConfig,
+    FleetRiskReport,
+    AgentDossier,
+    Finding,
+    FindingSeverity,
+    FindingSource,
+    RiskCategory,
+    RiskTier,
+    CategoryScore,
+    Mitigation,
+)
 
 __all__ = [
     # contract
@@ -546,4 +559,16 @@ __all__ = [
     "ThreatLevel",
     "ResponseUrgency",
     "CORRELATION_RULES",
+    # risk_profiler
+    "RiskProfiler",
+    "ProfilerConfig",
+    "FleetRiskReport",
+    "AgentDossier",
+    "Finding",
+    "FindingSeverity",
+    "FindingSource",
+    "RiskCategory",
+    "RiskTier",
+    "CategoryScore",
+    "Mitigation",
 ]
