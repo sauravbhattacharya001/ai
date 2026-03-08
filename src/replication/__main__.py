@@ -96,7 +96,8 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alignment", "attack_tree", "canary", "capacity", "chaos", "comparator",
+    "alignment", "attack_tree", "behavior_profiler", "canary", "capacity",
+    "chaos", "comparator",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -173,6 +174,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "comparator":       (_make_handler("comparator"),        "Compare simulation runs"),
     "what-if":          (_make_handler("what_if"),            "What-if analysis for config changes"),
     "attack-tree":      (_make_handler("attack_tree"),       "Attack tree threat modeling"),
+    "behavior-profile": (_make_handler("behavior_profiler"), "Agent behavioral anomaly detection"),
     "dep-graph":        (_make_handler("dependency_graph"),  "Resource dependency & cascade analysis"),
     "canary":           (_make_handler("canary"),            "Canary token planting & exfiltration detection"),
     "info":             (_cmd_info,                          "Show version and available commands"),
