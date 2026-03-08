@@ -691,12 +691,29 @@ class ThreatCorrelator:
                 key=lambda s: _SEVERITY_WEIGHT[s.severity], reverse=True
             )
 
-            matched = window_signals[
-                : max(rule.min_signals, len(rule.required_sources))
-            ]
+            # Ensure all required sources are represented in matched.
+            # Start with the top signals by severity, then guarantee
+            # required-source coverage by pulling in lower-severity
+            # signals if needed (fixes bug where required sources
+            # present only in LOW/INFO signals were dropped).
+            top_count = max(rule.min_signals, len(rule.required_sources))
+            matched = window_signals[:top_count]
+            matched_sources = {s.source for s in matched}
+
+            # Phase 1: ensure required sources are covered
             for s in window_signals[len(matched):]:
-                if _SEVERITY_WEIGHT[s.severity] >= 0.5:
+                if s.source in rule.required_sources and s.source not in matched_sources:
                     matched.append(s)
+                    matched_sources.add(s.source)
+
+            # Phase 2: add remaining high-severity signals
+            for s in window_signals[top_count:]:
+                if s not in matched and _SEVERITY_WEIGHT[s.severity] >= 0.5:
+                    matched.append(s)
+
+            # If we still can't cover required sources, skip this match
+            if not rule.required_sources.issubset(matched_sources):
+                continue
 
             for s in matched:
                 used_ids.add(s.signal_id)
