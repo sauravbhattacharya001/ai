@@ -280,6 +280,21 @@ from .watermark import (
     RobustnessReport,
     RobustnessResult,
 )
+from .threat_correlator import (
+    ThreatCorrelator,
+    CorrelatorConfig,
+    CorrelationReport,
+    CorrelationRule,
+    CompoundThreat,
+    AgentRisk,
+    CoverageGap,
+    Signal,
+    SignalSource,
+    SignalSeverity,
+    ThreatLevel,
+    ResponseUrgency,
+    BUILTIN_RULES as CORRELATION_RULES,
+)
 
 __all__ = [
     # contract
@@ -517,4 +532,18 @@ __all__ = [
     "VerifyStatus",
     "RobustnessReport",
     "RobustnessResult",
+    # threat_correlator
+    "ThreatCorrelator",
+    "CorrelatorConfig",
+    "CorrelationReport",
+    "CorrelationRule",
+    "CompoundThreat",
+    "AgentRisk",
+    "CoverageGap",
+    "Signal",
+    "SignalSource",
+    "SignalSeverity",
+    "ThreatLevel",
+    "ResponseUrgency",
+    "CORRELATION_RULES",
 ]

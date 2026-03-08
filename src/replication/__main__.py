@@ -97,6 +97,7 @@ def _cmd_info(_args: List[str]) -> None:
 # Modules that export a main() function
 _HAS_MAIN = {
     "alignment", "attack_tree", "behavior_profiler", "canary", "capacity",
+    "threat_correlator",
     "chaos", "comparator",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
@@ -179,6 +180,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "canary":           (_make_handler("canary"),            "Canary token planting & exfiltration detection"),
     "info":             (_cmd_info,                          "Show version and available commands"),
     "trust-propagation": (_make_handler("trust_propagation"), "Trust network propagation & Sybil detection"),
+    "threat-correlate":  (_make_handler("threat_correlator"), "Cross-module threat signal correlation"),
 }
 
 
