@@ -559,6 +559,48 @@ class TopologyAnalyzer:
 
         return warnings
 
+    def _batch_subtree_metrics(self) -> Dict[str, Tuple[int, int]]:
+        """Compute subtree_size and subtree_depth for all nodes in O(n).
+
+        Uses a single bottom-up (post-order) traversal instead of
+        per-node BFS which was O(n) each → O(n²) total.
+
+        Returns a dict mapping worker_id → (subtree_size, subtree_depth).
+        """
+        # Topological order: process leaves first, then parents.
+        # Build in-degree (number of children) for each node.
+        all_ids = [wid for wid, _, _ in self.workers]
+        child_count: Dict[str, int] = {wid: len(self._children.get(wid, [])) for wid in all_ids}
+        # Results
+        sub_size: Dict[str, int] = {}
+        sub_depth: Dict[str, int] = {}
+        # Remaining children to process before a parent is ready
+        remaining = dict(child_count)
+
+        # Start with leaves
+        queue: deque[str] = deque()
+        for wid in all_ids:
+            if remaining[wid] == 0:
+                queue.append(wid)
+                sub_size[wid] = 1
+                sub_depth[wid] = 0
+
+        while queue:
+            wid = queue.popleft()
+            parent = self._parent.get(wid)
+            if parent is not None and parent in remaining:
+                # Accumulate into parent
+                if parent not in sub_size:
+                    sub_size[parent] = 1
+                    sub_depth[parent] = 0
+                sub_size[parent] += sub_size[wid]
+                sub_depth[parent] = max(sub_depth[parent], sub_depth[wid] + 1)
+                remaining[parent] -= 1
+                if remaining[parent] == 0:
+                    queue.append(parent)
+
+        return {wid: (sub_size.get(wid, 1), sub_depth.get(wid, 0)) for wid in all_ids}
+
     def analyze(self) -> TopologyReport:
         """Run full structural analysis and return a TopologyReport."""
         total = len(self.workers)
@@ -585,16 +627,20 @@ class TopologyAnalyzer:
                 node_metrics=[],
             )
 
+        # Compute subtree metrics in O(n) via bottom-up pass
+        subtree_metrics = self._batch_subtree_metrics()
+
         # Build per-node metrics
         all_nodes: List[NodeMetrics] = []
         for wid, pid, depth in self.workers:
             kids = self._children.get(wid, [])
+            st_size, st_depth = subtree_metrics[wid]
             nm = NodeMetrics(
                 worker_id=wid,
                 depth=depth,
                 child_count=len(kids),
-                subtree_size=self._compute_subtree_size(wid),
-                subtree_depth=self._compute_subtree_depth(wid),
+                subtree_size=st_size,
+                subtree_depth=st_depth,
                 parent_id=pid,
                 is_leaf=len(kids) == 0,
             )
