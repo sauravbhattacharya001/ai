@@ -17,11 +17,11 @@ from replication.attack_tree import (
     _enumerate_paths,
     _path_metrics,
     _compute_risk,
-    _box_header,
     _risk_bar,
     _GOAL_BUILDERS,
     _GOAL_ALIASES,
 )
+from replication._helpers import box_header as _box_header
 
 
 # ── NodeType & Difficulty ────────────────────────────────────────────
@@ -338,7 +338,7 @@ class TestRendering:
     def test_box_header(self):
         lines = _box_header("TEST", 20)
         assert len(lines) == 3
-        assert lines[0].startswith("+")
+        assert lines[0].startswith("\u250c")  # Unicode box-drawing (from _helpers)
         assert "TEST" in lines[1]
 
     def test_risk_bar_zero(self):

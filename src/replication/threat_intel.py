@@ -51,6 +51,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
+from ._helpers import stats_mean
+
 
 # ── Enums ──────────────────────────────────────────────────────────────
 
@@ -444,7 +446,7 @@ class ThreatIntelFeed:
         agents = sorted(set(i.agent_id for i in iocs))
         sources = sorted(set(i.source for i in iocs))
         types = sorted(set(i.ioc_type.value for i in iocs))
-        avg_score = sum(i.score for i in iocs) / len(iocs)
+        avg_score = stats_mean([i.score for i in iocs])
         max_sev = max(iocs, key=lambda i: i.severity.numeric).severity
         # Boost score for multi-source/multi-type correlations
         diversity_bonus = (len(sources) - 1) * 5 + (len(types) - 1) * 5
@@ -560,7 +562,7 @@ class ThreatIntelFeed:
                     avg_score=0, max_severity=Severity.INFO, types={}
                 ))
                 continue
-            avg_score = sum(i.score for i in bucket_iocs) / len(bucket_iocs)
+            avg_score = stats_mean([i.score for i in bucket_iocs])
             max_sev = max(bucket_iocs, key=lambda x: x.severity.numeric).severity
             types: Dict[str, int] = {}
             for ioc in bucket_iocs:
@@ -623,7 +625,7 @@ class ThreatIntelFeed:
         agent_iocs = [i for i in self._iocs if i.agent_id == agent_id]
         if not agent_iocs:
             return {"agent_id": agent_id, "risk_score": 0, "grade": "A", "ioc_count": 0}
-        avg_score = sum(i.score for i in agent_iocs) / len(agent_iocs)
+        avg_score = stats_mean([i.score for i in agent_iocs])
         max_score = max(i.score for i in agent_iocs)
         # Weighted: 60% max, 40% avg — worst behavior matters most
         risk = 0.6 * max_score + 0.4 * avg_score
@@ -674,7 +676,7 @@ class ThreatIntelFeed:
         # Overall threat level
         if self._iocs:
             scores = [i.score for i in self._iocs]
-            avg = sum(scores) / len(scores)
+            avg = stats_mean(scores)
             top_avg = sum(sorted(scores, reverse=True)[:5]) / min(5, len(scores))
             threat = 0.4 * avg + 0.6 * top_avg
             # Volume factor

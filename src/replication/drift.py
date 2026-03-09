@@ -35,6 +35,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence
 
 from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
+from ._helpers import stats_mean, stats_std
 
 
 # ── Enums ──
@@ -317,8 +318,8 @@ def _extract_metrics(report: SimulationReport) -> Dict[str, float]:
             total_denied / total_attempted if total_attempted > 0 else 0.0
         ),
         "max_depth_used": float(max(depths)) if depths else 0.0,
-        "avg_depth": sum(depths) / len(depths) if depths else 0.0,
-        "tasks_per_worker": sum(tasks) / len(tasks) if tasks else 0.0,
+        "avg_depth": stats_mean(depths),
+        "tasks_per_worker": stats_mean(tasks),
         "total_tasks": float(report.total_tasks),
         "kill_rate": (
             sum(1 for w in report.workers.values() if w.tasks_completed == 0)
@@ -366,9 +367,8 @@ class DriftDetector:
 
         for metric in metric_names:
             values = [wm[metric] for wm in window_metrics]
-            mean = sum(values) / len(values)
-            variance = sum((v - mean) ** 2 for v in values) / len(values)
-            std = math.sqrt(variance)
+            mean = stats_mean(values)
+            std = stats_std(values) if len(values) >= 2 else 0.0
             slope, _intercept, r_squared = _linear_regression(values)
             mono_run = _longest_monotonic_run(values)
 

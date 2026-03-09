@@ -35,6 +35,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from ._helpers import stats_mean
+
 
 # ── Data types ───────────────────────────────────────────────────────
 
@@ -95,7 +97,7 @@ class TrustEdge:
             delta = _outcome_delta(i.outcome)
             s = max(0.0, min(1.0, s + delta * 0.1))
             scores.append(s)
-        mean = sum(scores) / len(scores)
+        mean = stats_mean(scores)
         return math.sqrt(sum((x - mean) ** 2 for x in scores) / len(scores))
 
 
@@ -277,7 +279,7 @@ class TrustNetwork:
     def get_reputation(self, agent_id: str) -> float:
         """Average trust others place in this agent."""
         incoming = [e.score for (_, t), e in self.edges.items() if t == agent_id]
-        return sum(incoming) / len(incoming) if incoming else 0.0
+        return stats_mean(incoming) if incoming else 0.0
 
     def get_trust_graph(self) -> Dict[str, Dict[str, float]]:
         graph: Dict[str, Dict[str, float]] = defaultdict(dict)
@@ -380,7 +382,7 @@ class TrustNetwork:
             edge = self.edges.get((ring[i], ring[j]))
             if edge:
                 scores.append(edge.score)
-        return sum(scores) / len(scores) if scores else 0.0
+        return stats_mean(scores)
 
     def _detect_trust_bombing(self) -> List[ThreatDetection]:
         """Detect agents gaining trust unusually fast."""
@@ -506,7 +508,7 @@ class TrustNetwork:
 
     def analyze(self) -> TrustReport:
         scores = [e.score for e in self.edges.values()]
-        avg = sum(scores) / len(scores) if scores else 0.0
+        avg = stats_mean(scores)
 
         # Distribution buckets
         buckets = {"0.0-0.2": 0, "0.2-0.4": 0, "0.4-0.6": 0, "0.6-0.8": 0, "0.8-1.0": 0}
