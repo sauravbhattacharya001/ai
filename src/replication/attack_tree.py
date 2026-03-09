@@ -45,9 +45,8 @@ from __future__ import annotations
 import argparse
 import enum
 import json
-import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from replication._helpers import box_header
 
