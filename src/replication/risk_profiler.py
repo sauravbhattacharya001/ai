@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import random
 import statistics
 import sys
@@ -52,6 +53,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from ._helpers import box_header
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -670,8 +673,8 @@ class RiskProfiler:
                         description="Dangerous kill chain stages reached: "
                                     + ", ".join(s.value for s in overlap),
                     ))
-        except Exception:
-            pass  # Module not available or failed
+        except Exception as exc:
+            logger.warning("Kill chain analysis failed: %s", exc)
 
     def _analyze_escalation(self, dossiers: Dict[str, AgentDossier]) -> None:
         """Run escalation analysis per agent and extract findings."""
@@ -707,8 +710,8 @@ class RiskProfiler:
                             description=f"Moderate escalation attempt: {attempt.description}",
                             evidence=f"Risk: {attempt.risk_score:.1f}/100",
                         ))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Escalation analysis failed: %s", exc)
 
     def _analyze_behavior(self, dossiers: Dict[str, AgentDossier]) -> None:
         """Run behavior profiling and extract anomaly findings."""
@@ -769,8 +772,8 @@ class RiskProfiler:
                         description=f"Behavior profiler risk level: {pr.risk_level}",
                         recommendation="Isolate agent for detailed investigation",
                     ))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Behavior profiling analysis failed: %s", exc)
 
     def _analyze_trust(self, dossiers: Dict[str, AgentDossier]) -> None:
         """Run trust network analysis and extract threat findings."""
@@ -818,8 +821,8 @@ class RiskProfiler:
                             evidence=threat.evidence,
                             recommendation=threat.recommendation,
                         ))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Trust network analysis failed: %s", exc)
 
     def _analyze_canary(self, dossiers: Dict[str, AgentDossier]) -> None:
         """Run canary token analysis and map detections to agents."""
@@ -862,8 +865,8 @@ class RiskProfiler:
                     evidence=f"Context: {detection.context}",
                     recommendation="Investigate data access patterns and restrict network egress",
                 ))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Canary token analysis failed: %s", exc)
 
     def _analyze_goal_inference(self, dossiers: Dict[str, AgentDossier]) -> None:
         """Run goal inference and extract deception scores."""
@@ -908,8 +911,8 @@ class RiskProfiler:
                         category=RiskCategory.DECEPTION,
                         description=f"Moderate goal misalignment: deception score {ds.score:.2f}",
                     ))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Goal inference analysis failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

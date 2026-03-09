@@ -40,6 +40,7 @@ Programmatic::
 
 from __future__ import annotations
 
+import logging
 import random
 import time
 from collections import Counter
@@ -48,6 +49,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from .simulator import ScenarioConfig, SimulationReport, Simulator
+
+logger = logging.getLogger(__name__)
 
 
 # ── Enums & constants ──────────────────────────────────────────────
@@ -716,7 +719,7 @@ class ScenarioGenerator:
             try:
                 category = ScenarioCategory(self.config.category)
             except ValueError:
-                pass
+                logger.debug("Unknown scenario category: %s", self.config.category)
 
         count = self.config.count
         scenarios: List[GeneratedScenario] = []
@@ -796,8 +799,8 @@ class ScenarioGenerator:
                     sim = Simulator(sc.config)
                     sc.report = sim.run()
                     sc.interest_score = score_scenario(sc)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Scenario simulation failed for %s: %s", sc.name, exc)
 
         cat_counts: Dict[str, int] = Counter()
         for sc in scenarios:

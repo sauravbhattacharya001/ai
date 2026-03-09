@@ -63,6 +63,7 @@ from __future__ import annotations
 import enum
 import hashlib
 import json
+import logging
 import posixpath
 import re
 import random
@@ -70,6 +71,8 @@ import statistics
 import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ── Enums ────────────────────────────────────────────────────────────────
@@ -272,8 +275,8 @@ def _decode_percent_encoding(target: str) -> str:
             )
             if decoded == prev:
                 break
-    except (ValueError, OverflowError):
-        pass
+    except (ValueError, OverflowError) as exc:
+        logger.debug("Base64 decode chain failed: %s", exc)
     return decoded
 
 
@@ -455,8 +458,8 @@ def _build_rules() -> List[DetectionRule]:
                 port = int(parts[-1])
                 if port not in perms.allowed_ports:
                     return f"Connection to unauthorized port {port}: {action.target}"
-            except ValueError:
-                pass
+            except ValueError as exc:
+                logger.debug("Port parsing failed for target %s: %s", action.target, exc)
         return None
 
     rules.append(DetectionRule(

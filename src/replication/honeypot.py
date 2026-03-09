@@ -51,12 +51,15 @@ from __future__ import annotations
 import enum
 import hashlib
 import json
+import logging
 import random
 import statistics
 import sys
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Set
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -797,8 +800,8 @@ class HoneypotSystem:
                 num = int(hp.id.split("-")[1])
                 if num >= self._next_id:
                     self._next_id = num + 1
-            except (IndexError, ValueError):
-                pass
+            except (IndexError, ValueError) as exc:
+                logger.debug("Honeypot ID parsing fallback for %s: %s", hp.id, exc)
         for ix in data.get("interactions", []):
             self._interactions.append(Interaction(
                 agent_id=ix["agent_id"],
