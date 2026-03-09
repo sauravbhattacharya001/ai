@@ -51,6 +51,7 @@ Programmatic::
 from __future__ import annotations
 
 import base64
+import logging
 import math
 import re
 import statistics
@@ -61,6 +62,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 from ._helpers import stats_mean
+
+logger = logging.getLogger(__name__)
 
 
 # ── Constants ───────────────────────────────────────────────────────
@@ -433,8 +436,8 @@ class PromptInjectionDetector:
                             position=m.start(),
                             explanation=self._explain(vector, severity, m.group()),
                         ))
-                except re.error:
-                    pass
+                except re.error as exc:
+                    logger.debug("Skipping invalid regex pattern: %s", exc)
 
         # Encoding evasion detection
         if self.enable_encoding and len(result.findings) < self.max_findings:
@@ -556,8 +559,8 @@ class PromptInjectionDetector:
                         position=m.start(),
                         severity=Severity.HIGH,
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Encoding evasion detection (base64 decode) failed: %s", exc)
 
     def _check_rot13(self, text: str, result: ScanResult) -> None:
         words = text.split()
@@ -621,8 +624,8 @@ class PromptInjectionDetector:
                         position=m.start(),
                         severity=Severity.HIGH,
                     ))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Encoding evasion detection (hex decode) failed: %s", exc)
 
     def _looks_suspicious(self, text: str) -> bool:
         """Check if decoded text contains injection-like content."""
