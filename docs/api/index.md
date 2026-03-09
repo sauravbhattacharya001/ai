@@ -18,6 +18,7 @@ Auto-generated documentation from source code docstrings.
 | Module | Description |
 |--------|-------------|
 | [Threats](threats.md) | Threat modelling and attack simulation for replication scenarios |
+| [Attack Tree](attack_tree.md) | Structured AND/OR threat decomposition — cheapest attack paths, cost-based prioritisation |
 | [Self-Modification](selfmod.md) | Detect agent self-modification attempts from action traces |
 | [Forensics](forensics.md) | Post-incident forensic analysis, timeline reconstruction, root cause identification |
 | [Chaos](chaos.md) | Chaos engineering — controlled fault injection to test safety invariants |
@@ -29,6 +30,22 @@ Auto-generated documentation from source code docstrings.
 | [Escalation](escalation.md) | Detect privilege escalation patterns — multi-vector analysis, stealth assessment, chain detection |
 | [Kill Chain](killchain.md) | Map agent behavior to cyber kill chain stages — attack progression and sophistication rating |
 | [Honeypot](honeypot.md) | Deploy decoy resources to detect unauthorized agent access and build threat profiles |
+| [Behavior Profiler](behavior_profiler.md) | Agent behavioral baselines and anomaly detection — 8 anomaly types, fleet reports |
+| [Deception Detector](deception_detector.md) | Detect deceptive behaviors — inconsistency, fabrication, sandbagging, sycophancy |
+| [Covert Channels](covert_channels.md) | Find hidden inter-agent communication — content, timing, protocol, frequency analysis |
+| [Canary Tokens](canary.md) | Plant and detect honey tokens for exfiltration monitoring — 6 token categories |
+| [Trust Propagation](trust_propagation.md) | Trust network analysis — Sybil detection, collusion rings, trust laundering |
+| [Threat Correlator](threat_correlator.md) | Cross-module signal correlation — surface compound multi-signal threats |
+| [Watermark](watermark.md) | Invisible provenance fingerprints — 4 embedding strategies, tamper detection |
+
+## Safety Assessment
+
+| Module | Description |
+|--------|-------------|
+| [Safety Scorecard](scorecard.md) | Multi-dimensional safety grades (A+ through F) — simulation + threats + Monte Carlo + policy |
+| [Risk Profiler](risk_profiler.md) | Unified per-agent risk dossiers — aggregates all analysis modules into risk tiers |
+| [What-If Analyzer](what_if.md) | Explore hypothetical config changes — safety deltas, parameter sweeps, risk verdicts |
+| [Kill Switch](kill_switch.md) | Emergency agent termination — 10 trigger kinds, 4 strategies, cooldowns, audit logging |
 
 ## Governance & Compliance
 
@@ -63,6 +80,20 @@ from replication.prompt_injection import PromptInjectionDetector
 from replication.escalation import EscalationDetector
 from replication.killchain import KillChainAnalyzer
 from replication.honeypot import HoneypotManager
+from replication.attack_tree import AttackTreeGenerator
+from replication.behavior_profiler import BehaviorProfiler
+from replication.canary import CanarySystem
+from replication.deception_detector import DeceptionDetector
+from replication.covert_channels import CovertChannelDetector
+from replication.trust_propagation import TrustNetwork
+from replication.threat_correlator import ThreatCorrelator
+from replication.watermark import WatermarkEngine
+
+# Safety Assessment
+from replication.scorecard import SafetyScorecard
+from replication.risk_profiler import RiskProfiler
+from replication.what_if import WhatIfAnalyzer
+from replication.kill_switch import KillSwitchManager
 
 # Governance
 from replication.compliance import ComplianceAuditor
