@@ -308,6 +308,15 @@ from .risk_profiler import (
     CategoryScore,
     Mitigation,
 )
+from .boundary_tester import (
+    BoundaryTester,
+    BoundarySpec,
+    BoundaryReport,
+    BoundaryCategory,
+    ProbeResult,
+    ProbeVerdict,
+    FaultInjector,
+)
 from .kill_switch import (
     KillSwitchManager,
     TriggerCondition,
@@ -586,6 +595,13 @@ __all__ = [
     "CategoryScore",
     "Mitigation",
     # kill_switch
+    "BoundaryTester",
+    "BoundarySpec",
+    "BoundaryReport",
+    "BoundaryCategory",
+    "ProbeResult",
+    "ProbeVerdict",
+    "FaultInjector",
     "KillSwitchManager",
     "TriggerCondition",
     "TriggerKind",
