@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -649,7 +650,6 @@ class ConsensusProtocol:
 
     def _quorum_count(self) -> int:
         """Minimum number of non-abstain votes for quorum."""
-        import math
         return max(1, math.ceil(self.voter_count * self._config.quorum_fraction))
 
     def _get_open_proposal(self, proposal_id: str) -> Proposal:
