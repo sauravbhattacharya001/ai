@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 _HAS_MAIN = {
     "alignment", "attack_tree", "behavior_profiler", "canary", "capacity",
     "threat_correlator",
-    "chaos", "comparator",
+    "chaos", "comparator", "boundary_tester",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -142,6 +142,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "threats":          (_make_handler("threats"),           "Simulate threat scenarios"),
     "compliance":       (_make_handler("compliance"),        "Run compliance audits"),
     "chaos":            (_make_handler("chaos"),             "Chaos/fault-injection testing"),
+    "boundary":         (_make_handler("boundary_tester"),   "Test agent capability boundaries"),
     "montecarlo":       (_make_handler("montecarlo"),        "Monte Carlo risk analysis"),
     "scorecard":        (_make_handler("scorecard"),         "Safety scorecard evaluation"),
     "drift":            (_make_handler("drift"),             "Detect behavioral drift"),
