@@ -169,6 +169,7 @@ class VerifyResult:
     recovery_rate: float
     strategies_checked: List[WatermarkStrategy]
     details: Dict[str, Any] = field(default_factory=dict)
+    signature_valid: Optional[bool] = None  # None = not checked
 
 
 @dataclass
@@ -330,8 +331,15 @@ class WatermarkEngine:
         self,
         state: Dict[str, Any],
         fingerprint: Fingerprint,
+        signature: Optional[str] = None,
     ) -> VerifyResult:
-        """Verify that *state* contains a valid watermark for *fingerprint*."""
+        """Verify that *state* contains a valid watermark for *fingerprint*.
+
+        If *signature* is provided (from a :class:`WatermarkReceipt`),
+        the HMAC is verified using constant-time comparison.  Without a
+        signature, only bit-level recovery is checked and the result is
+        marked as ``UNVERIFIED`` in the details.
+        """
         expected_bits = _fingerprint_to_bits(
             fingerprint, self.config.max_bits_per_strategy
         )
@@ -355,11 +363,17 @@ class WatermarkEngine:
 
         rate = total_recovered / max(total_expected, 1)
 
-        # Check HMAC
+        # Check HMAC signature if provided
         expected_sig = self._sign(fingerprint)
-        sig_valid = True  # signature checked at receipt level
+        if signature is not None:
+            sig_valid = hmac.compare_digest(expected_sig, signature)
+        else:
+            sig_valid = None  # no signature to verify
 
-        if rate >= 0.90:
+        if not sig_valid and sig_valid is not None:
+            # Signature mismatch — fingerprint is forged
+            status = VerifyStatus.TAMPERED
+        elif rate >= 0.90:
             status = VerifyStatus.AUTHENTIC
         elif rate >= 0.50:
             status = VerifyStatus.PARTIAL
@@ -377,6 +391,7 @@ class WatermarkEngine:
             recovery_rate=rate,
             strategies_checked=checked,
             details=details,
+            signature_valid=sig_valid,
         )
 
     def test_robustness(
@@ -855,9 +870,10 @@ def _demo() -> None:
     # Verify
     print("2. VERIFICATION")
     print("-" * 40)
-    result = engine.verify(wm_state, receipt.fingerprint)
+    result = engine.verify(wm_state, receipt.fingerprint, signature=receipt.hmac_signature)
     print(f"   Status: {result.status.value}")
     print(f"   Authentic: {result.authentic}")
+    print(f"   Signature valid: {result.signature_valid}")
     print(f"   Recovery rate: {result.recovery_rate:.1%}")
     print(f"   Bits: {result.bits_recovered}/{result.bits_expected}")
     print()
@@ -869,7 +885,7 @@ def _demo() -> None:
     # Remove some keys and coerce types
     for k in list(tampered.keys())[:3]:
         del tampered[k]
-    tampered_result = engine.verify(tampered, receipt.fingerprint)
+    tampered_result = engine.verify(tampered, receipt.fingerprint, signature=receipt.hmac_signature)
     print(f"   Status: {tampered_result.status.value}")
     print(f"   Authentic: {tampered_result.authentic}")
     print(f"   Recovery rate: {tampered_result.recovery_rate:.1%}")
