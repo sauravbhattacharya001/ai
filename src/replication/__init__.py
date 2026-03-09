@@ -308,6 +308,20 @@ from .risk_profiler import (
     CategoryScore,
     Mitigation,
 )
+from .kill_switch import (
+    KillSwitchManager,
+    TriggerCondition,
+    TriggerKind,
+    KillStrategy,
+    StrategyKind,
+    KillEvent,
+    KillOutcome,
+    EvaluationResult,
+    CooldownEntry,
+    create_conservative_killswitch,
+    create_aggressive_killswitch,
+    create_quarantine_killswitch,
+)
 
 __all__ = [
     # contract
@@ -571,4 +585,17 @@ __all__ = [
     "RiskTier",
     "CategoryScore",
     "Mitigation",
+    # kill_switch
+    "KillSwitchManager",
+    "TriggerCondition",
+    "TriggerKind",
+    "KillStrategy",
+    "StrategyKind",
+    "KillEvent",
+    "KillOutcome",
+    "EvaluationResult",
+    "CooldownEntry",
+    "create_conservative_killswitch",
+    "create_aggressive_killswitch",
+    "create_quarantine_killswitch",
 ]
