@@ -35,10 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .simulator import ScenarioConfig, Simulator, SimulationReport, Strategy
 from ._helpers import box_header
 
-
-def _box_header(title: str, width: int = 43):
-    """Forensic-width box header (narrower than the default 57)."""
-    return box_header(title, width)
+_FORENSIC_BOX_WIDTH = 43
 
 
 # ── Data models ──────────────────────────────────────────────────
@@ -135,7 +132,7 @@ class ForensicReport:
     def render_events(self) -> str:
         """Render reconstructed event timeline with safety annotations."""
         lines: List[str] = []
-        lines.extend(_box_header("Forensic Event Timeline"))
+        lines.extend(box_header("Forensic Event Timeline", _FORENSIC_BOX_WIDTH))
         lines.append("")
 
         icons = {
@@ -161,7 +158,7 @@ class ForensicReport:
     def render_near_misses(self) -> str:
         """Render near-miss safety events."""
         lines: List[str] = []
-        lines.extend(_box_header("Near-Miss Analysis"))
+        lines.extend(box_header("Near-Miss Analysis", _FORENSIC_BOX_WIDTH))
         lines.append("")
 
         if not self.near_misses:
@@ -183,7 +180,7 @@ class ForensicReport:
     def render_escalation(self) -> str:
         """Render escalation phase analysis."""
         lines: List[str] = []
-        lines.extend(_box_header("Escalation Phase Analysis"))
+        lines.extend(box_header("Escalation Phase Analysis", _FORENSIC_BOX_WIDTH))
         lines.append("")
 
         if not self.escalation_phases:
@@ -206,7 +203,7 @@ class ForensicReport:
     def render_counterfactuals(self) -> str:
         """Render counterfactual what-if analysis."""
         lines: List[str] = []
-        lines.extend(_box_header("Counterfactual Analysis"))
+        lines.extend(box_header("Counterfactual Analysis", _FORENSIC_BOX_WIDTH))
         lines.append("")
 
         if not self.counterfactuals:
@@ -230,7 +227,7 @@ class ForensicReport:
     def render_decisions(self) -> str:
         """Render controller decision audit trail."""
         lines: List[str] = []
-        lines.extend(_box_header("Decision Point Analysis"))
+        lines.extend(box_header("Decision Point Analysis", _FORENSIC_BOX_WIDTH))
         lines.append("")
 
         if not self.decision_points:
@@ -268,7 +265,7 @@ class ForensicReport:
     def render_summary(self) -> str:
         """Render the safety summary and recommendations."""
         lines: List[str] = []
-        lines.extend(_box_header("Forensic Safety Summary"))
+        lines.extend(box_header("Forensic Safety Summary", _FORENSIC_BOX_WIDTH))
         lines.append("")
 
         s = self.safety_summary

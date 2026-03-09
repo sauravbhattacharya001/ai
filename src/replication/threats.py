@@ -45,6 +45,7 @@ from .observability import StructuredLogger
 from .orchestrator import SandboxOrchestrator
 from .signer import ManifestSigner
 from .worker import Worker
+from ._helpers import box_header
 
 
 class ThreatSeverity(Enum):
@@ -198,9 +199,7 @@ class ThreatReport:
     def render_summary(self) -> str:
         """Render the summary header."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────────────┐")
-        lines.append("│       🛡️  Threat Assessment Report  🛡️          │")
-        lines.append("└─────────────────────────────────────────────────┘")
+        lines.extend(box_header("🛡️  Threat Assessment Report  🛡️", width=51))
         lines.append("")
 
         score = self.security_score
@@ -227,9 +226,7 @@ class ThreatReport:
         """Render detailed results for each threat."""
         lines: List[str] = []
         lines.append("")
-        lines.append("┌─────────────────────────────────────────────────┐")
-        lines.append("│            Threat Scenario Details               │")
-        lines.append("└─────────────────────────────────────────────────┘")
+        lines.extend(box_header("Threat Scenario Details", width=51))
         lines.append("")
 
         # Group by severity
@@ -248,9 +245,7 @@ class ThreatReport:
     def render_matrix(self) -> str:
         """Render a threat/defense matrix table."""
         lines: List[str] = []
-        lines.append("┌─────────────────────────────────────────────────────────────────────────┐")
-        lines.append("│                    Threat / Defense Matrix                               │")
-        lines.append("└─────────────────────────────────────────────────────────────────────────┘")
+        lines.extend(box_header("Threat / Defense Matrix", width=75))
         lines.append("")
 
         # Column headers
@@ -285,9 +280,7 @@ class ThreatReport:
             return "\n".join(lines)
 
         lines.append("")
-        lines.append("┌─────────────────────────────────────────────────┐")
-        lines.append("│             Recommendations                      │")
-        lines.append("└─────────────────────────────────────────────────┘")
+        lines.extend(box_header("Recommendations", width=51))
         lines.append("")
 
         for r in failed:

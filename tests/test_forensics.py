@@ -641,25 +641,25 @@ class TestBoxHeader:
     """Tests for the _box_header rendering helper."""
 
     def test_returns_three_lines(self):
-        from replication.forensics import _box_header
+        from replication._helpers import box_header as _box_header
         lines = _box_header("Test")
         assert len(lines) == 3
 
     def test_default_width(self):
-        from replication.forensics import _box_header
+        from replication._helpers import box_header as _box_header
         lines = _box_header("Title")
-        assert len(lines[0]) == 43
-        assert len(lines[1]) == 43
-        assert len(lines[2]) == 43
+        assert len(lines[0]) == 57
+        assert len(lines[1]) == 57
+        assert len(lines[2]) == 57
 
     def test_custom_width(self):
-        from replication.forensics import _box_header
+        from replication._helpers import box_header as _box_header
         lines = _box_header("Hi", width=20)
         for line in lines:
             assert len(line) == 20
 
     def test_title_centered(self):
-        from replication.forensics import _box_header
+        from replication._helpers import box_header as _box_header
         lines = _box_header("X", width=11)
         # inner = 9, "X" centered in 9 chars
         assert "X" in lines[1]
@@ -667,7 +667,7 @@ class TestBoxHeader:
         assert lines[1].endswith("│")
 
     def test_border_characters(self):
-        from replication.forensics import _box_header
+        from replication._helpers import box_header as _box_header
         lines = _box_header("Test")
         assert lines[0].startswith("┌")
         assert lines[0].endswith("┐")
@@ -675,7 +675,7 @@ class TestBoxHeader:
         assert lines[2].endswith("┘")
 
     def test_empty_title(self):
-        from replication.forensics import _box_header
+        from replication._helpers import box_header as _box_header
         lines = _box_header("")
         assert len(lines) == 3
         assert lines[1].startswith("│")
