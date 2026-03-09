@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
 from .simulator import SimulationReport, WorkerRecord
+from ._helpers import stats_mean
 
 
 # ── Data types ────────────────────────────────────────────────
@@ -576,12 +577,12 @@ class LineageTracker:
                 if n.lifespan_ms is not None
             ]
             avg_lifespan = (
-                sum(lifespans) / len(lifespans) if lifespans else None
+                stats_mean(lifespans) if lifespans else None
             )
 
             drift_scores = [m.drift_score for m in muts]
             avg_drift = (
-                sum(drift_scores) / len(drift_scores)
+                stats_mean(drift_scores)
                 if drift_scores else 0.0
             )
 
@@ -733,7 +734,7 @@ class LineageTracker:
         leaves = [n for n in self._nodes.values() if n.is_leaf]
 
         all_drift = [m.drift_score for m in mutations]
-        avg_drift = sum(all_drift) / len(all_drift) if all_drift else 0.0
+        avg_drift = stats_mean(all_drift)
 
         return LineageReport(
             nodes=dict(self._nodes),

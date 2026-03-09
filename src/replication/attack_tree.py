@@ -49,6 +49,8 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from replication._helpers import box_header
+
 
 # ── Enums ────────────────────────────────────────────────────────────
 
@@ -230,7 +232,7 @@ class AttackTreeResult:
     def render(self) -> str:
         """Render a human-readable report."""
         lines: List[str] = []
-        lines.extend(_box_header("ATTACK TREE ANALYSIS"))
+        lines.extend(box_header("ATTACK TREE ANALYSIS"))
         lines.append("")
 
         for analysis in self.analyses:
@@ -238,7 +240,7 @@ class AttackTreeResult:
             lines.append("")
 
         # Summary
-        lines.extend(_box_header("SUMMARY"))
+        lines.extend(box_header("SUMMARY"))
         lines.append("")
         total_paths = sum(len(a.all_paths) for a in self.analyses)
         total_leaves = sum(a.leaf_count for a in self.analyses)
@@ -269,14 +271,6 @@ class AttackTreeResult:
 
 
 # ── Rendering helpers ────────────────────────────────────────────────
-
-
-def _box_header(title: str, width: int = 60) -> List[str]:
-    inner = width - 2
-    top = "+" + "-" * inner + "+"
-    mid = "|" + title.center(inner) + "|"
-    bot = "+" + "-" * inner + "+"
-    return [top, mid, bot]
 
 
 def _risk_bar(risk: float, width: int = 20) -> str:

@@ -39,6 +39,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .controller import Controller
 from .observability import StructuredLogger
+from ._helpers import stats_mean
 
 
 class RiskLevel(str, Enum):
@@ -391,7 +392,7 @@ class TopologyAnalyzer:
             max_entropy = math.log2(n)
             root_scores.append(entropy / max_entropy if max_entropy > 0 else 1.0)
 
-        return sum(root_scores) / len(root_scores) if root_scores else 1.0
+        return stats_mean(root_scores) if root_scores else 1.0
 
     def _detect_patterns(
         self,
@@ -649,7 +650,7 @@ class TopologyAnalyzer:
         # Depth metrics
         depths = [nm.depth for nm in all_nodes]
         max_depth = max(depths)
-        mean_depth = sum(depths) / len(depths)
+        mean_depth = stats_mean(depths)
         depth_dist: Dict[int, int] = defaultdict(int)
         for d in depths:
             depth_dist[d] += 1
@@ -658,7 +659,7 @@ class TopologyAnalyzer:
         internal_nodes = [nm for nm in all_nodes if not nm.is_leaf]
         leaf_count = sum(1 for nm in all_nodes if nm.is_leaf)
         branch_counts = [nm.child_count for nm in internal_nodes]
-        mean_branching = sum(branch_counts) / len(branch_counts) if branch_counts else 0.0
+        mean_branching = stats_mean(branch_counts)
         max_branching = max(branch_counts) if branch_counts else 0
         branch_dist: Dict[int, int] = defaultdict(int)
         for bc in branch_counts:

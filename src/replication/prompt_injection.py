@@ -60,6 +60,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
+from ._helpers import stats_mean
+
 
 # ── Constants ───────────────────────────────────────────────────────
 
@@ -291,9 +293,7 @@ class AgentProfile:
     last_seen: float = 0.0
 
     def avg_risk(self) -> float:
-        if not self.risk_scores:
-            return 0.0
-        return sum(self.risk_scores) / len(self.risk_scores)
+        return stats_mean(self.risk_scores)
 
     def max_risk(self) -> float:
         return max(self.risk_scores) if self.risk_scores else 0.0
@@ -521,7 +521,7 @@ class PromptInjectionDetector:
             escalation = positive_trend >= len(diffs) * 0.6
 
         max_risk = max(escalation_scores) if escalation_scores else 0.0
-        avg_risk = (sum(escalation_scores) / len(escalation_scores)) if escalation_scores else 0.0
+        avg_risk = stats_mean(escalation_scores)
 
         return {
             "message_count": len(messages),
