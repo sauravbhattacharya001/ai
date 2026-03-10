@@ -331,6 +331,18 @@ from .kill_switch import (
     create_aggressive_killswitch,
     create_quarantine_killswitch,
 )
+from .anomaly_timeline import (
+    AnomalyTimeline,
+    TimelineConfig,
+    TimelineResult,
+    AnomalyEvent,
+    EventCluster,
+    EscalationChain as TimelineEscalationChain,
+    RecurrencePattern,
+    EventSource,
+    EventSeverity,
+    PatternType,
+)
 
 __all__ = [
     # contract
@@ -614,4 +626,15 @@ __all__ = [
     "create_conservative_killswitch",
     "create_aggressive_killswitch",
     "create_quarantine_killswitch",
+    # anomaly_timeline
+    "AnomalyTimeline",
+    "TimelineConfig",
+    "TimelineResult",
+    "AnomalyEvent",
+    "EventCluster",
+    "TimelineEscalationChain",
+    "RecurrencePattern",
+    "EventSource",
+    "EventSeverity",
+    "PatternType",
 ]
