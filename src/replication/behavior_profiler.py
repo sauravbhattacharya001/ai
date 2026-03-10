@@ -307,6 +307,20 @@ class BehaviorProfiler:
         # Sort by timestamp
         actions_sorted = sorted(actions, key=lambda a: a.timestamp)
         n = len(actions_sorted)
+        if n == 0:
+            return AgentBaseline(
+                agent_id=agent_id,
+                action_count=0,
+                category_distribution={},
+                known_resources=frozenset(),
+                action_rate=0.0,
+                interval_mean=0.0,
+                interval_std=0.0,
+                category_entropy=0.0,
+                time_span=0.0,
+                category_counts={},
+                last_timestamp=0.0,
+            )
 
         # Category distribution
         cat_counts: Counter[ActionCategory] = Counter()
