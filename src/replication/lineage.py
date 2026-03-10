@@ -830,7 +830,7 @@ def main() -> None:
         print(lineage.render())
 
     if args.export:
-        with open(args.export, "w") as f:
+        with open(args.export, "w", encoding="utf-8") as f:
             f.write(lineage.to_json())
         print("\nExported to %s" % args.export)
 

@@ -1170,7 +1170,7 @@ class EscalationResult:
 
     def to_json(self, path: str) -> None:
         import json as _json
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             _json.dump(self.to_dict(), f, indent=2)
 
 
