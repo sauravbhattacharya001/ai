@@ -269,6 +269,13 @@ from .trust_propagation import (
     TrustReport,
     ThreatDetection,
 )
+from .heatmap import (
+    SafetyHeatmap,
+    HeatmapConfig,
+    HeatmapResult,
+    CellMetrics,
+    METRIC_DEFS as HEATMAP_METRICS,
+)
 from .watermark import (
     WatermarkEngine,
     WatermarkConfig,
@@ -614,4 +621,9 @@ __all__ = [
     "create_conservative_killswitch",
     "create_aggressive_killswitch",
     "create_quarantine_killswitch",
+    "SafetyHeatmap",
+    "HeatmapConfig",
+    "HeatmapResult",
+    "CellMetrics",
+    "HEATMAP_METRICS",
 ]
