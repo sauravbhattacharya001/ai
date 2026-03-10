@@ -37,6 +37,10 @@ Auto-generated documentation from source code docstrings.
 | [Trust Propagation](trust_propagation.md) | Trust network analysis — Sybil detection, collusion rings, trust laundering |
 | [Threat Correlator](threat_correlator.md) | Cross-module signal correlation — surface compound multi-signal threats |
 | [Watermark](watermark.md) | Invisible provenance fingerprints — 4 embedding strategies, tamper detection |
+| [Evasion Simulator](evasion.md) | Safety control robustness testing — 10 evasion techniques, resilience scoring |
+| [Steganography](steganography.md) | Detect hidden payloads in agent outputs — statistical analysis, entropy detection |
+| [Emergent Behavior](emergent.md) | Detect emergent behaviors in agent populations — collective pattern analysis |
+| [Coordinated Threats](coordinated_threats.md) | Multi-vector coordinated threat simulation and detection |
 
 ## Safety Assessment
 
@@ -46,6 +50,9 @@ Auto-generated documentation from source code docstrings.
 | [Risk Profiler](risk_profiler.md) | Unified per-agent risk dossiers — aggregates all analysis modules into risk tiers |
 | [What-If Analyzer](what_if.md) | Explore hypothetical config changes — safety deltas, parameter sweeps, risk verdicts |
 | [Kill Switch](kill_switch.md) | Emergency agent termination — 10 trigger kinds, 4 strategies, cooldowns, audit logging |
+| [Boundary Tester](boundary_tester.md) | Verify agent containment is enforced — capability boundary probing |
+| [Sensitivity](sensitivity.md) | Parameter sensitivity analysis — identify which config values most affect safety outcomes |
+| [Regression](regression.md) | Safety regression detection — compare simulation runs across versions |
 
 ## Governance & Compliance
 
@@ -55,6 +62,28 @@ Auto-generated documentation from source code docstrings.
 | [Quarantine](quarantine.md) | Isolate misbehaving agents — suspend, restrict, or terminate with escalation policies |
 | [Lineage](lineage.md) | Trace agent replication lineage — parent-child trees, state mutations, generational drift |
 | [Monte Carlo](montecarlo.md) | Probabilistic simulation of replication scenarios — risk distributions, worst-case analysis |
+| [Policy](policy.md) | Define and enforce replication policies — rule engine, policy composition, violation tracking |
+| [Consensus](consensus.md) | Byzantine fault-tolerant agent consensus protocol for safety-critical decisions |
+| [Alignment](alignment.md) | Track value drift across replication generations — alignment monitoring |
+
+## Infrastructure & Tooling
+
+| Module | Description |
+|--------|-------------|
+| [Capacity](capacity.md) | Capacity planner for AI replication scenarios — resource forecasting |
+| [Comparator](comparator.md) | Side-by-side simulation comparison runner for experiments |
+| [Exporter](exporter.md) | Structured audit trail export — multiple output formats |
+| [Reporter](reporter.md) | Rich HTML/text safety report generation |
+| [Optimizer](optimizer.md) | Automated safety parameter optimization |
+| [Scenarios](scenarios.md) | Pre-built simulation scenarios and test configurations |
+| [Templates](templates.md) | Contract and policy templates for common use cases |
+| [Incident](incident.md) | Incident response automation — detection, escalation, remediation workflows |
+| [Dependency Graph](dependency_graph.md) | Inter-agent resource dependency modeling and cycle detection |
+| [Goal Inference](goal_inference.md) | Infer latent agent goals from observed action sequences |
+| [Hoarding](hoarding.md) | Detect agent resource hoarding — accumulation pattern analysis |
+| [Influence](influence.md) | Agent influence network analysis — social graph modeling |
+| [Threat Intel](threat_intel.md) | Threat intelligence feeds — IOC matching, MITRE ATT&CK mapping |
+| [Injection-Intel Bridge](injection_intel_bridge.md) | Connect prompt injection detection to threat intelligence feeds |
 
 ## Quick Import
 
@@ -88,16 +117,34 @@ from replication.covert_channels import CovertChannelDetector
 from replication.trust_propagation import TrustNetwork
 from replication.threat_correlator import ThreatCorrelator
 from replication.watermark import WatermarkEngine
+from replication.evasion import EvasionSimulator
+from replication.steganography import SteganographyDetector
+from replication.emergent import EmergentDetector
 
 # Safety Assessment
 from replication.scorecard import SafetyScorecard
 from replication.risk_profiler import RiskProfiler
 from replication.what_if import WhatIfAnalyzer
 from replication.kill_switch import KillSwitchManager
+from replication.boundary_tester import BoundaryTester
+from replication.sensitivity import SensitivityAnalyzer
+from replication.regression import RegressionDetector
 
 # Governance
 from replication.compliance import ComplianceAuditor
 from replication.quarantine import QuarantineManager
 from replication.lineage import LineageTracker
 from replication.montecarlo import MonteCarloSimulator
+from replication.policy import PolicyEngine
+from replication.consensus import ConsensusProtocol
+from replication.alignment import AlignmentMonitor
+
+# Infrastructure
+from replication.capacity import CapacityPlanner
+from replication.exporter import AuditExporter
+from replication.incident import IncidentManager
+from replication.dependency_graph import DependencyAnalyzer
+from replication.goal_inference import GoalInferenceEngine
+from replication.hoarding import HoardingDetector
+from replication.threat_intel import ThreatIntelFeed
 ```
