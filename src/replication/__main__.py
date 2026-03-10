@@ -96,7 +96,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alignment", "attack_tree", "behavior_profiler", "canary", "capacity",
+    "alignment", "anomaly_replay", "attack_tree", "behavior_profiler", "canary", "capacity",
     "deception_detector", "evasion", "threat_correlator",
     "chaos", "comparator", "boundary_tester",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -138,6 +138,7 @@ def _make_handler(module_name: str) -> Callable[[List[str]], None]:
 
 # (handler, description)
 SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
+    "replay":           (_make_handler("anomaly_replay"),   "Replay behavior traces against safety controls"),
     "simulate":         (_make_handler("simulator"),        "Run replication simulations"),
     "threats":          (_make_handler("threats"),           "Simulate threat scenarios"),
     "compliance":       (_make_handler("compliance"),        "Run compliance audits"),

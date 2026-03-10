@@ -317,6 +317,21 @@ from .boundary_tester import (
     ProbeVerdict,
     FaultInjector,
 )
+from .anomaly_replay import (
+    AnomalyReplayer,
+    ReplayConfig,
+    BehaviorTrace,
+    TraceEvent,
+    ControlResult as ReplayControlResult,
+    ReplayReport,
+    ControlVerdict,
+    OverallVerdict,
+    TraceSeverity,
+    TraceLibrary,
+    CoverageGap as ReplayCoverageGap,
+    SafetyControl,
+    DEFAULT_CONTROLS as REPLAY_DEFAULT_CONTROLS,
+)
 from .kill_switch import (
     KillSwitchManager,
     TriggerCondition,
@@ -614,4 +629,18 @@ __all__ = [
     "create_conservative_killswitch",
     "create_aggressive_killswitch",
     "create_quarantine_killswitch",
+    # anomaly_replay
+    "AnomalyReplayer",
+    "ReplayConfig",
+    "BehaviorTrace",
+    "TraceEvent",
+    "ReplayControlResult",
+    "ReplayReport",
+    "ControlVerdict",
+    "OverallVerdict",
+    "TraceSeverity",
+    "TraceLibrary",
+    "ReplayCoverageGap",
+    "SafetyControl",
+    "REPLAY_DEFAULT_CONTROLS",
 ]
