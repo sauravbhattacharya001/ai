@@ -185,6 +185,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "risk-profile":      (_make_handler("risk_profiler"),    "Unified agent risk profiling & fleet dossiers"),
     "deception":         (_make_handler("deception_detector"), "Agent deception detection & trust analysis"),
     "evasion":           (_make_handler("evasion"),             "Simulate agent evasion of safety controls"),
+    "dashboard":         (_make_handler("dashboard"),            "Generate HTML simulation dashboards"),
 }
 
 
