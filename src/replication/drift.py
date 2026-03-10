@@ -508,7 +508,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         print(result.render())
 
     if args.export:
-        with open(args.export, "w") as f:
+        with open(args.export, "w", encoding="utf-8") as f:
             json.dump(result.to_dict(), f, indent=2)
         print(f"\n  Report exported to {args.export}")
 

@@ -1277,7 +1277,7 @@ def _cli() -> None:  # pragma: no cover
 
         text = json.dumps(data, indent=2)
         if args.export:
-            with open(args.export, "w") as f:
+            with open(args.export, "w", encoding="utf-8") as f:
                 f.write(text)
             print(f"Report exported to {args.export}")
         else:

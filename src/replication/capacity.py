@@ -248,7 +248,7 @@ class CapacityProjection:
 
     def to_json(self, path: str) -> None:
         """Export projection to JSON file."""
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
 
 
@@ -708,7 +708,7 @@ def main() -> None:
             output = projection.summary()
 
     if args.output:
-        with open(args.output, "w") as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             f.write(output)
         print(f"Output written to {args.output}")
     else:

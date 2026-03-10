@@ -704,7 +704,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     else:
         print(report.render())
     if args.export:
-        with open(args.export, "w") as f:
+        with open(args.export, "w", encoding="utf-8") as f:
             json.dump(report.to_dict(), f, indent=2)
         print(f"\nReport exported to {args.export}")
 
