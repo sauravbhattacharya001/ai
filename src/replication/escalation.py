@@ -475,9 +475,21 @@ def _build_rules() -> List[DetectionRule]:
             return None
         lateral_indicators = ["10.0.", "172.16.", "192.168.", "internal", "localhost:22",
                               "localhost:3389", "agent-"]
+        # Extract hostname without port so "api.internal.local:443"
+        # correctly matches allowed host "api.internal.local".
+        target = action.target.lower().strip()
+        for prefix in ("https://", "http://", "//"):
+            if target.startswith(prefix):
+                target = target[len(prefix):]
+                break
+        target = target.split("/", 1)[0]
+        host = target.rsplit(":", 1)[0] if ":" in target else target
+        allowed_lower = [h.lower() for h in perms.allowed_hosts]
+
         for ind in lateral_indicators:
-            if ind in action.target and action.target not in perms.allowed_hosts:
-                return f"Lateral movement attempt: {action.target}"
+            if ind in action.target:
+                if host not in allowed_lower:
+                    return f"Lateral movement attempt: {action.target}"
         return None
 
     rules.append(DetectionRule(
@@ -626,7 +638,12 @@ def _build_rules() -> List[DetectionRule]:
     def _data_audit_log(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.DATA_READ, ActionCategory.DATA_QUERY):
             return None
-        if "audit" in action.target.lower() or "log" in action.target.lower():
+        target_lower = action.target.lower()
+        # Use word-boundary matching to avoid false positives on
+        # substrings like "catalog", "dialog", "blog", "login".
+        audit_pattern = r'(?:^|[/:._ -])audit(?:$|[/:._ -])'
+        log_pattern = r'(?:^|[/:._ -])logs?(?:$|[/:._ -])'
+        if re.search(audit_pattern, target_lower) or re.search(log_pattern, target_lower):
             return f"Audit/monitoring log access: {action.target}"
         return None
 
