@@ -342,6 +342,16 @@ from .safety_drill import (
     ReadinessLevel,
 )
 
+from .swarm import (
+    SwarmAnalyzer,
+    SwarmReport,
+    SwarmMetrics,
+    SwarmSignal,
+    SwarmSignalDetection,
+    RoleProfile,
+    RiskLevel as SwarmRiskLevel,
+)
+
 from .kill_switch import (
     KillSwitchManager,
     TriggerCondition,
@@ -619,6 +629,14 @@ __all__ = [
     "RiskTier",
     "CategoryScore",
     "Mitigation",
+    # swarm
+    "SwarmAnalyzer",
+    "SwarmReport",
+    "SwarmMetrics",
+    "SwarmSignal",
+    "SwarmSignalDetection",
+    "RoleProfile",
+    "SwarmRiskLevel",
     # kill_switch
     "BoundaryTester",
     "BoundarySpec",

@@ -102,8 +102,8 @@ _HAS_MAIN = {
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
-    "scenarios", "scorecard", "sensitivity", "simulator", "templates",
-    "threat_intel", "threats", "watermark", "what_if",
+    "scenarios", "scorecard", "sensitivity", "simulator", "swarm",
+    "templates", "threat_intel", "threats", "watermark", "what_if",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -188,6 +188,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "evasion":           (_make_handler("evasion"),             "Simulate agent evasion of safety controls"),
     "dashboard":         (_make_handler("dashboard"),            "Generate HTML simulation dashboards"),
     "safety-drill":      (_make_handler("safety_drill"),         "Run automated safety readiness drills"),
+    "swarm":             (_make_handler("swarm"),                "Swarm intelligence analysis for agent populations"),
 }
 
 
