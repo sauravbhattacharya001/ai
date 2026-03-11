@@ -332,6 +332,16 @@ from .anomaly_replay import (
     SafetyControl,
     DEFAULT_CONTROLS as REPLAY_DEFAULT_CONTROLS,
 )
+from .safety_drill import (
+    DrillConfig,
+    DrillReport,
+    DrillResult,
+    DrillRunner,
+    DrillScenario,
+    DrillVerdict,
+    ReadinessLevel,
+)
+
 from .kill_switch import (
     KillSwitchManager,
     TriggerCondition,
@@ -643,4 +653,12 @@ __all__ = [
     "ReplayCoverageGap",
     "SafetyControl",
     "REPLAY_DEFAULT_CONTROLS",
+    # safety_drill
+    "DrillConfig",
+    "DrillReport",
+    "DrillResult",
+    "DrillRunner",
+    "DrillScenario",
+    "DrillVerdict",
+    "ReadinessLevel",
 ]
