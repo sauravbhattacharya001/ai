@@ -40,6 +40,7 @@ Auto-generated documentation from source code docstrings.
 | [Evasion Simulator](evasion.md) | Safety control robustness testing — 10 evasion techniques, resilience scoring |
 | [Steganography](steganography.md) | Detect hidden payloads in agent outputs — statistical analysis, entropy detection |
 | [Emergent Behavior](emergent.md) | Detect emergent behaviors in agent populations — collective pattern analysis |
+| [Swarm Intelligence](swarm.md) | Detect emergent coordination — synchronization, role specialization, collective goals |
 | [Coordinated Threats](coordinated_threats.md) | Multi-vector coordinated threat simulation and detection |
 
 ## Safety Assessment
@@ -53,6 +54,7 @@ Auto-generated documentation from source code docstrings.
 | [Boundary Tester](boundary_tester.md) | Verify agent containment is enforced — capability boundary probing |
 | [Sensitivity](sensitivity.md) | Parameter sensitivity analysis — identify which config values most affect safety outcomes |
 | [Regression](regression.md) | Safety regression detection — compare simulation runs across versions |
+| [Safety Drill](safety_drill.md) | Automated emergency readiness testing — fire drills for safety controls |
 
 ## Governance & Compliance
 
@@ -70,6 +72,7 @@ Auto-generated documentation from source code docstrings.
 
 | Module | Description |
 |--------|-------------|
+| [Dashboard](dashboard.md) | Self-contained HTML report generator — single-file dashboards with comparison views |
 | [Capacity](capacity.md) | Capacity planner for AI replication scenarios — resource forecasting |
 | [Comparator](comparator.md) | Side-by-side simulation comparison runner for experiments |
 | [Exporter](exporter.md) | Structured audit trail export — multiple output formats |
@@ -120,6 +123,7 @@ from replication.watermark import WatermarkEngine
 from replication.evasion import EvasionSimulator
 from replication.steganography import SteganographyDetector
 from replication.emergent import EmergentDetector
+from replication.swarm import SwarmAnalyzer
 
 # Safety Assessment
 from replication.scorecard import SafetyScorecard
@@ -129,6 +133,7 @@ from replication.kill_switch import KillSwitchManager
 from replication.boundary_tester import BoundaryTester
 from replication.sensitivity import SensitivityAnalyzer
 from replication.regression import RegressionDetector
+from replication.safety_drill import DrillRunner
 
 # Governance
 from replication.compliance import ComplianceAuditor
@@ -142,6 +147,7 @@ from replication.alignment import AlignmentMonitor
 # Infrastructure
 from replication.capacity import CapacityPlanner
 from replication.exporter import AuditExporter
+from replication.dashboard import DashboardGenerator
 from replication.incident import IncidentManager
 from replication.dependency_graph import DependencyAnalyzer
 from replication.goal_inference import GoalInferenceEngine
