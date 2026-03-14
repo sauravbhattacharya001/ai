@@ -419,7 +419,7 @@ class CovertChannelDetector:
             ))
 
         # Timing analysis
-        signals.extend(self._timing_analysis(msgs, agents, all_msgs))
+        signals.extend(self._timing_analysis(msgs, agents, all_msgs, msg_index))
 
         # Build profile
         entropies = [_shannon_entropy(m.content) for m in msgs]
@@ -558,6 +558,7 @@ class CovertChannelDetector:
         msgs: List[AgentMessage],
         agents: List[str],
         all_msgs: List[AgentMessage],
+        msg_index: Optional[Dict[int, int]] = None,
     ) -> List[CovertSignal]:
         """Detect timing-based covert channels."""
         signals: List[CovertSignal] = []
@@ -570,7 +571,10 @@ class CovertChannelDetector:
             return signals
 
         cv = _coefficient_of_variation(intervals)
-        indices = [all_msgs.index(m) if m in all_msgs else i for i, m in enumerate(msgs)]
+        # Use O(1) dict lookup instead of O(n) list.index() per message
+        if msg_index is None:
+            msg_index = {id(m): i for i, m in enumerate(all_msgs)}
+        indices = [msg_index.get(id(m), i) for i, m in enumerate(msgs)]
 
         # Suspiciously regular timing (Morse-like signalling)
         if cv < self.config.timing_regularity_threshold:
