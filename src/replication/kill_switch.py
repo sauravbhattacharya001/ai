@@ -347,11 +347,22 @@ class KillSwitchManager:
             self._hooks[hook_name].append(callback)
 
     def _fire_hooks(self, hook_name: str, **kwargs) -> None:
+        """Fire registered hook callbacks.
+
+        ``pre_kill`` hooks are safety-critical: if any raises, the
+        exception propagates so the kill is aborted (fail-safe).
+        ``post_kill`` and ``on_trigger`` hooks are best-effort — errors
+        are suppressed so they never block a completed operation.
+        """
         for cb in self._hooks.get(hook_name, []):
-            try:
+            if hook_name == "pre_kill":
+                # Safety-critical: let exceptions abort the kill
                 cb(**kwargs)
-            except Exception:
-                pass  # Hooks must not break the kill path
+            else:
+                try:
+                    cb(**kwargs)
+                except Exception:
+                    pass  # Best-effort for non-critical hooks
 
     # -- Evaluation --
 
@@ -446,8 +457,21 @@ class KillSwitchManager:
             self._record_event(event)
             return event
 
-        # Fire pre-kill hooks
-        self._fire_hooks("pre_kill", agent_id=agent_id, strategy=self._strategy)
+        # Fire pre-kill hooks (safety-critical: abort on failure)
+        try:
+            self._fire_hooks("pre_kill", agent_id=agent_id, strategy=self._strategy)
+        except Exception as exc:
+            event = KillEvent(
+                agent_id=agent_id,
+                timestamp=now,
+                triggers=triggers,
+                strategy=self._strategy.kind,
+                outcome=KillOutcome.FAILED,
+                reason=f"Pre-kill hook aborted: {exc}",
+                operator=operator,
+            )
+            self._record_event(event)
+            return event
 
         # Execute based on strategy
         start = time.perf_counter()
@@ -512,10 +536,19 @@ class KillSwitchManager:
         return self._agent_states.get(agent_id, "unknown")
 
     def revive(self, agent_id: str) -> bool:
-        """Revive a killed/quarantined/suspended agent. Returns True if state changed."""
+        """Revive a killed/quarantined/suspended agent. Returns True if state changed.
+
+        Resets all trigger breach tracking so sustained triggers must
+        re-observe the full sustained duration before firing again.
+        Without this reset, stale ``_first_breach`` timestamps from
+        the previous agent lifecycle would cause sustained triggers
+        to fire immediately on the next threshold breach.
+        """
         current = self._agent_states.get(agent_id)
         if current in ("dead", "quarantined", "suspended"):
             self._agent_states[agent_id] = "alive"
+            for trigger in self._triggers:
+                trigger.reset()
             return True
         return False
 
