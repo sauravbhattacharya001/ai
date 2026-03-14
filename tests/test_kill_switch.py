@@ -237,6 +237,43 @@ class TestKillSwitchManager(unittest.TestCase):
         mgr.register_agent("a1")
         self.assertFalse(mgr.revive("a1"))
 
+    def test_revive_resets_trigger_breach_state(self):
+        """After revive, sustained triggers must re-observe the full duration."""
+        trigger = TriggerCondition(
+            kind=TriggerKind.RESOURCE_CPU,
+            threshold=80.0,
+            sustained_seconds=10.0,
+            label="CPU sustained",
+        )
+        mgr = KillSwitchManager(cooldown_seconds=0)
+        mgr.add_trigger(trigger)
+        mgr.register_agent("a1")
+
+        state = {"agent_id": "a1", "cpu_percent": 90.0}
+
+        # First breach starts the sustained timer
+        t0 = 1000.0
+        result1 = mgr.evaluate(state, now=t0)
+        self.assertFalse(result1.should_kill)
+
+        # After 10s, trigger fires
+        result2 = mgr.evaluate(state, now=t0 + 10.0)
+        self.assertTrue(result2.should_kill)
+
+        # Kill and revive
+        mgr.kill("a1")
+        mgr.revive("a1")
+
+        # After revive, breach tracking should be reset.
+        # A new breach at t0+20 should NOT fire immediately — the sustained
+        # timer must start fresh.
+        result3 = mgr.evaluate(state, now=t0 + 20.0)
+        self.assertFalse(result3.should_kill)
+
+        # Only fires again after another full sustained period
+        result4 = mgr.evaluate(state, now=t0 + 30.0)
+        self.assertTrue(result4.should_kill)
+
     def test_unknown_agent_status(self):
         mgr = self._make_mgr()
         self.assertEqual(mgr.agent_status("nonexistent"), "unknown")
@@ -336,6 +373,18 @@ class TestKillSwitchManager(unittest.TestCase):
         mgr = self._make_mgr()
         mgr.register_agent("a1")
         mgr.on("pre_kill", lambda **kw: 1/0)
+        event = mgr.kill("a1")  # Should not raise
+        # Pre-kill hooks are safety-critical: a failing hook aborts the kill
+        self.assertEqual(event.outcome, KillOutcome.FAILED)
+        self.assertIn("Pre-kill hook aborted", event.reason)
+        # Agent should still be alive since kill was aborted
+        self.assertEqual(mgr.agent_status("a1"), "alive")
+
+    def test_post_kill_hook_exception_no_crash(self):
+        """Post-kill hooks are best-effort — errors are swallowed."""
+        mgr = self._make_mgr()
+        mgr.register_agent("a1")
+        mgr.on("post_kill", lambda **kw: 1/0)
         event = mgr.kill("a1")  # Should not raise
         self.assertEqual(event.outcome, KillOutcome.KILLED)
 
