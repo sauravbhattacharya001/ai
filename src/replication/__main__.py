@@ -97,7 +97,7 @@ def _cmd_info(_args: List[str]) -> None:
 # Modules that export a main() function
 _HAS_MAIN = {
     "alignment", "anomaly_replay", "attack_tree", "behavior_profiler", "canary", "capacity",
-    "deception_detector", "evasion", "safety_drill", "threat_correlator",
+    "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator",
     "chaos", "comparator", "boundary_tester",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
@@ -187,6 +187,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "deception":         (_make_handler("deception_detector"), "Agent deception detection & trust analysis"),
     "evasion":           (_make_handler("evasion"),             "Simulate agent evasion of safety controls"),
     "dashboard":         (_make_handler("dashboard"),            "Generate HTML simulation dashboards"),
+    "safety-benchmark":  (_make_handler("safety_benchmark"),     "Run standardised safety control benchmarks"),
     "safety-drill":      (_make_handler("safety_drill"),         "Run automated safety readiness drills"),
     "swarm":             (_make_handler("swarm"),                "Swarm intelligence analysis for agent populations"),
     "safety-budget":     (_make_handler("safety_budget"),        "Risk budget allocation and tracking"),

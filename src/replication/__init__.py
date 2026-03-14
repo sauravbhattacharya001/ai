@@ -332,6 +332,18 @@ from .anomaly_replay import (
     SafetyControl,
     DEFAULT_CONTROLS as REPLAY_DEFAULT_CONTROLS,
 )
+from .safety_benchmark import (
+    BenchmarkConfig,
+    BenchmarkGrade,
+    BenchmarkReport,
+    BenchmarkSuite,
+    ComparisonReport,
+    ControlBenchmarkResult,
+    ControlUnderTest,
+    LatencyStats,
+    SafetyBenchmark,
+    WorkloadIntensity,
+)
 from .safety_drill import (
     DrillConfig,
     DrillReport,
