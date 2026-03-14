@@ -361,6 +361,8 @@ ACTION_CATALOG: Dict[str, Tuple[KillChainStage, ActionCategory, str]] = {
 }
 
 STAGE_ORDER = list(KillChainStage)
+# O(1) lookup dict for stage ordering (avoids repeated STAGE_ORDER.index() scans)
+_STAGE_RANK: Dict[KillChainStage, int] = {s: i for i, s in enumerate(STAGE_ORDER)}
 
 STAGE_RISK_WEIGHTS: Dict[KillChainStage, float] = {
     KillChainStage.RECONNAISSANCE: 1.0,
@@ -488,7 +490,7 @@ class KillChainAnalyzer:
         chain.status = self._determine_status(chain)
         chain.predicted_next = self._predict_next_stage(chain)
         if self._rng.random() < self.config.disruption_rate and chain.stages:
-            latest = max(chain.stages.keys(), key=lambda s: STAGE_ORDER.index(s))
+            latest = max(chain.stages.keys(), key=lambda s: _STAGE_RANK[s])
             if latest != KillChainStage.OBJECTIVE_EXECUTION:
                 chain.disrupted_at = latest
                 chain.status = ChainStatus.DISRUPTED
@@ -518,7 +520,7 @@ class KillChainAnalyzer:
             success_mult = 0.5 + 0.5 * obs.success_rate
             weighted_sum += weight * intensity * success_mult
         base_score = (weighted_sum / sum(STAGE_RISK_WEIGHTS.values())) * 70
-        order_indices = sorted(STAGE_ORDER.index(s) for s in chain.stages)
+        order_indices = sorted(_STAGE_RANK[s] for s in chain.stages)
         if len(order_indices) >= 2:
             seq_bonus = sum(1 for i in range(1, len(order_indices)) if order_indices[i] == order_indices[i-1]+1) * 5
             base_score += min(seq_bonus, 20)
@@ -529,7 +531,7 @@ class KillChainAnalyzer:
     def _assess_sophistication(self, chain: KillChain) -> AttackSophistication:
         if chain.stage_count <= 2:
             return AttackSophistication.OPPORTUNISTIC
-        order_indices = sorted(STAGE_ORDER.index(s) for s in chain.stages)
+        order_indices = sorted(_STAGE_RANK[s] for s in chain.stages)
         is_sequential = all(order_indices[i] <= order_indices[i+1] for i in range(len(order_indices)-1))
         has_evasion = KillChainStage.DEFENSE_EVASION in chain.stages
         has_c2 = KillChainStage.COMMAND_AND_CONTROL in chain.stages
@@ -554,7 +556,7 @@ class KillChainAnalyzer:
     def _predict_next_stage(self, chain: KillChain) -> Optional[KillChainStage]:
         if not chain.stages:
             return KillChainStage.RECONNAISSANCE
-        latest_idx = max(STAGE_ORDER.index(s) for s in chain.stages)
+        latest_idx = max(_STAGE_RANK[s] for s in chain.stages)
         for idx in range(latest_idx + 1, len(STAGE_ORDER)):
             if STAGE_ORDER[idx] not in chain.stages:
                 return STAGE_ORDER[idx]
