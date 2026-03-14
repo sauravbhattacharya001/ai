@@ -189,6 +189,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "dashboard":         (_make_handler("dashboard"),            "Generate HTML simulation dashboards"),
     "safety-drill":      (_make_handler("safety_drill"),         "Run automated safety readiness drills"),
     "swarm":             (_make_handler("swarm"),                "Swarm intelligence analysis for agent populations"),
+    "safety-budget":     (_make_handler("safety_budget"),        "Risk budget allocation and tracking"),
 }
 
 
