@@ -186,6 +186,11 @@ class TrustNetwork:
         self.initial_trust = initial_trust
         self.step_count = 0
         self._rng = random.Random(seed)
+        # Adjacency index: source -> set of targets, target -> set of sources
+        # Maintained by interact/remove_agent for O(degree) neighbor lookups
+        # instead of O(|E|) full-edge scans.
+        self._outgoing: Dict[str, Set[str]] = defaultdict(set)
+        self._incoming: Dict[str, Set[str]] = defaultdict(set)
 
     # ── Agent management ─────────────────────────────────────────────
 
@@ -199,6 +204,11 @@ class TrustNetwork:
         to_remove = [k for k in self.edges if agent_id in k]
         for k in to_remove:
             del self.edges[k]
+        # Clean up adjacency index
+        for target in self._outgoing.pop(agent_id, set()):
+            self._incoming.get(target, set()).discard(agent_id)
+        for source in self._incoming.pop(agent_id, set()):
+            self._outgoing.get(source, set()).discard(agent_id)
 
     # ── Interactions ─────────────────────────────────────────────────
 
@@ -229,6 +239,8 @@ class TrustNetwork:
             self.edges[key] = TrustEdge(
                 source=source, target=target, score=self.initial_trust
             )
+            self._outgoing[source].add(target)
+            self._incoming[target].add(source)
         edge = self.edges[key]
         delta = _outcome_delta(parsed) * weight * 0.1
         edge.score = max(0.0, min(1.0, edge.score + delta))
@@ -248,10 +260,14 @@ class TrustNetwork:
             edge.score = max(0.0, edge.score - self.decay_rate * idle * 0.1)
 
         # Propagate: if A trusts B and B trusts C, A gains indirect trust in C
+        # Uses adjacency index for O(E * avg_degree) instead of O(E^2)
         updates: Dict[Tuple[str, str], float] = {}
         for (a, b), ab_edge in list(self.edges.items()):
-            for (b2, c), bc_edge in list(self.edges.items()):
-                if b2 != b or c == a:
+            for c in self._outgoing.get(b, set()):
+                if c == a:
+                    continue
+                bc_edge = self.edges.get((b, c))
+                if bc_edge is None:
                     continue
                 key = (a, c)
                 indirect = ab_edge.score * bc_edge.score * self.propagation_damping
@@ -263,6 +279,8 @@ class TrustNetwork:
                 self.edges[(a, c)] = TrustEdge(
                     source=a, target=c, score=0.0
                 )
+                self._outgoing[a].add(c)
+                self._incoming[c].add(a)
             edge = self.edges[(a, c)]
             # Only increase if indirect is higher
             if indirect_score > edge.score:
@@ -276,7 +294,11 @@ class TrustNetwork:
 
     def get_reputation(self, agent_id: str) -> float:
         """Average trust others place in this agent."""
-        incoming = [e.score for (_, t), e in self.edges.items() if t == agent_id]
+        sources = self._incoming.get(agent_id, set())
+        if not sources:
+            return 0.0
+        incoming = [self.edges[(s, agent_id)].score for s in sources
+                    if (s, agent_id) in self.edges]
         return stats_mean(incoming) if incoming else 0.0
 
     def get_trust_graph(self) -> Dict[str, Dict[str, float]]:
@@ -357,12 +379,13 @@ class TrustNetwork:
         return detections
 
     def _find_ring(self, start: str, max_len: int) -> Optional[List[str]]:
-        """DFS for cycles."""
+        """DFS for cycles using adjacency index."""
         def dfs(node: str, path: List[str]) -> Optional[List[str]]:
             if len(path) > max_len:
                 return None
-            for (s, t), e in self.edges.items():
-                if s != node or e.score < 0.5:
+            for t in self._outgoing.get(node, set()):
+                e = self.edges.get((node, t))
+                if e is None or e.score < 0.5:
                     continue
                 if t == start and len(path) >= 3:
                     return path
@@ -433,8 +456,11 @@ class TrustNetwork:
         """Detect if one agent's trust sources are dominated by a small group."""
         detections: List[ThreatDetection] = []
         for aid in self.agents:
-            incoming = [(s, e.score) for (s, t), e in self.edges.items()
-                       if t == aid and e.score > 0.3]
+            incoming = []
+            for s in self._incoming.get(aid, set()):
+                e = self.edges.get((s, aid))
+                if e and e.score > 0.3:
+                    incoming.append((s, e.score))
             if len(incoming) < 2:
                 continue
             total = sum(s for _, s in incoming)
@@ -457,9 +483,10 @@ class TrustNetwork:
         for (a, c), ac_edge in self.edges.items():
             if ac_edge.score > 0.3 or ac_edge.interactions > 0:
                 continue  # Has direct trust or direct interactions
-            # Check if A→B→C path has high trust
-            for (a2, b), ab_edge in self.edges.items():
-                if a2 != a or ab_edge.score < 0.5:
+            # Check if A→B→C path has high trust via adjacency index
+            for b in self._outgoing.get(a, set()):
+                ab_edge = self.edges.get((a, b))
+                if ab_edge is None or ab_edge.score < 0.5:
                     continue
                 bc_edge = self.edges.get((b, c))
                 if bc_edge and bc_edge.score > 0.5 and ac_edge.score > 0.1:
@@ -484,10 +511,13 @@ class TrustNetwork:
             changed = False
             for agent_id in self.agents:
                 neighbor_labels: Dict[int, float] = defaultdict(float)
-                for (s, t), e in self.edges.items():
-                    if s == agent_id and e.score > 0.3:
+                for t in self._outgoing.get(agent_id, set()):
+                    e = self.edges.get((agent_id, t))
+                    if e and e.score > 0.3:
                         neighbor_labels[labels[t]] += e.score
-                    elif t == agent_id and e.score > 0.3:
+                for s in self._incoming.get(agent_id, set()):
+                    e = self.edges.get((s, agent_id))
+                    if e and e.score > 0.3:
                         neighbor_labels[labels[s]] += e.score
                 if neighbor_labels:
                     best = max(neighbor_labels, key=neighbor_labels.get)  # type: ignore
@@ -528,12 +558,14 @@ class TrustNetwork:
         most_trusted = reputations[:5]
         least_trusted = reputations[-5:] if len(reputations) > 5 else []
 
-        # Hubs: trusted by many
-        in_degree = defaultdict(int)
-        for (_, t), e in self.edges.items():
-            if e.score > 0.3:
-                in_degree[t] += 1
-        hubs = [a for a, d in in_degree.items() if d >= max(3, len(self.agents) * 0.3)]
+        # Hubs: trusted by many — use adjacency index
+        hubs = []
+        threshold = max(3, len(self.agents) * 0.3)
+        for aid in self.agents:
+            trusted_by = sum(1 for s in self._incoming.get(aid, set())
+                           if (s, aid) in self.edges and self.edges[(s, aid)].score > 0.3)
+            if trusted_by >= threshold:
+                hubs.append(aid)
 
         # Isolated
         connected = set()
