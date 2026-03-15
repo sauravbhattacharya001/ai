@@ -112,10 +112,18 @@ class TestTriggerCondition(unittest.TestCase):
 
     def test_reset(self):
         t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0, sustained_seconds=10)
-        t.evaluate({"cpu_percent": 90}, now=1000.0)
-        self.assertIsNotNone(t._first_breach)
+        t.evaluate({"cpu_percent": 90, "agent_id": "a1"}, now=1000.0)
+        self.assertIn("a1", t._first_breach)
+        t.reset(agent_id="a1")
+        self.assertNotIn("a1", t._first_breach)
+
+    def test_reset_all(self):
+        t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0, sustained_seconds=10)
+        t.evaluate({"cpu_percent": 90, "agent_id": "a1"}, now=1000.0)
+        t.evaluate({"cpu_percent": 90, "agent_id": "a2"}, now=1000.0)
+        self.assertEqual(len(t._first_breach), 2)
         t.reset()
-        self.assertIsNone(t._first_breach)
+        self.assertEqual(len(t._first_breach), 0)
 
     def test_exact_threshold(self):
         t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0)
@@ -273,6 +281,35 @@ class TestKillSwitchManager(unittest.TestCase):
         # Only fires again after another full sustained period
         result4 = mgr.evaluate(state, now=t0 + 30.0)
         self.assertTrue(result4.should_kill)
+
+    def test_revive_only_resets_target_agent_breach(self):
+        """Reviving agent B must NOT wipe agent A's sustained breach tracking."""
+        trigger = TriggerCondition(
+            kind=TriggerKind.RESOURCE_CPU,
+            threshold=80.0,
+            sustained_seconds=30.0,
+            label="CPU overload",
+        )
+        mgr = KillSwitchManager(cooldown_seconds=0)
+        mgr.add_trigger(trigger)
+        mgr.register_agent("a")
+        mgr.register_agent("b")
+
+        t = 1000.0
+        state_a = {"agent_id": "a", "cpu_percent": 95.0}
+
+        # Agent A breaching for 25 seconds
+        mgr.evaluate(state_a, now=t)
+        mgr.evaluate(state_a, now=t + 25)
+
+        # Agent B gets killed and revived — unrelated to A
+        mgr.kill("b")
+        mgr.revive("b")
+
+        # Agent A should still fire after the full 30s (25s already elapsed + 5 more)
+        result = mgr.evaluate(state_a, now=t + 30)
+        self.assertTrue(result.should_kill,
+                        "Reviving agent B must not reset agent A's sustained breach tracking")
 
     def test_unknown_agent_status(self):
         mgr = self._make_mgr()
