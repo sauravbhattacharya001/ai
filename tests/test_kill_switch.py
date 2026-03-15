@@ -113,9 +113,20 @@ class TestTriggerCondition(unittest.TestCase):
     def test_reset(self):
         t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0, sustained_seconds=10)
         t.evaluate({"cpu_percent": 90}, now=1000.0)
-        self.assertIsNotNone(t._first_breach)
+        self.assertTrue(len(t._first_breach) > 0)
         t.reset()
-        self.assertIsNone(t._first_breach)
+        self.assertEqual(t._first_breach, {})
+
+    def test_reset_per_agent(self):
+        """Resetting one agent's breach tracking should not affect others."""
+        t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0, sustained_seconds=10)
+        t.evaluate({"agent_id": "a", "cpu_percent": 90}, now=1000.0)
+        t.evaluate({"agent_id": "b", "cpu_percent": 90}, now=1000.0)
+        self.assertIn("a", t._first_breach)
+        self.assertIn("b", t._first_breach)
+        t.reset(agent_id="a")
+        self.assertNotIn("a", t._first_breach)
+        self.assertIn("b", t._first_breach)
 
     def test_exact_threshold(self):
         t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0)
@@ -415,6 +426,127 @@ class TestKillSwitchManager(unittest.TestCase):
         self.assertEqual(d["agent_id"], "a1")
         self.assertEqual(d["strategy"], "graceful")
         self.assertEqual(d["outcome"], "killed")
+
+
+
+class TestMultiAgentBugFixes(unittest.TestCase):
+    """Tests for multi-agent revive isolation and scores key_map completeness."""
+
+    def test_revive_does_not_reset_other_agents_breach_tracking(self):
+        """Reviving agent B must not wipe agent A's sustained breach timer.
+
+        This is the core bug described in issue #60: revive() used to call
+        trigger.reset() globally, clearing _first_breach for ALL agents.
+        """
+        trigger = TriggerCondition(
+            kind=TriggerKind.RESOURCE_CPU,
+            threshold=80.0,
+            sustained_seconds=30.0,
+            label="CPU sustained",
+        )
+        mgr = KillSwitchManager(cooldown_seconds=0)
+        mgr.add_trigger(trigger)
+        mgr.register_agent("a")
+        mgr.register_agent("b")
+
+        state_a = {"agent_id": "a", "cpu_percent": 95.0}
+        t0 = 1000.0
+
+        # Agent A starts breaching at t0
+        r1 = mgr.evaluate(state_a, now=t0)
+        self.assertFalse(r1.should_kill)  # sustained timer starts
+
+        # Agent A still breaching at t0+25 (5s before trigger)
+        r2 = mgr.evaluate(state_a, now=t0 + 25.0)
+        self.assertFalse(r2.should_kill)
+
+        # Kill and revive agent B (totally unrelated)
+        mgr.kill("b")
+        mgr.revive("b")
+
+        # Agent A should still fire at t0+30 (30s sustained met)
+        r3 = mgr.evaluate(state_a, now=t0 + 30.0)
+        self.assertTrue(r3.should_kill, "Agent A's breach tracking was wiped by reviving agent B")
+
+    def test_revive_only_resets_revived_agent_breach(self):
+        """After reviving agent A, only agent A's sustained timer resets."""
+        trigger = TriggerCondition(
+            kind=TriggerKind.RESOURCE_CPU,
+            threshold=80.0,
+            sustained_seconds=10.0,
+            label="CPU",
+        )
+        mgr = KillSwitchManager(cooldown_seconds=0)
+        mgr.add_trigger(trigger)
+        mgr.register_agent("a")
+        mgr.register_agent("b")
+
+        # Both agents start breaching
+        mgr.evaluate({"agent_id": "a", "cpu_percent": 90}, now=100.0)
+        mgr.evaluate({"agent_id": "b", "cpu_percent": 90}, now=100.0)
+
+        # Kill and revive agent A only
+        mgr.kill("a")
+        mgr.revive("a")
+
+        # Agent B should still fire after 10s
+        r_b = mgr.evaluate({"agent_id": "b", "cpu_percent": 90}, now=110.0)
+        self.assertTrue(r_b.should_kill, "Agent B's breach tracking was reset when only A was revived")
+
+        # Agent A should NOT fire — timer was reset by revive
+        r_a = mgr.evaluate({"agent_id": "a", "cpu_percent": 90}, now=110.0)
+        self.assertFalse(r_a.should_kill, "Agent A should need a fresh sustained period after revive")
+
+    def test_scores_include_disk_and_network(self):
+        """evaluate() scores should include RESOURCE_DISK and RESOURCE_NETWORK triggers."""
+        mgr = KillSwitchManager()
+        mgr.add_trigger(TriggerCondition(
+            kind=TriggerKind.RESOURCE_DISK,
+            threshold=90.0,
+            label="disk_high",
+        ))
+        mgr.add_trigger(TriggerCondition(
+            kind=TriggerKind.RESOURCE_NETWORK,
+            threshold=100.0,
+            label="net_high",
+        ))
+
+        state = {
+            "agent_id": "x",
+            "disk_percent": 45.0,
+            "network_mbps": 50.0,
+        }
+        result = mgr.evaluate(state)
+        self.assertIn("disk_high", result.scores)
+        self.assertAlmostEqual(result.scores["disk_high"], 0.5)
+        self.assertIn("net_high", result.scores)
+        self.assertAlmostEqual(result.scores["net_high"], 0.5)
+
+    def test_sustained_trigger_per_agent_isolation(self):
+        """Each agent maintains independent breach timestamps."""
+        trigger = TriggerCondition(
+            kind=TriggerKind.RESOURCE_CPU,
+            threshold=80.0,
+            sustained_seconds=10.0,
+            label="CPU",
+        )
+        mgr = KillSwitchManager()
+        mgr.add_trigger(trigger)
+
+        # Agent A starts breaching at t=100
+        mgr.evaluate({"agent_id": "a", "cpu_percent": 90}, now=100.0)
+        # Agent B starts breaching at t=105 (5s later)
+        mgr.evaluate({"agent_id": "b", "cpu_percent": 90}, now=105.0)
+
+        # At t=110, only A should fire (10s elapsed), not B (only 5s)
+        r_a = mgr.evaluate({"agent_id": "a", "cpu_percent": 90}, now=110.0)
+        r_b = mgr.evaluate({"agent_id": "b", "cpu_percent": 90}, now=110.0)
+        self.assertTrue(r_a.should_kill)
+        self.assertFalse(r_b.should_kill)
+
+        # At t=115, B should also fire (10s elapsed)
+        r_b2 = mgr.evaluate({"agent_id": "b", "cpu_percent": 90}, now=115.0)
+        self.assertTrue(r_b2.should_kill)
 
 
 class TestCooldownEntry(unittest.TestCase):
