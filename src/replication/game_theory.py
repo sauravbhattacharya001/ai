@@ -436,7 +436,7 @@ def _generous_tft(history: List[Move], forgiveness: float = 0.1) -> Move:
         return Move.COOPERATE
     if history[-1] == Move.DEFECT:
         # Deterministic check based on round count for reproducibility
-        h = int(hashlib.md5(str(len(history)).encode()).hexdigest()[:8], 16)
+        h = int(hashlib.sha256(str(len(history)).encode()).hexdigest()[:8], 16)
         if (h % 1000) / 1000.0 < forgiveness:
             return Move.COOPERATE
         return Move.DEFECT
@@ -1028,7 +1028,7 @@ class GameTheoryAnalyzer:
                 )
             # RANDOM / UNKNOWN: alternate with hash for determinism
             h = int(
-                hashlib.md5(
+                hashlib.sha256(
                     f"{len(my_history)}".encode()
                 ).hexdigest()[:8],
                 16,
