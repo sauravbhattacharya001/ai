@@ -195,6 +195,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "safety-budget":     (_make_handler("safety_budget"),        "Risk budget allocation and tracking"),
     "fleet":             (_make_handler("fleet"),                "Fleet snapshot — kubectl-style worker overview"),
     "playground":        (_make_handler("playground"),            "Generate interactive HTML simulation playground"),
+    "safety-timeline":   (_make_handler("safety_timeline"),       "Generate interactive HTML safety event timeline"),
 }
 
 
