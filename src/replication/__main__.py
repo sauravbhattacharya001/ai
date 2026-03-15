@@ -96,7 +96,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alignment", "anomaly_replay", "attack_tree", "behavior_profiler", "canary", "capacity",
+    "alignment", "anomaly_replay", "attack_tree", "behavior_profiler", "canary", "capacity", "fleet",
     "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator",
     "chaos", "comparator", "boundary_tester",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -191,6 +191,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "safety-drill":      (_make_handler("safety_drill"),         "Run automated safety readiness drills"),
     "swarm":             (_make_handler("swarm"),                "Swarm intelligence analysis for agent populations"),
     "safety-budget":     (_make_handler("safety_budget"),        "Risk budget allocation and tracking"),
+    "fleet":             (_make_handler("fleet"),                "Fleet snapshot — kubectl-style worker overview"),
 }
 
 
