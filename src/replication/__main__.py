@@ -30,6 +30,8 @@ Run any tool via a single command::
     python -m replication report --output report.html
     python -m replication info
 
+    python -m replication playground -o playground.html
+
 Instead of remembering ``python -m replication.simulator``,
 ``python -m replication.threats``, etc., everything lives under
 one roof with tab-completable subcommands.
@@ -98,7 +100,7 @@ def _cmd_info(_args: List[str]) -> None:
 _HAS_MAIN = {
     "alignment", "anomaly_replay", "attack_tree", "behavior_profiler", "canary", "capacity", "fleet",
     "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator",
-    "chaos", "comparator", "boundary_tester",
+    "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -192,6 +194,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "swarm":             (_make_handler("swarm"),                "Swarm intelligence analysis for agent populations"),
     "safety-budget":     (_make_handler("safety_budget"),        "Risk budget allocation and tracking"),
     "fleet":             (_make_handler("fleet"),                "Fleet snapshot — kubectl-style worker overview"),
+    "playground":        (_make_handler("playground"),            "Generate interactive HTML simulation playground"),
 }
 
 
