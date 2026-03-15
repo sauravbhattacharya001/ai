@@ -120,16 +120,24 @@ class TriggerCondition:
     enabled: bool = True
     custom_fn: Optional[Callable[[Dict[str, Any]], bool]] = None
 
-    # Internal tracking for sustained triggers
-    _first_breach: Optional[float] = field(default=None, repr=False)
+    # Internal tracking for sustained triggers — keyed by agent_id so
+    # that breach windows are independent across agents in fleet mode.
+    _first_breach: Dict[str, float] = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
         if not self.label:
             self.label = f"{self.kind.value} > {self.threshold}"
 
-    def reset(self):
-        """Reset sustained breach tracking."""
-        self._first_breach = None
+    def reset(self, agent_id: Optional[str] = None) -> None:
+        """Reset sustained breach tracking.
+
+        If *agent_id* is given, only that agent's tracking is cleared;
+        otherwise **all** per-agent tracking is cleared (bulk reset).
+        """
+        if agent_id is not None:
+            self._first_breach.pop(agent_id, None)
+        else:
+            self._first_breach.clear()
 
     def evaluate(self, agent_state: Dict[str, Any], now: Optional[float] = None) -> bool:
         """Check if this trigger fires for the given agent state."""
@@ -137,20 +145,21 @@ class TriggerCondition:
             return False
 
         now = now or time.time()
+        agent_id = agent_state.get("agent_id", "_default")
         breached = self._check_breach(agent_state)
 
         if not breached:
-            self._first_breach = None
+            self._first_breach.pop(agent_id, None)
             return False
 
         if self.sustained_seconds <= 0:
             return True
 
-        if self._first_breach is None:
-            self._first_breach = now
+        if agent_id not in self._first_breach:
+            self._first_breach[agent_id] = now
             return False
 
-        elapsed = now - self._first_breach
+        elapsed = now - self._first_breach[agent_id]
         return elapsed >= self.sustained_seconds
 
     def _check_breach(self, state: Dict[str, Any]) -> bool:
@@ -392,6 +401,8 @@ class KillSwitchManager:
             key_map = {
                 TriggerKind.RESOURCE_CPU: "cpu_percent",
                 TriggerKind.RESOURCE_MEMORY: "memory_mb",
+                TriggerKind.RESOURCE_DISK: "disk_percent",
+                TriggerKind.RESOURCE_NETWORK: "network_mbps",
                 TriggerKind.BEHAVIOR_ANOMALY: "anomaly_score",
                 TriggerKind.TIME_LIMIT: "uptime_seconds",
                 TriggerKind.REQUEST_RATE: "request_rate",
@@ -538,8 +549,8 @@ class KillSwitchManager:
     def revive(self, agent_id: str) -> bool:
         """Revive a killed/quarantined/suspended agent. Returns True if state changed.
 
-        Resets all trigger breach tracking so sustained triggers must
-        re-observe the full sustained duration before firing again.
+        Only resets breach tracking for the revived agent so that
+        sustained triggers for *other* agents are not disturbed.
         Without this reset, stale ``_first_breach`` timestamps from
         the previous agent lifecycle would cause sustained triggers
         to fire immediately on the next threshold breach.
@@ -548,7 +559,7 @@ class KillSwitchManager:
         if current in ("dead", "quarantined", "suspended"):
             self._agent_states[agent_id] = "alive"
             for trigger in self._triggers:
-                trigger.reset()
+                trigger.reset(agent_id=agent_id)
             return True
         return False
 

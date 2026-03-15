@@ -112,10 +112,10 @@ class TestTriggerCondition(unittest.TestCase):
 
     def test_reset(self):
         t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0, sustained_seconds=10)
-        t.evaluate({"cpu_percent": 90}, now=1000.0)
-        self.assertIsNotNone(t._first_breach)
+        t.evaluate({"agent_id": "a1", "cpu_percent": 90}, now=1000.0)
+        self.assertTrue(len(t._first_breach) > 0)
         t.reset()
-        self.assertIsNone(t._first_breach)
+        self.assertEqual(len(t._first_breach), 0)
 
     def test_exact_threshold(self):
         t = TriggerCondition(kind=TriggerKind.RESOURCE_CPU, threshold=80.0)
@@ -236,6 +236,39 @@ class TestKillSwitchManager(unittest.TestCase):
         mgr = self._make_mgr()
         mgr.register_agent("a1")
         self.assertFalse(mgr.revive("a1"))
+
+    def test_revive_does_not_reset_other_agents_breach_tracking(self):
+        """Reviving agent B must NOT wipe agent A's sustained breach timer.
+
+        This is the core bug from issue #60: revive() used to call
+        trigger.reset() globally, destroying breach tracking for all agents.
+        """
+        trigger = TriggerCondition(
+            kind=TriggerKind.RESOURCE_CPU,
+            threshold=80.0,
+            sustained_seconds=30.0,
+            label="CPU overload",
+        )
+        mgr = KillSwitchManager(cooldown_seconds=0)
+        mgr.add_trigger(trigger)
+        mgr.register_agent("a")
+        mgr.register_agent("b")
+
+        state_a = {"agent_id": "a", "cpu_percent": 95.0}
+
+        # Agent A has been breaching for 25 seconds
+        t = 1000.0
+        mgr.evaluate(state_a, now=t)          # starts timer
+        mgr.evaluate(state_a, now=t + 25)     # 25s elapsed, 5s remaining
+
+        # Agent B gets killed and revived — totally unrelated
+        mgr.kill("b")
+        mgr.revive("b")
+
+        # Agent A's tracking must survive — should fire at t+30
+        result = mgr.evaluate(state_a, now=t + 30)
+        self.assertTrue(result.should_kill,
+                        "Agent A's sustained breach tracking was destroyed by reviving agent B")
 
     def test_revive_resets_trigger_breach_state(self):
         """After revive, sustained triggers must re-observe the full duration."""
@@ -405,6 +438,23 @@ class TestKillSwitchManager(unittest.TestCase):
         result = mgr.evaluate({"agent_id": "a1", "cpu_percent": 60, "anomaly_score": 0.35})
         self.assertIn("CPU high", result.scores)
         self.assertAlmostEqual(result.scores["CPU high"], 60.0 / 80.0)
+
+    def test_disk_network_proximity_scores(self):
+        """RESOURCE_DISK and RESOURCE_NETWORK triggers must report proximity scores."""
+        mgr = KillSwitchManager()
+        mgr.add_trigger(TriggerCondition(
+            kind=TriggerKind.RESOURCE_DISK, threshold=90.0, label="Disk high",
+        ))
+        mgr.add_trigger(TriggerCondition(
+            kind=TriggerKind.RESOURCE_NETWORK, threshold=100.0, label="Net high",
+        ))
+        result = mgr.evaluate({
+            "agent_id": "x", "disk_percent": 45.0, "network_mbps": 50.0,
+        })
+        self.assertIn("Disk high", result.scores)
+        self.assertAlmostEqual(result.scores["Disk high"], 45.0 / 90.0)
+        self.assertIn("Net high", result.scores)
+        self.assertAlmostEqual(result.scores["Net high"], 50.0 / 100.0)
 
     def test_kill_event_to_dict(self):
         e = KillEvent(
