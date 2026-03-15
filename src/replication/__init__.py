@@ -353,6 +353,13 @@ from .safety_drill import (
     DrillVerdict,
     ReadinessLevel,
 )
+from .safety_timeline import (
+    SafetyTimeline,
+    TimelineEvent,
+    EventSeverity,
+    EventCategory,
+    generate_timeline,
+)
 
 from .swarm import (
     SwarmAnalyzer,
@@ -691,4 +698,10 @@ __all__ = [
     "DrillScenario",
     "DrillVerdict",
     "ReadinessLevel",
+    # safety_timeline
+    "SafetyTimeline",
+    "TimelineEvent",
+    "EventSeverity",
+    "EventCategory",
+    "generate_timeline",
 ]
