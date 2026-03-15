@@ -60,9 +60,11 @@ import enum
 import hashlib
 import hmac
 import json
+import secrets
 import struct
 import sys
 import time
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -184,11 +186,32 @@ class RobustnessResult:
 
 @dataclass
 class WatermarkConfig:
-    """Configuration for the watermark engine."""
-    secret: str = "default-watermark-secret"
+    """Configuration for the watermark engine.
+
+    .. warning::
+
+        If *secret* is not supplied, a random 32-byte hex token is generated
+        per instance.  This is safe for single-process usage but means
+        watermarks cannot be verified across restarts or processes unless you
+        persist and reuse the same secret.
+    """
+
+    secret: str = ""
     strategies: Optional[List[WatermarkStrategy]] = None
     epsilon: float = _EPSILON
     max_bits_per_strategy: int = _MAX_BITS
+
+    def __post_init__(self) -> None:
+        if not self.secret:
+            self.secret = secrets.token_hex(32)
+            warnings.warn(
+                "WatermarkConfig instantiated without an explicit secret — "
+                "a random key was generated.  Watermarks signed with this "
+                "key cannot be verified after process restart.  Pass a "
+                "persistent secret for production use.",
+                UserWarning,
+                stacklevel=2,
+            )
 
 
 @dataclass

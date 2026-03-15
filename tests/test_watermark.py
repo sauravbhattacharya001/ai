@@ -1,7 +1,8 @@
-"""Tests for replication.watermark — agent state watermarking."""
+"""Tests for replication.watermark - agent state watermarking."""
 
 import json
 import time
+import warnings
 
 import pytest
 
@@ -368,7 +369,7 @@ class TestKeyOrdering:
             sample_state, worker_id="w-1", depth=1, timestamp=1000.0,
         )
         result = engine.verify(wm, receipt.fingerprint)
-        # Key ordering is inherently fragile — just check we get some bits
+        # Key ordering is inherently fragile - just check we get some bits
         assert result.bits_recovered > 0
 
 
@@ -525,10 +526,21 @@ class TestHistory:
 
 class TestConfig:
 
-    def test_default_config(self):
-        engine = WatermarkEngine()
-        assert engine.config.secret == "default-watermark-secret"
+    def test_default_config_generates_random_secret(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            engine = WatermarkEngine()
+        # Should be a random hex string, not the old hardcoded default
+        assert engine.config.secret != ""
+        assert engine.config.secret != "default-watermark-secret"
+        assert len(engine.config.secret) == 64  # 32 bytes = 64 hex chars
         assert engine.config.epsilon == 1e-10
+
+    def test_default_config_emits_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            WatermarkEngine()
+            assert any("random key was generated" in str(x.message) for x in w)
 
     def test_custom_secret(self, sample_state):
         e1 = WatermarkEngine(WatermarkConfig(secret="secret-A"))
