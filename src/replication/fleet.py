@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence
 
 from .contract import ReplicationContract
-from .controller import Controller
+from .controller import Controller, RegistryEntry
 
 
 # ── data model ───────────────────────────────────────────────────────
@@ -297,9 +297,7 @@ def _build_demo_fleet() -> tuple:
             signature="",
         )
         manifest = controller.sign_manifest(manifest)
-        controller.registry[wid] = type(
-            "RegistryEntry", (), {"manifest": manifest, "last_heartbeat": now}
-        )()
+        controller.registry[wid] = RegistryEntry(manifest=manifest, last_heartbeat=now)
 
     # Quarantine one worker for demo
     controller._quarantined.add("gen2-d005")
