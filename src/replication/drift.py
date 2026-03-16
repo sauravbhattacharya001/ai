@@ -125,6 +125,9 @@ class DriftConfig:
             "denial_rate",
             "max_depth_used",
             "replication_ratio",
+            "worker_count",
+            "avg_depth",
+            "duration_ms",
         ]
     )
 
@@ -133,6 +136,7 @@ class DriftConfig:
         default_factory=lambda: [
             "kill_rate",
             "tasks_per_worker",
+            "total_tasks",
         ]
     )
 
@@ -384,8 +388,11 @@ class DriftDetector:
                 elif is_worse_lower:
                     direction = DriftDirection.WORSENING if slope < 0 else DriftDirection.IMPROVING
                 else:
-                    direction = DriftDirection.STABLE
-                    severity = DriftSeverity.NONE
+                    # Uncategorized metrics: report the trend direction
+                    # without assuming whether higher/lower is worse.
+                    # Previously these were silently forced to STABLE,
+                    # hiding real drift in metrics like worker_count.
+                    direction = DriftDirection.WORSENING if slope > 0 else DriftDirection.IMPROVING
 
                 if direction != DriftDirection.STABLE:
                     abs_slope = abs(slope)
