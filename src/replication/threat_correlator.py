@@ -723,7 +723,9 @@ class ThreatCorrelator:
             base_score = (severity_sum / len(matched)) * source_diversity
             risk_score = min(10.0, base_score * rule.risk_multiplier)
 
-            time_span = matched[-1].timestamp - matched[0].timestamp
+            # Compute time span from actual timestamps, not severity-sorted order
+            timestamps = [s.timestamp for s in matched]
+            time_span = max(timestamps) - min(timestamps)
             threat_level = self._score_to_level(risk_score)
             urgency = self._level_to_urgency(threat_level)
 
