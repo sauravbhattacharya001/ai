@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alignment", "anomaly_replay", "attack_tree", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook",
+    "alignment", "anomaly_replay", "attack_tree", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "radar",
     "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -197,6 +197,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "playground":        (_make_handler("playground"),            "Generate interactive HTML simulation playground"),
     "safety-timeline":   (_make_handler("safety_timeline"),       "Generate interactive HTML safety event timeline"),
     "ir-playbook":       (_make_handler("ir_playbook"),            "Generate incident response playbooks"),
+    "radar":             (_make_handler("radar"),                   "Generate interactive safety radar chart"),
 }
 
 
