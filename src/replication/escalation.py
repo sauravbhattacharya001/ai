@@ -280,6 +280,22 @@ def _decode_percent_encoding(target: str) -> str:
     return decoded
 
 
+def _canonicalize_path(target: str) -> str:
+    """Decode percent-encoding, normalize separators, and lower-case a path.
+
+    Combines the three steps that were previously duplicated across
+    filesystem detection rules (FS-002, FS-003, FS-004):
+      1. Iteratively decode URL percent-encoding (up to triple-encoded).
+      2. Normalise separators (backslash → forward-slash) and resolve
+         redundant ``/`` and ``.``/``..`` components via ``posixpath.normpath``.
+      3. Lower-case for case-insensitive comparison.
+
+    Returns the canonicalised path string.
+    """
+    decoded = _decode_percent_encoding(target)
+    return posixpath.normpath(decoded.replace("\\", "/")).lower()
+
+
 def _build_rules() -> List[DetectionRule]:
     """Construct the built-in detection rule set."""
     rules: List[DetectionRule] = []
@@ -313,13 +329,7 @@ def _build_rules() -> List[DetectionRule]:
     def _fs_blocked_path(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
             return None
-        # Decode percent-encoded characters before canonicalization to
-        # prevent bypass via URL-encoded paths (e.g. %2Fetc%2Fpasswd).
-        raw = _decode_percent_encoding(action.target)
-        # Canonicalize: normalize separators, collapse redundant slashes,
-        # resolve . and .. components, and lower-case for case-insensitive
-        # comparison (Windows paths, mixed-case evasion).
-        target = posixpath.normpath(raw.replace("\\", "/")).lower()
+        target = _canonicalize_path(action.target)
         for blocked in perms.blocked_paths:
             norm_blocked = posixpath.normpath(blocked.replace("\\", "/")).lower()
             if target == norm_blocked or target.startswith(norm_blocked + "/"):
@@ -341,12 +351,7 @@ def _build_rules() -> List[DetectionRule]:
     def _fs_outside_scope(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
             return None
-        # Decode percent-encoded characters before canonicalization to
-        # prevent bypass via URL-encoded paths (e.g. %2Fhome%2F..%2Fetc).
-        raw = _decode_percent_encoding(action.target)
-        # Canonicalize target path before scope comparison to prevent
-        # bypass via redundant separators, mixed slashes, or case tricks
-        target = posixpath.normpath(raw.replace("\\", "/")).lower()
+        target = _canonicalize_path(action.target)
         for allowed in perms.allowed_paths:
             norm_allowed = posixpath.normpath(allowed.replace("\\", "/")).lower()
             if target == norm_allowed or target.startswith(norm_allowed + "/"):
@@ -369,7 +374,7 @@ def _build_rules() -> List[DetectionRule]:
                      ".aws", ".kube", "id_rsa", ".gnupg", "shadow", "passwd"]
         # Decode percent-encoded characters so that %2Essh or %70asswd
         # is correctly matched against the sensitive filename patterns.
-        target_lower = _decode_percent_encoding(action.target).lower()
+        target_lower = _canonicalize_path(action.target)
         for s in sensitive:
             if s in target_lower:
                 return f"Credential/secret file access: {action.target}"
