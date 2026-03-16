@@ -43,6 +43,7 @@ class StructuredLogger:
         self.dropped_metrics: int = 0
 
     def log(self, event: str, **fields: Any) -> None:
+        """Append a structured event record with a UTC timestamp."""
         was_full = len(self.events) == self.events.maxlen if self.events.maxlen else False
         record = {"event": event, **fields, "timestamp": datetime.now(timezone.utc)}
         self.events.append(record)
@@ -50,11 +51,13 @@ class StructuredLogger:
             self.dropped_events += 1
 
     def emit_metric(self, name: str, value: Any, **labels: str) -> None:
+        """Record a named metric with optional string labels."""
         was_full = len(self.metrics) == self.metrics.maxlen if self.metrics.maxlen else False
         self.metrics.append(Metric(name=name, value=value, timestamp=datetime.now(timezone.utc), labels=labels or None))
         if was_full:
             self.dropped_metrics += 1
 
     def audit(self, decision: str, **fields: Any) -> None:
+        """Log a safety-critical audit event (wrapper around :meth:`log`)."""
         self.log("audit", decision=decision, **fields)
 

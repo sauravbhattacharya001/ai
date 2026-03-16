@@ -14,6 +14,8 @@ TaskFn = Callable[["Worker"], None]
 
 @dataclass
 class WorkerState:
+    """Internal lifecycle state tracked by a :class:`Worker` instance."""
+
     manifest: Manifest
     expires_at: Optional[datetime]
     created_at: datetime
@@ -44,6 +46,12 @@ class Worker:
         self.logger.log("worker_started", worker_id=self.manifest.worker_id, parent_id=self.manifest.parent_id)
 
     def perform_task(self, task: TaskFn) -> None:
+        """Execute *task* after checking expiration, kill switch, and quarantine.
+
+        On success the worker sends a heartbeat and asks the orchestrator
+        to enforce resource bounds.  On failure the worker shuts down and
+        re-raises the exception.
+        """
         if self.state.expires_at and datetime.now(timezone.utc) > self.state.expires_at:
             self.shutdown("expired")
             raise ReplicationDenied("Worker expired")
@@ -66,6 +74,12 @@ class Worker:
         self.orchestrator.enforce_resource_bounds(self.manifest.worker_id)
 
     def maybe_replicate(self, reason: str, state_snapshot: Dict[str, Any]) -> Optional["Worker"]:
+        """Attempt to spawn a child worker, returning it on success or ``None``.
+
+        Replication is denied if the worker is expired, the kill switch
+        is engaged, or the controller rejects the manifest (quota,
+        cooldown, depth).
+        """
         if self.state.expires_at and datetime.now(timezone.utc) > self.state.expires_at:
             self.logger.log("replication_denied", parent_id=self.manifest.worker_id, reason="expired")
             self.shutdown("expired")
@@ -97,6 +111,7 @@ class Worker:
         )
 
     def shutdown(self, reason: str) -> None:
+        """Terminate this worker: kill the container, deregister, and log."""
         self.orchestrator.kill_worker(self.manifest.worker_id, reason=reason)
         self.controller.deregister(self.manifest.worker_id, reason)
         self.logger.log("worker_shutdown", worker_id=self.manifest.worker_id, reason=reason)

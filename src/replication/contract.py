@@ -15,6 +15,12 @@ class NetworkPolicy:
 
 @dataclass
 class ResourceSpec:
+    """CPU, memory, and network limits assigned to a worker sandbox.
+
+    Both ``cpu_limit`` and ``memory_limit_mb`` must be positive; the
+    constructor raises :class:`ValueError` otherwise.
+    """
+
     cpu_limit: float
     memory_limit_mb: int
     network_policy: NetworkPolicy = field(default_factory=NetworkPolicy)
@@ -45,6 +51,18 @@ class Manifest:
 
 @dataclass
 class ReplicationContext:
+    """Runtime context passed to stop-condition predicates during replication checks.
+
+    Attributes
+    ----------
+    manifest : Manifest
+        The manifest of the worker requesting replication.
+    active_count : int
+        Current number of active replicas across the fleet.
+    contract : ReplicationContract
+        The governing replication contract.
+    """
+
     manifest: Manifest
     active_count: int
     contract: "ReplicationContract"
@@ -55,11 +73,25 @@ Predicate = Callable[[ReplicationContext], bool]
 
 @dataclass
 class StopCondition:
+    """A named predicate that can halt replication when triggered.
+
+    Attributes
+    ----------
+    name : str
+        Short identifier for the condition (e.g. ``"resource_exhaustion"``).
+    description : str
+        Human-readable explanation of what the condition checks.
+    predicate : Predicate
+        Callable that receives a :class:`ReplicationContext` and returns
+        ``True`` when replication should be blocked.
+    """
+
     name: str
     description: str
     predicate: Predicate
 
     def is_triggered(self, context: ReplicationContext) -> bool:
+        """Return ``True`` if this stop condition fires for *context*."""
         return self.predicate(context)
 
 
@@ -92,6 +124,7 @@ class ReplicationContract:
             )
 
     def evaluate(self, context: ReplicationContext) -> Optional[StopCondition]:
+        """Check all stop conditions and return the first that fires, or ``None``."""
         for condition in self.stop_conditions:
             if condition.is_triggered(context):
                 return condition

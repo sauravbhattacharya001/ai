@@ -10,6 +10,8 @@ from .observability import StructuredLogger
 
 @dataclass
 class ContainerRecord:
+    """Tracks a running worker container in the orchestrator."""
+
     manifest: Manifest
     resources: ResourceSpec
     status: str
@@ -25,6 +27,7 @@ class SandboxOrchestrator:
         self.containers: Dict[str, ContainerRecord] = {}
 
     def launch_worker(self, manifest: Manifest) -> None:
+        """Register and start a container for the given worker manifest."""
         record = ContainerRecord(
             manifest=manifest,
             resources=manifest.resources,
@@ -42,11 +45,13 @@ class SandboxOrchestrator:
         )
 
     def kill_worker(self, worker_id: str, reason: str) -> None:
+        """Remove a worker container and log the termination reason."""
         record = self.containers.pop(worker_id, None)
         if record:
             self.logger.log("container_killed", worker_id=worker_id, reason=reason)
 
     def kill_all(self, reason: str) -> None:
+        """Terminate every running worker container."""
         for worker_id in list(self.containers.keys()):
             self.kill_worker(worker_id, reason=reason)
 
