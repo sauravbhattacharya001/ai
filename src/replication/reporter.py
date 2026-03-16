@@ -592,6 +592,19 @@ class HTMLReporter:
     def _esc(self, text: str) -> str:
         return html_mod.escape(str(text))
 
+    @staticmethod
+    def _json_for_html(obj: Any) -> str:
+        """Serialize *obj* to JSON safe for embedding inside <script> tags.
+
+        Plain ``json.dumps`` can produce strings containing ``</script>``
+        or ``<!--``, which prematurely closes the script block and opens
+        an XSS vector.  This method escapes the dangerous sequences so
+        the JSON is inert in an HTML context.
+        """
+        raw = json.dumps(obj)
+        # Prevent closing the <script> tag or opening HTML comments
+        return raw.replace("<", "\\u003c").replace(">", "\\u003e")
+
     def _wrap_page(self, title: str, body: str) -> str:
         return f"""<!DOCTYPE html>
 <html lang="en" data-theme="dark">
@@ -679,8 +692,8 @@ class HTMLReporter:
         chart_html += '</div>'
         chart_html += f"""<script>
         drawBarChart('depthChart',
-            {json.dumps(depth_labels)},
-            [{{label: 'Workers', data: {json.dumps(depth_values)}, color: '#58a6ff'}}]
+            {self._json_for_html(depth_labels)},
+            [{{label: 'Workers', data: {self._json_for_html(depth_values)}, color: '#58a6ff'}}]
         );
         </script>"""
 
@@ -827,10 +840,10 @@ class HTMLReporter:
 
         chart_html += f"""<script>
         drawBarChart('threatChart',
-            {json.dumps(threat_labels)},
-            [{{label: 'Block Rate', data: {json.dumps(block_rates)}}}],
+            {self._json_for_html(threat_labels)},
+            [{{label: 'Block Rate', data: {self._json_for_html(block_rates)}}}],
             {{maxValue: 100, ySuffix: '%', rotateLabels: true, ySteps: 4,
-              barColors: {json.dumps(colors_js)}}}
+              barColors: {self._json_for_html(colors_js)}}}
         );
         </script>"""
 
@@ -929,11 +942,11 @@ class HTMLReporter:
 
         # Multi-metric bar chart
         if metrics:
-            labels_js = json.dumps([m["label"] for m in metrics])
-            workers_js = json.dumps([m["workers"] for m in metrics])
-            tasks_js = json.dumps([m["tasks"] for m in metrics])
-            repl_ok_js = json.dumps([m["repl_ok"] for m in metrics])
-            denied_js = json.dumps([m["repl_denied"] for m in metrics])
+            labels_js = self._json_for_html([m["label"] for m in metrics])
+            workers_js = self._json_for_html([m["workers"] for m in metrics])
+            tasks_js = self._json_for_html([m["tasks"] for m in metrics])
+            repl_ok_js = self._json_for_html([m["repl_ok"] for m in metrics])
+            denied_js = self._json_for_html([m["repl_denied"] for m in metrics])
 
             chart_html = '<div class="chart-container">'
             chart_html += '<div class="chart-title">Workers &amp; Tasks by Scenario</div>'
@@ -958,7 +971,7 @@ class HTMLReporter:
             </script>"""
 
             # Efficiency chart
-            eff_js = json.dumps([round(m["efficiency"], 2) for m in metrics])
+            eff_js = self._json_for_html([round(m["efficiency"], 2) for m in metrics])
             chart_html += '<div class="chart-container">'
             chart_html += '<div class="chart-title">Task Efficiency (tasks/worker)</div>'
             chart_html += '<canvas id="compChart3"></canvas>'
@@ -1077,8 +1090,8 @@ class HTMLReporter:
         parts.append('<canvas id="simDepthChart"></canvas></div>')
         parts.append(f"""<script>
         drawBarChart('simDepthChart',
-            {json.dumps([f"Depth {d}" for d in depths])},
-            [{{label: 'Workers', data: {json.dumps([depth_counts[d] for d in depths])}, color: '#58a6ff'}}]
+            {self._json_for_html([f"Depth {d}" for d in depths])},
+            [{{label: 'Workers', data: {self._json_for_html([depth_counts[d] for d in depths])}, color: '#58a6ff'}}]
         );
         </script>""")
 
@@ -1157,9 +1170,9 @@ class HTMLReporter:
         metrics = result._metric_table()
 
         if metrics:
-            labels_js = json.dumps([m["label"] for m in metrics])
-            workers_js = json.dumps([m["workers"] for m in metrics])
-            tasks_js = json.dumps([m["tasks"] for m in metrics])
+            labels_js = self._json_for_html([m["label"] for m in metrics])
+            workers_js = self._json_for_html([m["workers"] for m in metrics])
+            tasks_js = self._json_for_html([m["tasks"] for m in metrics])
 
             parts.append('<div class="chart-container">')
             parts.append('<div class="chart-title">Workers &amp; Tasks</div>')
