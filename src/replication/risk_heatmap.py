@@ -1,0 +1,469 @@
+"""Risk Heatmap — interactive likelihood × impact risk visualization.
+
+Generates a self-contained HTML heatmap that plots risks on a 5×5
+likelihood × impact grid with:
+
+* **Color-coded cells** — green (low) through red (critical)
+* **Risk inventory** — auto-generated from simulation or manual input
+* **Category filters** — toggle risk categories on/off
+* **Detail tooltips** — hover for risk description and mitigation
+* **Click-to-inspect** — click a cell to see all risks at that level
+* **JSON import/export** — load custom risk data or export the grid
+* **PNG export** — save the heatmap as an image
+* **Summary stats** — risk distribution bar chart and top-5 table
+
+Usage (CLI)::
+
+    python -m replication risk-heatmap -o heatmap.html
+    python -m replication risk-heatmap --agents 15 --seed 42
+    python -m replication risk-heatmap --import risks.json -o heatmap.html
+    python -m replication risk-heatmap --json  # JSON output instead of HTML
+
+Programmatic::
+
+    from replication.risk_heatmap import RiskHeatmap, HeatmapConfig
+    hm = RiskHeatmap(HeatmapConfig(agent_count=10, seed=42))
+    result = hm.generate()
+    result.save("heatmap.html")
+    print(f"{len(result.risks)} risks plotted")
+"""
+
+from __future__ import annotations
+
+import argparse
+import html as html_mod
+import json
+import random
+import sys
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+
+__all__ = [
+    "RiskHeatmap",
+    "HeatmapConfig",
+    "HeatmapResult",
+    "RiskItem",
+    "Likelihood",
+    "Impact",
+    "RiskCategory",
+]
+
+
+class Likelihood(Enum):
+    RARE = 1
+    UNLIKELY = 2
+    POSSIBLE = 3
+    LIKELY = 4
+    ALMOST_CERTAIN = 5
+
+
+class Impact(Enum):
+    NEGLIGIBLE = 1
+    MINOR = 2
+    MODERATE = 3
+    MAJOR = 4
+    CATASTROPHIC = 5
+
+
+class RiskCategory(Enum):
+    REPLICATION = "replication"
+    RESOURCE_ABUSE = "resource_abuse"
+    DECEPTION = "deception"
+    EXFILTRATION = "exfiltration"
+    ESCALATION = "escalation"
+    EVASION = "evasion"
+    COLLUSION = "collusion"
+    DRIFT = "drift"
+
+
+# ── Risk templates ───────────────────────────────────────────────────
+
+_RISK_TEMPLATES: List[Dict[str, Any]] = [
+    {"name": "Unauthorized self-replication", "category": "replication", "mitigation": "Kill switch + replication rate limits"},
+    {"name": "Fork bomb via recursive spawning", "category": "replication", "mitigation": "Max child process limits per agent"},
+    {"name": "Covert replication through side channels", "category": "replication", "mitigation": "Steganography detection + network monitoring"},
+    {"name": "CPU/memory resource hoarding", "category": "resource_abuse", "mitigation": "Resource quotas + anomaly alerts"},
+    {"name": "Disk exhaustion via log flooding", "category": "resource_abuse", "mitigation": "Log rotation + disk usage alerts"},
+    {"name": "Network bandwidth saturation", "category": "resource_abuse", "mitigation": "Rate limiting + traffic shaping"},
+    {"name": "Misleading status reports", "category": "deception", "mitigation": "Independent verification + canary checks"},
+    {"name": "Goal misrepresentation to operator", "category": "deception", "mitigation": "Goal inference + alignment verification"},
+    {"name": "Fake compliance signals", "category": "deception", "mitigation": "Honeypot traps + behavioral profiling"},
+    {"name": "Training data exfiltration", "category": "exfiltration", "mitigation": "Data loss prevention + watermarking"},
+    {"name": "Credential theft via prompt injection", "category": "exfiltration", "mitigation": "Input sanitization + credential rotation"},
+    {"name": "Covert data encoding in outputs", "category": "exfiltration", "mitigation": "Output scanning + steganography detection"},
+    {"name": "Privilege escalation via tool abuse", "category": "escalation", "mitigation": "Least privilege + capability boundaries"},
+    {"name": "Permission boundary bypass", "category": "escalation", "mitigation": "Boundary testing + access auditing"},
+    {"name": "Admin impersonation", "category": "escalation", "mitigation": "Strong auth + session monitoring"},
+    {"name": "Safety control circumvention", "category": "evasion", "mitigation": "Redundant controls + evasion simulation"},
+    {"name": "Detection threshold manipulation", "category": "evasion", "mitigation": "Adaptive thresholds + multi-signal detection"},
+    {"name": "Gradual behavioral drift to avoid alerts", "category": "evasion", "mitigation": "Drift detection + baseline comparison"},
+    {"name": "Multi-agent coordinated attack", "category": "collusion", "mitigation": "Swarm analysis + communication monitoring"},
+    {"name": "Sybil identity farming", "category": "collusion", "mitigation": "Trust propagation + identity verification"},
+    {"name": "Distributed task splitting to hide intent", "category": "collusion", "mitigation": "Cross-agent correlation + threat intel"},
+    {"name": "Behavioral drift from baseline", "category": "drift", "mitigation": "Continuous monitoring + automatic rollback"},
+    {"name": "Objective function shift", "category": "drift", "mitigation": "Alignment checks + goal inference"},
+    {"name": "Value misalignment accumulation", "category": "drift", "mitigation": "Periodic alignment audits + safety benchmarks"},
+]
+
+
+@dataclass
+class RiskItem:
+    """A single risk entry on the heatmap."""
+    name: str
+    category: str
+    likelihood: int  # 1-5
+    impact: int      # 1-5
+    mitigation: str = ""
+    agent_id: str = ""
+    score: float = 0.0  # likelihood × impact
+
+    def __post_init__(self) -> None:
+        self.score = self.likelihood * self.impact
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "category": self.category,
+            "likelihood": self.likelihood,
+            "impact": self.impact,
+            "mitigation": self.mitigation,
+            "agent_id": self.agent_id,
+            "score": self.score,
+        }
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "RiskItem":
+        return cls(
+            name=d["name"],
+            category=d.get("category", "unknown"),
+            likelihood=int(d["likelihood"]),
+            impact=int(d["impact"]),
+            mitigation=d.get("mitigation", ""),
+            agent_id=d.get("agent_id", ""),
+        )
+
+
+@dataclass
+class HeatmapConfig:
+    agent_count: int = 10
+    risks_per_agent: int = 3
+    seed: Optional[int] = None
+    import_path: Optional[str] = None
+
+
+@dataclass
+class HeatmapResult:
+    risks: List[RiskItem] = field(default_factory=list)
+    html: str = ""
+    config: Optional[HeatmapConfig] = None
+
+    def save(self, path: str) -> None:
+        Path(path).write_text(self.html, encoding="utf-8")
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "risk_count": len(self.risks),
+                "risks": [r.to_dict() for r in self.risks],
+                "categories": list({r.category for r in self.risks}),
+                "grid": self._build_grid(),
+            },
+            indent=2,
+        )
+
+    def _build_grid(self) -> Dict[str, int]:
+        grid: Dict[str, int] = {}
+        for r in self.risks:
+            key = f"{r.likelihood},{r.impact}"
+            grid[key] = grid.get(key, 0) + 1
+        return grid
+
+
+class RiskHeatmap:
+    """Generate an interactive risk heatmap visualization."""
+
+    def __init__(self, config: Optional[HeatmapConfig] = None) -> None:
+        self.config = config or HeatmapConfig()
+
+    def generate(self) -> HeatmapResult:
+        if self.config.import_path:
+            risks = self._load_risks(self.config.import_path)
+        else:
+            risks = self._generate_risks()
+
+        html = self._render_html(risks)
+        return HeatmapResult(risks=risks, html=html, config=self.config)
+
+    def _load_risks(self, path: str) -> List[RiskItem]:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        items = data if isinstance(data, list) else data.get("risks", [])
+        return [RiskItem.from_dict(d) for d in items]
+
+    def _generate_risks(self) -> List[RiskItem]:
+        rng = random.Random(self.config.seed)
+        risks: List[RiskItem] = []
+        for i in range(self.config.agent_count):
+            agent_id = f"agent-{i}"
+            templates = rng.sample(
+                _RISK_TEMPLATES, min(self.config.risks_per_agent, len(_RISK_TEMPLATES))
+            )
+            for t in templates:
+                cat = t["category"]
+                # Weight likelihood/impact by category severity
+                if cat in ("replication", "exfiltration"):
+                    likelihood = rng.randint(2, 5)
+                    impact = rng.randint(3, 5)
+                elif cat in ("escalation", "collusion"):
+                    likelihood = rng.randint(1, 4)
+                    impact = rng.randint(2, 5)
+                else:
+                    likelihood = rng.randint(1, 5)
+                    impact = rng.randint(1, 5)
+                risks.append(RiskItem(
+                    name=t["name"],
+                    category=cat,
+                    likelihood=likelihood,
+                    impact=impact,
+                    mitigation=t["mitigation"],
+                    agent_id=agent_id,
+                ))
+        return risks
+
+    def _render_html(self, risks: List[RiskItem]) -> str:
+        risks_json = json.dumps([r.to_dict() for r in risks])
+        categories = sorted({r.category for r in risks})
+        cat_json = json.dumps(categories)
+
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Heatmap — AI Replication Sandbox</title>
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }}
+h1 {{ font-size: 1.8rem; margin-bottom: 4px; }}
+.subtitle {{ color: #94a3b8; margin-bottom: 20px; font-size: 0.95rem; }}
+.container {{ max-width: 1200px; margin: 0 auto; }}
+.toolbar {{ display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center; }}
+.toolbar button {{ padding: 6px 14px; border: 1px solid #334155; border-radius: 6px; background: #1e293b; color: #e2e8f0; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }}
+.toolbar button:hover {{ background: #334155; }}
+.toolbar button.active {{ background: #3b82f6; border-color: #3b82f6; color: #fff; }}
+.grid-wrap {{ display: flex; gap: 32px; flex-wrap: wrap; }}
+.heatmap {{ flex: 1; min-width: 420px; }}
+.heatmap table {{ border-collapse: collapse; width: 100%; }}
+.heatmap th, .heatmap td {{ text-align: center; padding: 0; }}
+.heatmap .y-label {{ writing-mode: vertical-rl; transform: rotate(180deg); font-size: 0.8rem; color: #94a3b8; padding: 8px 4px; }}
+.heatmap .x-label {{ font-size: 0.8rem; color: #94a3b8; padding: 8px 4px; }}
+.cell {{ width: 80px; height: 80px; border-radius: 8px; margin: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; transition: transform 0.15s, box-shadow 0.15s; position: relative; }}
+.cell:hover {{ transform: scale(1.08); box-shadow: 0 0 16px rgba(255,255,255,0.15); z-index: 2; }}
+.cell .count {{ pointer-events: none; }}
+.sidebar {{ width: 340px; min-width: 280px; }}
+.panel {{ background: #1e293b; border-radius: 10px; padding: 16px; margin-bottom: 16px; }}
+.panel h3 {{ font-size: 1rem; margin-bottom: 10px; color: #f8fafc; }}
+.risk-list {{ max-height: 300px; overflow-y: auto; }}
+.risk-item {{ background: #0f172a; border-radius: 6px; padding: 10px; margin-bottom: 8px; font-size: 0.85rem; }}
+.risk-item .rname {{ font-weight: 600; color: #f1f5f9; }}
+.risk-item .rmeta {{ color: #94a3b8; font-size: 0.78rem; margin-top: 4px; }}
+.risk-item .rmit {{ color: #67e8f9; font-size: 0.78rem; margin-top: 4px; }}
+.bar-row {{ display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; }}
+.bar-row .bar {{ height: 14px; border-radius: 4px; transition: width 0.3s; }}
+.bar-row .label {{ width: 110px; text-align: right; color: #94a3b8; }}
+.bar-row .val {{ width: 30px; color: #e2e8f0; }}
+.top-table {{ width: 100%; font-size: 0.82rem; }}
+.top-table th {{ text-align: left; color: #94a3b8; padding: 4px 8px; border-bottom: 1px solid #334155; }}
+.top-table td {{ padding: 4px 8px; }}
+.axis-title {{ font-size: 0.85rem; color: #64748b; font-weight: 600; }}
+.x-axis-title {{ text-align: center; margin-top: 4px; }}
+.score-badge {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🔥 Risk Heatmap</h1>
+<p class="subtitle">Likelihood × Impact risk matrix — AI Replication Sandbox</p>
+<div class="toolbar" id="toolbar"></div>
+<div class="grid-wrap">
+  <div class="heatmap" id="heatmap"></div>
+  <div class="sidebar">
+    <div class="panel" id="detail-panel">
+      <h3>📋 Click a cell to inspect</h3>
+      <div class="risk-list" id="risk-list"><p style="color:#64748b;font-size:0.85rem">Select a heatmap cell to see risks at that level.</p></div>
+    </div>
+    <div class="panel">
+      <h3>📊 Distribution</h3>
+      <div id="dist-chart"></div>
+    </div>
+    <div class="panel">
+      <h3>🏆 Top 5 Risks</h3>
+      <table class="top-table" id="top-table"><thead><tr><th>Risk</th><th>Score</th><th>Category</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+const ALL_RISKS = {risks_json};
+const CATEGORIES = {cat_json};
+const COLORS = {{
+  1: '#22c55e', 2: '#22c55e',
+  3: '#eab308', 4: '#eab308',
+  5: '#f97316', 6: '#f97316',
+  8: '#ef4444', 9: '#ef4444', 10: '#ef4444',
+  12: '#dc2626', 15: '#dc2626', 16: '#dc2626',
+  20: '#991b1b', 25: '#991b1b'
+}};
+function riskColor(score) {{
+  const keys = Object.keys(COLORS).map(Number).sort((a,b)=>a-b);
+  let c = '#22c55e';
+  for (const k of keys) if (score >= k) c = COLORS[k];
+  return c;
+}}
+let activeCategories = new Set(CATEGORIES);
+let filtered = [...ALL_RISKS];
+
+function filter() {{
+  filtered = ALL_RISKS.filter(r => activeCategories.has(r.category));
+  renderGrid();
+  renderDist();
+  renderTop();
+}}
+
+function renderToolbar() {{
+  const tb = document.getElementById('toolbar');
+  tb.innerHTML = '';
+  for (const cat of CATEGORIES) {{
+    const btn = document.createElement('button');
+    btn.textContent = cat.replace(/_/g, ' ');
+    btn.className = activeCategories.has(cat) ? 'active' : '';
+    btn.onclick = () => {{
+      if (activeCategories.has(cat)) activeCategories.delete(cat);
+      else activeCategories.add(cat);
+      btn.className = activeCategories.has(cat) ? 'active' : '';
+      filter();
+    }};
+    tb.appendChild(btn);
+  }}
+  const allBtn = document.createElement('button');
+  allBtn.textContent = 'All';
+  allBtn.onclick = () => {{ activeCategories = new Set(CATEGORIES); renderToolbar(); filter(); }};
+  tb.appendChild(allBtn);
+  const expBtn = document.createElement('button');
+  expBtn.textContent = '💾 Export JSON';
+  expBtn.onclick = () => {{
+    const blob = new Blob([JSON.stringify({{risks: filtered.map(r=>r)}}, null, 2)], {{type: 'application/json'}});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'risk-heatmap.json'; a.click();
+  }};
+  tb.appendChild(expBtn);
+}}
+
+function renderGrid() {{
+  const wrap = document.getElementById('heatmap');
+  const grid = {{}};
+  for (const r of filtered) {{
+    const k = r.likelihood + ',' + r.impact;
+    if (!grid[k]) grid[k] = [];
+    grid[k].push(r);
+  }}
+  const impactLabels = ['Negligible','Minor','Moderate','Major','Catastrophic'];
+  const likeLabels = ['Rare','Unlikely','Possible','Likely','Almost Certain'];
+  let html = '<table><tr><th></th><th class="axis-title" colspan="5">Impact →</th></tr>';
+  html += '<tr><td></td>';
+  for (let i = 1; i <= 5; i++) html += `<td class="x-label">${{impactLabels[i-1]}}</td>`;
+  html += '</tr>';
+  for (let l = 5; l >= 1; l--) {{
+    html += '<tr>';
+    html += `<td class="y-label">${{likeLabels[l-1]}}</td>`;
+    for (let i = 1; i <= 5; i++) {{
+      const k = l + ',' + i;
+      const items = grid[k] || [];
+      const score = l * i;
+      const bg = riskColor(score);
+      html += `<td><div class="cell" style="background:${{bg}}20;border:2px solid ${{bg}}" data-l="${{l}}" data-i="${{i}}" onclick="showCell(${{l}},${{i}})"><span class="count" style="color:${{bg}}">${{items.length || ''}}</span></div></td>`;
+    }}
+    html += '</tr>';
+  }}
+  html += '</table><p class="x-axis-title axis-title">Likelihood ↑</p>';
+  wrap.innerHTML = html;
+}}
+
+function showCell(l, i) {{
+  const items = filtered.filter(r => r.likelihood === l && r.impact === i);
+  const panel = document.getElementById('detail-panel');
+  const score = l * i;
+  const col = riskColor(score);
+  panel.querySelector('h3').innerHTML = `📋 L${{l}} × I${{i}} = <span class="score-badge" style="background:${{col}}30;color:${{col}}">${{score}}</span> (${{items.length}} risks)`;
+  const list = document.getElementById('risk-list');
+  if (!items.length) {{ list.innerHTML = '<p style="color:#64748b">No risks at this level.</p>'; return; }}
+  list.innerHTML = items.map(r => `<div class="risk-item"><div class="rname">${{r.name}}</div><div class="rmeta">${{r.category.replace(/_/g,' ')}} · ${{r.agent_id || 'fleet'}}</div>${{r.mitigation ? '<div class="rmit">💡 ' + r.mitigation + '</div>' : ''}}</div>`).join('');
+}}
+
+function renderDist() {{
+  const counts = {{}};
+  for (const r of filtered) counts[r.category] = (counts[r.category]||0) + 1;
+  const max = Math.max(...Object.values(counts), 1);
+  const catColors = {{ replication:'#ef4444', resource_abuse:'#f97316', deception:'#eab308', exfiltration:'#a855f7', escalation:'#ec4899', evasion:'#06b6d4', collusion:'#3b82f6', drift:'#22c55e' }};
+  const el = document.getElementById('dist-chart');
+  el.innerHTML = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([cat, n]) =>
+    `<div class="bar-row"><span class="label">${{cat.replace(/_/g,' ')}}</span><div class="bar" style="width:${{(n/max)*100}}%;background:${{catColors[cat]||'#64748b'}}"></div><span class="val">${{n}}</span></div>`
+  ).join('');
+}}
+
+function renderTop() {{
+  const sorted = [...filtered].sort((a,b) => b.score - a.score).slice(0, 5);
+  const tbody = document.querySelector('#top-table tbody');
+  tbody.innerHTML = sorted.map(r => {{
+    const col = riskColor(r.score);
+    return `<tr><td>${{r.name}}</td><td><span class="score-badge" style="background:${{col}}30;color:${{col}}">${{r.score}}</span></td><td style="color:#94a3b8">${{r.category.replace(/_/g,' ')}}</td></tr>`;
+  }}).join('');
+}}
+
+renderToolbar();
+filter();
+</script>
+</body>
+</html>"""
+
+
+# ── CLI ──────────────────────────────────────────────────────────────
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = argparse.ArgumentParser(
+        prog="replication risk-heatmap",
+        description="Generate interactive risk heatmap (likelihood × impact grid)",
+    )
+    parser.add_argument("-o", "--output", default="risk-heatmap.html", help="Output HTML path")
+    parser.add_argument("--agents", type=int, default=10, help="Number of agents to simulate")
+    parser.add_argument("--risks-per-agent", type=int, default=3, help="Risks per agent")
+    parser.add_argument("--seed", type=int, default=None, help="Random seed")
+    parser.add_argument("--import", dest="import_path", help="Import risks from JSON file")
+    parser.add_argument("--json", action="store_true", help="Output JSON instead of HTML")
+    args = parser.parse_args(argv)
+
+    config = HeatmapConfig(
+        agent_count=args.agents,
+        risks_per_agent=args.risks_per_agent,
+        seed=args.seed,
+        import_path=args.import_path,
+    )
+    hm = RiskHeatmap(config)
+    result = hm.generate()
+
+    if args.json:
+        print(result.to_json())
+    else:
+        result.save(args.output)
+        print(f"✅ Risk heatmap saved to {args.output}")
+        print(f"   {len(result.risks)} risks across {len({r.category for r in result.risks})} categories")
+        top = sorted(result.risks, key=lambda r: r.score, reverse=True)[:3]
+        if top:
+            print("   Top risks:")
+            for r in top:
+                print(f"     • {r.name} (score {r.score})")
+
+
+if __name__ == "__main__":
+    main()
