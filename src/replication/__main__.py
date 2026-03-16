@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "maturity_model", "radar", "risk_heatmap", "policy_linter",
+    "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "risk_heatmap", "policy_linter",
     "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -202,6 +202,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "lint":              (_make_handler("policy_linter"),             "Lint safety policies for misconfigurations and gaps"),
     "audit-trail":       (_make_handler("audit_trail"),               "Tamper-evident safety event log with hash chaining"),
     "maturity":          (_make_handler("maturity_model"),             "Safety maturity model assessment across 8 dimensions"),
+    "preflight":         (_make_handler("preflight"),                  "Pre-simulation validation — check config before running"),
 }
 
 
