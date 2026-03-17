@@ -99,7 +99,7 @@ def _cmd_info(_args: List[str]) -> None:
 # Modules that export a main() function
 _HAS_MAIN = {
     "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "risk_heatmap", "policy_linter",
-    "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator",
+    "correlation_graph", "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
@@ -203,6 +203,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "audit-trail":       (_make_handler("audit_trail"),               "Tamper-evident safety event log with hash chaining"),
     "maturity":          (_make_handler("maturity_model"),             "Safety maturity model assessment across 8 dimensions"),
     "preflight":         (_make_handler("preflight"),                  "Pre-simulation validation — check config before running"),
+    "correlation-graph": (_make_handler("correlation_graph"),           "Generate interactive threat correlation graph visualization"),
 }
 
 
