@@ -14,3 +14,11 @@ dist
 build
 .DS_Store
 Thumbs.db
+docs
+mkdocs.yml
+.codecov.yml
+.markdownlint.json
+_commit_msg.txt
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
