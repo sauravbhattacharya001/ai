@@ -44,15 +44,52 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -e .
 
       - name: Run tests with coverage
-        run: python -m pytest tests/ -v --tb=short --cov=replication --cov-report=xml --cov-report=term-missing
+        run: |
+          python -m pytest tests/ -v --tb=short \
+            --cov=replication \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov \
+            --cov-report=term-missing \
+            --cov-report=json:coverage.json
+
+      - name: Coverage threshold check
+        if: matrix.python-version == '3.12'
+        run: |
+          TOTAL=$(python -c "import json; d=json.load(open('coverage.json')); print(d['totals']['percent_covered_display'])")
+          echo "### 🔬 Coverage: ${TOTAL}%" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json, sys
+          d = json.load(open('coverage.json'))
+          pct = d['totals']['percent_covered']
+          print(f'Total coverage: {pct:.1f}%')
+          # Per-file breakdown for uncovered files
+          for fname, fdata in sorted(d['files'].items()):
+            fpct = fdata['summary']['percent_covered']
+            if fpct < 80:
+              missing = fdata['summary']['missing_lines']
+              print(f'  ⚠ {fname}: {fpct:.0f}% ({missing} lines uncovered)')
+          if pct < 80:
+            print(f'::warning::Coverage {pct:.1f}% is below 80% threshold')
+          "
+
+      - name: Upload coverage HTML report
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 14
 
       - name: Upload coverage to Codecov
         if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
+          flags: unittests
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}

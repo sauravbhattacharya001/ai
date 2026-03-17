@@ -10,12 +10,21 @@ coverage:
       default:
         target: 80%
         threshold: 2%
+        flags:
+          - unittests
     patch:
       default:
         target: 80%
         threshold: 5%
 
+flags:
+  unittests:
+    paths:
+      - src/replication/
+    carryforward: true
+
 comment:
   layout: "reach,diff,flags,files"
   behavior: default
   require_changes: false
+  after_n_builds: 1
