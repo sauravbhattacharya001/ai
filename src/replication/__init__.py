@@ -361,6 +361,13 @@ from .safety_timeline import (
     generate_timeline,
 )
 
+from .trend_tracker import (
+    TrendTracker,
+    TrendEntry,
+    TrendSummary,
+    RegressionAlert,
+)
+
 from .swarm import (
     SwarmAnalyzer,
     SwarmReport,
@@ -704,4 +711,9 @@ __all__ = [
     "EventSeverity",
     "EventCategory",
     "generate_timeline",
+    # trend_tracker
+    "TrendTracker",
+    "TrendEntry",
+    "TrendSummary",
+    "RegressionAlert",
 ]
