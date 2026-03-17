@@ -146,6 +146,13 @@ from .templates import (
     render_catalog,
     render_comparison_table,
 )
+from .profiles import (
+    ProfileManager,
+    ProfileMeta,
+    ProfileDiff,
+    ComparisonResult,
+    BUILTIN_PROFILES,
+)
 from .incident import (
     IncidentResponder,
     IncidentConfig,
