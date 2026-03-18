@@ -375,6 +375,15 @@ from .trend_tracker import (
     RegressionAlert,
 )
 from .knowledge_base import SafetyKnowledgeBase, KBEntry
+from .alert_router import (
+    AlertRouter,
+    RoutingRule,
+    Channel,
+    QuietHours,
+    DispatchResult,
+    RouteStats,
+    default_router,
+)
 
 from .swarm import (
     SwarmAnalyzer,
@@ -727,4 +736,12 @@ __all__ = [
     # knowledge_base
     "SafetyKnowledgeBase",
     "KBEntry",
+    # alert_router
+    "AlertRouter",
+    "RoutingRule",
+    "Channel",
+    "QuietHours",
+    "DispatchResult",
+    "RouteStats",
+    "default_router",
 ]

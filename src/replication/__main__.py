@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "risk_heatmap", "policy_linter", "sla_monitor",
+    "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "risk_heatmap", "policy_linter", "sla_monitor",
     "correlation_graph", "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator", "trend_tracker",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -206,6 +206,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "correlation-graph": (_make_handler("correlation_graph"),           "Generate interactive threat correlation graph visualization"),
     "trend":             (_make_handler("trend_tracker"),                "Record and analyze safety scorecard trends over time"),
     "sla":               (_make_handler("sla_monitor"),                 "Check simulation results against SLA targets"),
+    "alert-router":      (_make_handler("alert_router"),                "Rule-based safety alert routing with rate limiting & escalation"),
 }
 
 
