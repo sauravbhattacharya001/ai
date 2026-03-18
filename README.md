@@ -186,6 +186,62 @@ result = sim.run_scenario("signature_tampering")
 print(result.render())
 ```
 
+### 📋 Safety & Governance Toolkit
+
+Beyond simulation, the project includes a comprehensive suite of safety analysis and governance tools:
+
+| Tool | Module | Description |
+|------|--------|-------------|
+| **Safety Scorecard** | `scorecard.py` | Multi-dimensional safety assessment with letter grades (A+ to F) |
+| **Safety SLA Monitor** | `sla.py` | Define, track, and enforce safety-level agreements with violation detection |
+| **Safety Knowledge Base** | `knowledge_base.py` | Searchable catalog of safety patterns, anti-patterns, and mitigations |
+| **Safety Profiles** | `profiles.py` | Save, load, and compare named safety configurations |
+| **Safety Trend Tracker** | `trend.py` | Scorecard history tracking with regression detection |
+| **Safety Maturity Model** | `maturity.py` | 8-dimension maturity assessment with 5-level scoring |
+| **Safety Policy Linter** | `policy_linter.py` | Static analysis for safety policy definitions |
+| **Safety Audit Trail** | `audit_trail.py` | Tamper-evident, hash-chained event log |
+| **Safety Radar Chart** | `radar.py` | Interactive radar visualization of scorecard dimensions |
+| **Compliance Auditing** | `compliance.py` | Framework-based compliance checks (NIST AI RMF, etc.) |
+| **Safety Regression** | `regression.py` | Regression testing between configuration versions |
+
+### 🔍 Advanced Threat Analysis
+
+| Tool | Module | Description |
+|------|--------|-------------|
+| **Privilege Escalation Detector** | `escalation.py` | Detect and analyze privilege escalation attempts |
+| **Kill Chain Analyzer** | `killchain.py` | Map agent actions to attack kill chain stages |
+| **Honeypot System** | `honeypot.py` | Deploy decoy resources and score interaction intent |
+| **Threat Intelligence** | `threat_intel.py` | Threat feeds and cross-event correlation |
+| **Threat Correlator** | `correlation.py` | Force-directed graph visualization of threat correlations |
+| **Prompt Injection Analysis** | `prompt_injection.py` | Detect prompt injection attack patterns |
+| **Covert Channel Detection** | `covert_channels.py` | Detect hidden inter-worker communication |
+| **Steganography Detection** | `steganography.py` | Find hidden payloads in agent data |
+
+### 🧪 Testing & Validation
+
+| Tool | Module | Description |
+|------|--------|-------------|
+| **Chaos Engineering** | `chaos.py` | Inject faults (kill workers, add delays) to validate resilience |
+| **Monte Carlo Risk Analysis** | `montecarlo.py` | Statistical risk analysis with confidence intervals |
+| **Sensitivity Analysis** | `sensitivity.py` | One-at-a-time parameter sweeps to find tipping points |
+| **Contract Optimizer** | `optimizer.py` | Grid search for optimal contract parameters |
+| **Preflight Checks** | `preflight.py` | Pre-simulation configuration validation |
+| **Incident Response Playbooks** | `playbook.py` | Structured IR playbooks for 8 threat categories |
+| **Risk Heatmap** | `heatmap.py` | Interactive likelihood × impact grid visualization |
+
+### 🧬 Behavioral Analysis
+
+| Tool | Module | Description |
+|------|--------|-------------|
+| **Goal Inference** | `goal_inference.py` | Infer worker goals from behavioral patterns |
+| **Alignment Verification** | `alignment.py` | Verify agent goal alignment against policies |
+| **Self-Modification Detection** | `selfmod.py` | Detect and score self-modification attempts |
+| **Resource Hoarding Detection** | `hoarding.py` | Identify resource accumulation patterns |
+| **Emergent Behavior Detection** | `emergent.py` | Classify unexpected emergent behaviors |
+| **Influence Analysis** | `influence.py` | Analyze inter-worker persuasion and influence |
+| **Game Theory Analysis** | `game_theory.py` | Game-theoretic strategy modeling |
+| **Topology Analysis** | `topology.py` | Replication tree topology metrics |
+
 ## Quick Start
 
 ### Prerequisites
@@ -288,7 +344,7 @@ for event in logger.events:
 All tools are accessible through a single entry point:
 
 ```bash
-# List all 36 available subcommands
+# List all available subcommands
 python -m replication --list
 
 # Run a simulation
@@ -314,6 +370,21 @@ python -m replication game-theory --rounds 50
 
 # Get help for any subcommand
 python -m replication simulate --help
+
+# Safety SLA monitoring
+python -m replication sla --check
+
+# Safety knowledge base search
+python -m replication knowledge --search "depth limit"
+
+# Safety maturity assessment
+python -m replication maturity
+
+# Preflight validation
+python -m replication preflight --config my_config.json
+
+# Incident response playbook
+python -m replication playbook --threat runaway_replication
 ```
 
 After `pip install`, the `replication` command is also available:
@@ -488,6 +559,22 @@ ai/
 │       ├── incident.py          # Incident response and escalation management
 │       ├── escalation.py        # Privilege escalation detection and analysis
 │       ├── killchain.py         # Kill chain stage analysis and tracking
+│       │
+│       │── # ── Safety Governance ──
+│       ├── sla.py               # Safety SLA Monitor — define and enforce SLAs
+│       ├── knowledge_base.py    # Safety Knowledge Base — patterns & mitigations catalog
+│       ├── profiles.py          # Safety Profiles — save/load/compare configurations
+│       ├── trend.py             # Safety Trend Tracker — scorecard history & regression
+│       ├── maturity.py          # Safety Maturity Model — 8-dimension assessment
+│       ├── policy_linter.py     # Safety Policy Linter — static analysis for policies
+│       ├── audit_trail.py       # Safety Audit Trail — tamper-evident hash chains
+│       ├── preflight.py         # Preflight checks — pre-simulation validation
+│       ├── playbook.py          # Incident Response Playbook Generator
+│       │
+│       │── # ── Visualization ──
+│       ├── radar.py             # Safety Radar Chart — interactive scorecard radar
+│       ├── heatmap.py           # Risk Heatmap — likelihood × impact grid
+│       ├── correlation_graph.py # Correlation Graph Viewer — force-directed visualization
 │       │
 │       │── # ── Advanced Analysis ──
 │       ├── alignment.py         # Goal alignment verification
