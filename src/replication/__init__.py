@@ -374,6 +374,7 @@ from .trend_tracker import (
     TrendSummary,
     RegressionAlert,
 )
+from .knowledge_base import SafetyKnowledgeBase, KBEntry
 
 from .swarm import (
     SwarmAnalyzer,
@@ -723,4 +724,7 @@ __all__ = [
     "TrendEntry",
     "TrendSummary",
     "RegressionAlert",
+    # knowledge_base
+    "SafetyKnowledgeBase",
+    "KBEntry",
 ]
