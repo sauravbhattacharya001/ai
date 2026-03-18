@@ -13,6 +13,14 @@ Auto-generated documentation from source code docstrings.
 | [Observability](observability.md) | Structured logging and metrics |
 | [Signer](signer.md) | HMAC-SHA256 manifest signing and verification |
 
+## Validation & Visualization
+
+| Module | Description |
+|--------|-------------|
+| [Preflight](preflight.md) | Pre-simulation validation — contract checks, resource limits, policy consistency, go/no-go assessment |
+| [Attack Surface](attack_surface.md) | Interactive HTML sunburst visualizer — risk heatmap, threat goal drill-down, mitigation coverage |
+| [Audit Trail](audit_trail.md) | Tamper-evident hash-chained event log — SHA-256 chain, search/filter, HTML timeline export |
+
 ## Analysis & Detection Modules
 
 | Module | Description |
