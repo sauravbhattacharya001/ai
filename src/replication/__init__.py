@@ -391,6 +391,15 @@ from .alert_router import (
     RouteStats,
     default_router,
 )
+from .safety_warranty import (
+    WarrantyManager,
+    Warranty,
+    WarrantyCondition,
+    WarrantyEvaluation,
+    WarrantyReport,
+    WarrantyStatus,
+    WARRANTY_PRESETS,
+)
 
 from .swarm import (
     SwarmAnalyzer,
@@ -757,4 +766,12 @@ __all__ = [
     "PersonaResult",
     "PersonaComparisonResult",
     "PERSONAS",
+    # safety_warranty
+    "WarrantyManager",
+    "Warranty",
+    "WarrantyCondition",
+    "WarrantyEvaluation",
+    "WarrantyReport",
+    "WarrantyStatus",
+    "WARRANTY_PRESETS",
 ]
