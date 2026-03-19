@@ -88,8 +88,8 @@ def snapshot_fleet(controller: Controller) -> List[WorkerSnapshot]:
         if controller.contract.expiration_seconds is not None:
             expired = age > controller.contract.expiration_seconds
 
-        # Check quarantine
-        quarantined = wid in controller._quarantined
+        # Check quarantine via public API (avoid reaching into private state)
+        quarantined = controller.is_quarantined(wid)
 
         # Verify signature
         try:
@@ -299,8 +299,8 @@ def _build_demo_fleet() -> tuple:
         manifest = controller.sign_manifest(manifest)
         controller.registry[wid] = RegistryEntry(manifest=manifest, last_heartbeat=now)
 
-    # Quarantine one worker for demo
-    controller._quarantined.add("gen2-d005")
+    # Quarantine one worker for demo (use public API)
+    controller.mark_quarantined("gen2-d005")
 
     return controller, contract
 
