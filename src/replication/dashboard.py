@@ -25,13 +25,12 @@ from __future__ import annotations
 import argparse
 import html as html_lib
 import json
-import math
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from .simulator import ScenarioConfig, SimulationReport, Simulator, WorkerRecord
+from .simulator import ScenarioConfig, SimulationReport, Simulator
 
 
 # ── Configuration ────────────────────────────────────────────────

@@ -46,7 +46,6 @@ from __future__ import annotations
 import argparse
 import html as html_lib
 import json
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum

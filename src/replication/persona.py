@@ -37,10 +37,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
-import sys
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy, PRESETS as SIM_PRESETS
 

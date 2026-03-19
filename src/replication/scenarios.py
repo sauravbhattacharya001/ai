@@ -821,7 +821,6 @@ class ScenarioGenerator:
 def main() -> None:
     import argparse
     import json
-    import sys
 
     parser = argparse.ArgumentParser(
         description="Generate test scenarios for AI replication safety analysis"

@@ -18,10 +18,9 @@ import argparse
 import csv
 import io
 import json
-import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 from .contract import ReplicationContract
 from .controller import Controller, RegistryEntry

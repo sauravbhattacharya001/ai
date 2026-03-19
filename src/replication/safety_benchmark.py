@@ -727,7 +727,6 @@ class SafetyBenchmark:
 def main(argv: Optional[list] = None) -> None:
     """CLI entry point for safety benchmarks."""
     import argparse
-    import sys
 
     parser = argparse.ArgumentParser(
         prog="python -m replication safety-benchmark",
