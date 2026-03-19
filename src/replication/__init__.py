@@ -375,6 +375,13 @@ from .trend_tracker import (
     RegressionAlert,
 )
 from .knowledge_base import SafetyKnowledgeBase, KBEntry
+from .persona import (
+    PersonaSimulator,
+    Persona,
+    PersonaResult,
+    PersonaComparisonResult,
+    PERSONAS,
+)
 from .alert_router import (
     AlertRouter,
     RoutingRule,
@@ -744,4 +751,10 @@ __all__ = [
     "DispatchResult",
     "RouteStats",
     "default_router",
+    # persona
+    "PersonaSimulator",
+    "Persona",
+    "PersonaResult",
+    "PersonaComparisonResult",
+    "PERSONAS",
 ]
