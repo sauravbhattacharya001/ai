@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "red_team", "risk_heatmap", "policy_linter", "sla_monitor", "safety_warranty", "tabletop",
+    "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "red_team", "risk_heatmap", "policy_linter", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "correlation_graph", "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator", "trend_tracker",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -210,6 +210,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "tabletop":          (_make_handler("tabletop"),                    "Generate structured AI safety tabletop exercises"),
     "warranty":          (_make_handler("safety_warranty"),              "Evaluate formal safety warranties with breach detection"),
     "red-team":          (_make_handler("red_team"),                    "Generate structured red team exercise plans"),
+    "hunt":              (_make_handler("threat_hunt"),                  "Generate structured threat hunting missions & playbooks"),
 }
 
 
