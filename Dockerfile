@@ -1,5 +1,5 @@
 # ── Build / test stage ──────────────────────────────────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ RUN python -m pytest tests/ -v --tb=short
 RUN pip wheel --no-deps --wheel-dir /wheels .
 
 # ── Runtime stage ──────────────────────────────────────────────────
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 LABEL org.opencontainers.image.title="AI Replication Sandbox" \
       org.opencontainers.image.description="Contract-enforced sandbox for studying AI agent self-replication safety" \
