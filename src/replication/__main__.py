@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "access_control", "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "culture_survey", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
+    "access_control", "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "culture_survey", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "correlation_graph", "deception_detector", "evasion", "safety_benchmark", "safety_drill", "threat_correlator", "trend_tracker",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -215,6 +215,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "culture-survey":    (_make_handler("culture_survey"),               "Assess organizational AI safety culture maturity"),
     "access-control":    (_make_handler("access_control"),               "RBAC/ABAC access control simulator with escalation detection"),
     "quiz":              (_make_handler("safety_quiz"),                  "Generate AI safety training quizzes from the knowledge base"),
+    "evidence":          (_make_handler("evidence_collector"),            "Collect safety evidence artifacts for audit & compliance"),
 }
 
 
