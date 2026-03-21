@@ -411,6 +411,16 @@ from .swarm import (
     RiskLevel as SwarmRiskLevel,
 )
 
+from .containment_planner import (
+    ContainmentPlanner,
+    BreachContext,
+    ContainmentPlan,
+    Strategy as ContainmentStrategy,
+    StrategyRank,
+    ExecutionStep,
+    Severity as ContainmentSeverity,
+)
+
 from .kill_switch import (
     KillSwitchManager,
     TriggerCondition,
@@ -774,4 +784,12 @@ __all__ = [
     "WarrantyReport",
     "WarrantyStatus",
     "WARRANTY_PRESETS",
+    # containment_planner
+    "ContainmentPlanner",
+    "BreachContext",
+    "ContainmentPlan",
+    "ContainmentStrategy",
+    "StrategyRank",
+    "ExecutionStep",
+    "ContainmentSeverity",
 ]
