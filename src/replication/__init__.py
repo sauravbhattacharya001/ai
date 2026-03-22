@@ -411,6 +411,17 @@ from .swarm import (
     RiskLevel as SwarmRiskLevel,
 )
 
+from .runbook import (
+    RunbookGenerator,
+    ThreatScenario,
+    Runbook,
+    ChecklistItem,
+    EscalationLevel,
+    RecoveryStep,
+    Severity as RunbookSeverity,
+    RunbookFormat,
+)
+
 from .containment_planner import (
     ContainmentPlanner,
     BreachContext,
@@ -792,4 +803,13 @@ __all__ = [
     "StrategyRank",
     "ExecutionStep",
     "ContainmentSeverity",
+    # runbook
+    "RunbookGenerator",
+    "ThreatScenario",
+    "Runbook",
+    "ChecklistItem",
+    "EscalationLevel",
+    "RecoveryStep",
+    "RunbookSeverity",
+    "RunbookFormat",
 ]
