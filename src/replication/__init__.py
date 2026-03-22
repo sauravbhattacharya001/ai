@@ -422,6 +422,12 @@ from .runbook import (
     RunbookFormat,
 )
 
+from .blast_radius import (
+    BlastRadiusAnalyzer,
+    BlastResult,
+    ImpactNode,
+)
+
 from .containment_planner import (
     ContainmentPlanner,
     BreachContext,
@@ -812,4 +818,8 @@ __all__ = [
     "RecoveryStep",
     "RunbookSeverity",
     "RunbookFormat",
+    # blast_radius
+    "BlastRadiusAnalyzer",
+    "BlastResult",
+    "ImpactNode",
 ]
