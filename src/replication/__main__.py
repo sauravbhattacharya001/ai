@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "access_control", "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "culture_survey", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
+    "access_control", "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "culture_survey", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "metrics_aggregator", "safety_benchmark", "safety_drill", "threat_correlator", "trend_tracker",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -218,6 +218,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "evidence":          (_make_handler("evidence_collector"),            "Collect safety evidence artifacts for audit & compliance"),
     "blast-radius":      (_make_handler("blast_radius"),                  "Analyze safety control failure cascade & blast radius"),
     "metrics":           (_make_handler("metrics_aggregator"),              "Aggregate safety metrics into a consolidated dashboard"),
+    "priv-escalation":   (_make_handler("priv_escalation"),                 "Detect gradual privilege escalation in agent request sequences"),
 }
 
 
