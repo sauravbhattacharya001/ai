@@ -201,7 +201,12 @@ class EvidencePackage:
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("manifest.json", json.dumps(self.manifest, indent=2))
             for i, a in enumerate(self.artifacts, 1):
-                safe_name = a.title.replace(" ", "_").replace("/", "_")[:60]
+                # Sanitize: strip path separators and traversal sequences
+                # to prevent zip-slip (writing outside archive root).
+                import re as _re
+                safe_name = _re.sub(r'[\/\\]', '_', a.title)
+                safe_name = safe_name.replace("..", "_")
+                safe_name = _re.sub(r'[^\w\-.]', '_', safe_name)[:60]
                 zf.writestr(
                     f"{i:03d}_{a.collector}_{safe_name}.txt", a.content
                 )

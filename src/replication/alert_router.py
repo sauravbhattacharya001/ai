@@ -66,6 +66,15 @@ class Channel:
             self.label = self.kind
         if self.kind not in ("console", "file", "jsonl", "webhook"):
             raise ValueError(f"Unknown channel kind: {self.kind}")
+        # Prevent directory traversal in file/jsonl channel paths.
+        if self.kind in ("file", "jsonl") and self.path:
+            import os
+            normalised = os.path.normpath(self.path)
+            if ".." in normalised.split(os.sep):
+                raise ValueError(
+                    f"Channel path must not contain directory traversal "
+                    f"sequences: {self.path!r}"
+                )
 
 
 @dataclass
