@@ -428,6 +428,13 @@ from .blast_radius import (
     ImpactNode,
 )
 
+from .supply_chain import (
+    SupplyChainAnalyzer,
+    SupplyChainReport,
+    Component as SupplyChainComponent,
+    RiskFinding as SupplyChainRiskFinding,
+)
+
 from .containment_planner import (
     ContainmentPlanner,
     BreachContext,
