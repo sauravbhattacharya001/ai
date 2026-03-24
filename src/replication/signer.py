@@ -47,8 +47,15 @@ class ManifestSigner:
         craft a snapshot whose ``str()`` output matches a different
         dict, effectively bypassing signature verification.
         """
+        import enum
+
+        def _default(obj: object) -> object:
+            if isinstance(obj, enum.Enum):
+                return obj.value
+            raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
         res = manifest.resources
-        canonical_state = json.dumps(manifest.state_snapshot, sort_keys=True, separators=(",", ":"))
+        canonical_state = json.dumps(manifest.state_snapshot, sort_keys=True, separators=(",", ":"), default=_default)
         return (
             f"{manifest.worker_id}:{manifest.parent_id}:{manifest.depth}"
             f":{manifest.issued_at.isoformat()}:{canonical_state}"
