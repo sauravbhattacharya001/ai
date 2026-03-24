@@ -61,6 +61,7 @@ from .policy import (
     MONTE_CARLO_METRICS,
 )
 from .reporter import HTMLReporter
+from .dlp_scanner import DLPScanner, DLPPolicy, DLPFinding, ScanResult as DLPScanResult
 from .worker import Worker, WorkerState
 from .forensics import (
     ForensicAnalyzer,
