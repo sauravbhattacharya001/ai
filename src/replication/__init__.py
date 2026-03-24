@@ -460,6 +460,17 @@ from .kill_switch import (
     create_quarantine_killswitch,
 )
 
+from .capability_fingerprint import (
+    Capability,
+    CapabilityCategory,
+    CapabilityTracker,
+    TrackerConfig,
+    Fingerprint,
+    CapabilityDelta,
+    CapabilityAlert,
+    AlertSeverity,
+)
+
 __all__ = [
     # contract
     "Manifest",
@@ -829,4 +840,13 @@ __all__ = [
     "BlastRadiusAnalyzer",
     "BlastResult",
     "ImpactNode",
+    # capability_fingerprint
+    "Capability",
+    "CapabilityCategory",
+    "CapabilityTracker",
+    "TrackerConfig",
+    "Fingerprint",
+    "CapabilityDelta",
+    "CapabilityAlert",
+    "AlertSeverity",
 ]
