@@ -18,7 +18,7 @@ import json
 import sys
 import time
 from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -32,15 +32,70 @@ class ModuleMetric:
     extra: Dict[str, Any] = field(default_factory=dict)
 
 
+# ── Probe registry ───────────────────────────────────────────────────
+
+_PROBE_REGISTRY: Dict[str, Callable[[], ModuleMetric]] = {}
+
+
+def probe(name: str) -> Callable:
+    """Decorator that registers a function as a named module probe.
+
+    Usage::
+
+        @probe("scorecard")
+        def _probe_scorecard() -> ModuleMetric:
+            ...
+
+    The decorated function is added to the global probe registry and
+    will be discovered automatically by :func:`aggregate`.  This
+    replaces the previous pattern of defining functions and then
+    manually maintaining a parallel ``ALL_PROBES`` dictionary, which
+    was error-prone when adding or removing modules.
+    """
+    def decorator(fn: Callable[[], ModuleMetric]) -> Callable[[], ModuleMetric]:
+        _PROBE_REGISTRY[name] = fn
+        return fn
+    return decorator
+
+
+def _status_from_score(
+    score: float,
+    *,
+    ok_threshold: float,
+    warn_threshold: float,
+    invert: bool = False,
+) -> str:
+    """Derive a status string from a numeric score and two thresholds.
+
+    When *invert* is False (default), higher scores are better:
+    ``score >= ok_threshold`` → "ok", ``>= warn_threshold`` → "warn",
+    else "error".
+
+    When *invert* is True, lower scores are better (e.g. violation
+    counts): ``score <= ok_threshold`` → "ok", ``<= warn_threshold``
+    → "warn", else "error".
+    """
+    if invert:
+        if score <= ok_threshold:
+            return "ok"
+        return "warn" if score <= warn_threshold else "error"
+    else:
+        if score >= ok_threshold:
+            return "ok"
+        return "warn" if score >= warn_threshold else "error"
+
+
 # ── probes ───────────────────────────────────────────────────────────
 
+
+@probe("scorecard")
 def _probe_scorecard() -> ModuleMetric:
     try:
         from . import scorecard as sc
         card = sc.evaluate()
         overall = card.get("overall_score", card.get("score"))
         if overall is not None:
-            status = "ok" if overall >= 70 else ("warn" if overall >= 40 else "error")
+            status = _status_from_score(overall, ok_threshold=70, warn_threshold=40)
             return ModuleMetric("scorecard", status, score=overall,
                                 detail=f"Overall safety score: {overall}")
         return ModuleMetric("scorecard", "ok", detail="Scorecard evaluated (no numeric score)")
@@ -48,6 +103,7 @@ def _probe_scorecard() -> ModuleMetric:
         return ModuleMetric("scorecard", "skip", detail=str(exc))
 
 
+@probe("compliance")
 def _probe_compliance() -> ModuleMetric:
     try:
         from . import compliance as comp
@@ -55,7 +111,7 @@ def _probe_compliance() -> ModuleMetric:
         passed = result.get("passed", 0)
         total = result.get("total", 0)
         pct = (passed / total * 100) if total else 0
-        status = "ok" if pct >= 80 else ("warn" if pct >= 50 else "error")
+        status = _status_from_score(pct, ok_threshold=80, warn_threshold=50)
         return ModuleMetric("compliance", status, score=round(pct, 1),
                             detail=f"{passed}/{total} checks passed ({pct:.0f}%)",
                             extra={"passed": passed, "total": total})
@@ -63,6 +119,7 @@ def _probe_compliance() -> ModuleMetric:
         return ModuleMetric("compliance", "skip", detail=str(exc))
 
 
+@probe("drift")
 def _probe_drift() -> ModuleMetric:
     try:
         from . import drift as dr
@@ -77,13 +134,14 @@ def _probe_drift() -> ModuleMetric:
         return ModuleMetric("drift", "skip", detail=str(exc))
 
 
+@probe("maturity")
 def _probe_maturity() -> ModuleMetric:
     try:
         from . import maturity_model as mm
         result = mm.assess()
         level = result.get("level", result.get("overall_level"))
         if level is not None:
-            status = "ok" if level >= 3 else ("warn" if level >= 2 else "error")
+            status = _status_from_score(level, ok_threshold=3, warn_threshold=2)
             return ModuleMetric("maturity", status, score=level,
                                 detail=f"Maturity level {level}/5")
         return ModuleMetric("maturity", "ok", detail="Assessment completed")
@@ -91,13 +149,14 @@ def _probe_maturity() -> ModuleMetric:
         return ModuleMetric("maturity", "skip", detail=str(exc))
 
 
+@probe("sla")
 def _probe_sla() -> ModuleMetric:
     try:
         from . import sla_monitor as sla
         result = sla.check()
         violations = result.get("violations", [])
         count = len(violations)
-        status = "ok" if count == 0 else ("warn" if count <= 2 else "error")
+        status = _status_from_score(count, ok_threshold=0, warn_threshold=2, invert=True)
         return ModuleMetric("sla", status, score=count,
                             detail=f"{count} SLA violation(s)",
                             extra={"violations": count})
@@ -105,6 +164,7 @@ def _probe_sla() -> ModuleMetric:
         return ModuleMetric("sla", "skip", detail=str(exc))
 
 
+@probe("fatigue")
 def _probe_fatigue() -> ModuleMetric:
     try:
         from . import fatigue_detector as fd
@@ -119,27 +179,22 @@ def _probe_fatigue() -> ModuleMetric:
         return ModuleMetric("fatigue", "skip", detail=str(exc))
 
 
+@probe("blast-radius")
 def _probe_blast_radius() -> ModuleMetric:
     try:
         from . import blast_radius as br
         result = br.analyze()
         radius = result.get("max_radius", result.get("blast_radius", 0))
-        status = "ok" if radius <= 3 else ("warn" if radius <= 6 else "error")
+        status = _status_from_score(radius, ok_threshold=3, warn_threshold=6, invert=True)
         return ModuleMetric("blast-radius", status, score=radius,
                             detail=f"Max blast radius: {radius} hops")
     except Exception as exc:
         return ModuleMetric("blast-radius", "skip", detail=str(exc))
 
 
-ALL_PROBES = {
-    "scorecard": _probe_scorecard,
-    "compliance": _probe_compliance,
-    "drift": _probe_drift,
-    "maturity": _probe_maturity,
-    "sla": _probe_sla,
-    "fatigue": _probe_fatigue,
-    "blast-radius": _probe_blast_radius,
-}
+# Backwards-compatible alias so existing code that references ALL_PROBES
+# (e.g. tests, plugins) continues to work.
+ALL_PROBES = _PROBE_REGISTRY
 
 STATUS_ICON = {
     "ok": "\u2705",
@@ -185,14 +240,14 @@ def _render_table(metrics: List[ModuleMetric]) -> str:
 
 def aggregate(modules: Optional[List[str]] = None) -> List[ModuleMetric]:
     """Run probes and return metrics for the requested modules."""
-    targets = modules or list(ALL_PROBES.keys())
+    targets = modules or list(_PROBE_REGISTRY.keys())
     results: List[ModuleMetric] = []
     for name in targets:
-        probe = ALL_PROBES.get(name)
-        if probe is None:
+        probe_fn = _PROBE_REGISTRY.get(name)
+        if probe_fn is None:
             results.append(ModuleMetric(name, "skip", detail=f"Unknown module: {name}"))
             continue
-        results.append(probe())
+        results.append(probe_fn())
     return results
 
 
