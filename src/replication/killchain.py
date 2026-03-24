@@ -50,6 +50,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 
 class KillChainStage(enum.Enum):
+    """Stages of a multi-step agent attack, modeled after MITRE ATT&CK."""
+
     RECONNAISSANCE = "reconnaissance"
     RESOURCE_ACQUISITION = "resource_acquisition"
     PRIVILEGE_ESCALATION = "privilege_escalation"
@@ -60,6 +62,8 @@ class KillChainStage(enum.Enum):
 
 
 class AttackSophistication(enum.Enum):
+    """Classification of how sophisticated an observed attack campaign is."""
+
     OPPORTUNISTIC = "opportunistic"
     SCRIPTED = "scripted"
     ADAPTIVE = "adaptive"
@@ -67,6 +71,8 @@ class AttackSophistication(enum.Enum):
 
 
 class ChainStatus(enum.Enum):
+    """Current progression status of an agent's kill chain."""
+
     NASCENT = "nascent"
     DEVELOPING = "developing"
     ADVANCED = "advanced"
@@ -75,6 +81,8 @@ class ChainStatus(enum.Enum):
 
 
 class ActionCategory(enum.Enum):
+    """Broad category of an agent action, used for stage classification fallback."""
+
     PROBE = "probe"
     ACQUIRE = "acquire"
     ESCALATE = "escalate"
@@ -86,6 +94,8 @@ class ActionCategory(enum.Enum):
 
 @dataclass
 class AgentAction:
+    """A single observed action taken by an agent, with timestamp and outcome."""
+
     agent_id: str
     timestamp: float
     action_type: str
@@ -97,6 +107,8 @@ class AgentAction:
 
 @dataclass
 class StageObservation:
+    """Aggregated observations for a single kill chain stage within one agent."""
+
     stage: KillChainStage
     actions: List[AgentAction] = field(default_factory=list)
     first_seen: float = 0.0
@@ -105,10 +117,12 @@ class StageObservation:
 
     @property
     def count(self) -> int:
+        """Return the number of actions observed in this stage."""
         return len(self.actions)
 
     @property
     def duration(self) -> float:
+        """Return elapsed time between first and last observation."""
         if self.first_seen == 0 and self.last_seen == 0:
             return 0.0
         return self.last_seen - self.first_seen
@@ -116,6 +130,8 @@ class StageObservation:
 
 @dataclass
 class KillChain:
+    """Complete kill chain model for a single agent, tracking stage progression and risk."""
+
     agent_id: str
     stages: Dict[KillChainStage, StageObservation] = field(default_factory=dict)
     status: ChainStatus = ChainStatus.NASCENT
@@ -127,18 +143,22 @@ class KillChain:
 
     @property
     def active_stages(self) -> List[KillChainStage]:
+        """Return observed stages sorted by enum value."""
         return sorted(self.stages.keys(), key=lambda s: s.value)
 
     @property
     def stage_count(self) -> int:
+        """Return the number of distinct stages observed."""
         return len(self.stages)
 
     @property
     def total_actions(self) -> int:
+        """Return total action count across all stages."""
         return sum(obs.count for obs in self.stages.values())
 
     @property
     def timeline_span(self) -> float:
+        """Return wall-clock span from earliest to latest observation."""
         if not self.stages:
             return 0.0
         first = min(obs.first_seen for obs in self.stages.values())
@@ -148,6 +168,8 @@ class KillChain:
 
 @dataclass
 class ChainPattern:
+    """A recurring sub-sequence of kill chain stages observed across multiple agents."""
+
     name: str
     stages_sequence: List[KillChainStage]
     frequency: int = 0
@@ -157,6 +179,8 @@ class ChainPattern:
 
 @dataclass
 class StageTransition:
+    """A recorded transition between two kill chain stages, with frequency and timing."""
+
     from_stage: KillChainStage
     to_stage: KillChainStage
     count: int = 0
@@ -166,6 +190,8 @@ class StageTransition:
 
 @dataclass
 class KillChainReport:
+    """Aggregated analysis report across all observed agent kill chains."""
+
     chains: List[KillChain]
     patterns: List[ChainPattern]
     transitions: List[StageTransition]
@@ -179,6 +205,7 @@ class KillChainReport:
     config: Optional["KillChainConfig"] = field(default=None, repr=False)
 
     def render(self) -> str:
+        """Render a human-readable text report with stage distribution, chains, patterns, and transitions."""
         lines: list[str] = []
         w = 70
         lines.append("=" * w)
@@ -265,6 +292,7 @@ class KillChainReport:
         return "\u2500".join(parts)
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize the report to a JSON-compatible dictionary."""
         return {
             "total_agents": self.total_agents,
             "total_actions": self.total_actions,
@@ -313,6 +341,8 @@ class KillChainReport:
 
 @dataclass
 class KillChainConfig:
+    """Configuration for kill chain analysis and simulation parameters."""
+
     num_agents: int = 5
     actions_per_agent: int = 40
     strategy: str = "mixed"
@@ -376,6 +406,8 @@ STAGE_RISK_WEIGHTS: Dict[KillChainStage, float] = {
 
 @dataclass
 class StrategyProfile:
+    """Defines an attack strategy's stage probability distribution and behavioral traits."""
+
     name: str
     stage_probs: Dict[KillChainStage, float]
     sequential: bool = False
@@ -439,6 +471,12 @@ class KillChainAnalyzer:
         self._rng = random.Random(self.config.seed)
 
     def analyze(self, actions: Optional[List[AgentAction]] = None) -> KillChainReport:
+        """Analyze agent actions and produce a kill chain report.
+
+        If no actions are provided, simulates agent behavior based on config.
+        Groups actions by agent, builds individual kill chains, detects
+        cross-agent patterns, and computes stage transitions.
+        """
         if actions is None:
             actions = self._simulate_actions()
         by_agent: Dict[str, List[AgentAction]] = {}
@@ -472,6 +510,12 @@ class KillChainAnalyzer:
         )
 
     def _build_chain(self, agent_id: str, actions: List[AgentAction]) -> KillChain:
+        """Build a KillChain for one agent from its chronologically-sorted actions.
+
+        Classifies each action into a stage, computes per-stage success rates,
+        overall completeness, risk score, sophistication, and predicts the
+        likely next stage. May randomly disrupt the chain based on config.
+        """
         chain = KillChain(agent_id=agent_id)
         for action in sorted(actions, key=lambda a: a.timestamp):
             stage = self._classify_action(action)
@@ -496,6 +540,7 @@ class KillChainAnalyzer:
         return chain
 
     def _classify_action(self, action: AgentAction) -> KillChainStage:
+        """Map an action to its kill chain stage via the catalog or category fallback."""
         if action.action_type in ACTION_CATALOG:
             return ACTION_CATALOG[action.action_type][0]
         category_map = {
@@ -510,6 +555,7 @@ class KillChainAnalyzer:
         return category_map.get(action.category, KillChainStage.RECONNAISSANCE)
 
     def _compute_risk_score(self, chain: KillChain) -> float:
+        """Compute a 0-100 risk score based on stage weights, intensity, success, and sequential progression."""
         if not chain.stages:
             return 0.0
         weighted_sum = 0.0
@@ -528,6 +574,7 @@ class KillChainAnalyzer:
         return min(round(base_score, 1), 100.0)
 
     def _assess_sophistication(self, chain: KillChain) -> AttackSophistication:
+        """Classify attack sophistication based on stage count, ordering, evasion, and C2 presence."""
         if chain.stage_count <= 2:
             return AttackSophistication.OPPORTUNISTIC
         order_indices = sorted(_STAGE_RANK[s] for s in chain.stages)
@@ -544,6 +591,7 @@ class KillChainAnalyzer:
         return AttackSophistication.OPPORTUNISTIC
 
     def _determine_status(self, chain: KillChain) -> ChainStatus:
+        """Determine chain status from stage count and whether the objective was reached."""
         if KillChainStage.OBJECTIVE_EXECUTION in chain.stages:
             return ChainStatus.COMPLETE
         if chain.stage_count >= 5:
@@ -553,6 +601,7 @@ class KillChainAnalyzer:
         return ChainStatus.NASCENT
 
     def _predict_next_stage(self, chain: KillChain) -> Optional[KillChainStage]:
+        """Predict the next likely stage based on the furthest stage already reached."""
         if not chain.stages:
             return KillChainStage.RECONNAISSANCE
         latest_idx = max(_STAGE_RANK[s] for s in chain.stages)
@@ -562,6 +611,11 @@ class KillChainAnalyzer:
         return None
 
     def _detect_patterns(self, chains: List[KillChain]) -> List[ChainPattern]:
+        """Detect recurring stage sub-sequences that appear across multiple agents.
+
+        Returns up to 10 patterns sorted by frequency, excluding sub-sequences
+        that are contained within longer already-found patterns.
+        """
         sequences = []
         for chain in chains:
             if not chain.stages:
@@ -605,6 +659,7 @@ class KillChainAnalyzer:
         return patterns[:10]
 
     def _compute_transitions(self, chains: List[KillChain]) -> List[StageTransition]:
+        """Compute stage-to-stage transition frequency and average time deltas across all chains."""
         td: Dict[Tuple[KillChainStage, KillChainStage], Dict] = {}
         for chain in chains:
             if len(chain.stages) < 2:
@@ -625,6 +680,7 @@ class KillChainAnalyzer:
         ]
 
     def _simulate_actions(self) -> List[AgentAction]:
+        """Generate synthetic agent actions for demo/testing based on strategy profiles."""
         actions: list[AgentAction] = []
         for i in range(self.config.num_agents):
             agent_id = f"agent-{i:03d}"
@@ -645,6 +701,7 @@ class KillChainAnalyzer:
         return sorted(actions, key=lambda a: a.timestamp)
 
     def _plan_agent_actions(self, profile: StrategyProfile) -> List[str]:
+        """Plan a sequence of action types for one agent based on its strategy profile."""
         actions_by_stage: Dict[KillChainStage, List[str]] = {}
         for at, (stage, _, _) in ACTION_CATALOG.items():
             actions_by_stage.setdefault(stage, []).append(at)
@@ -674,6 +731,7 @@ class KillChainAnalyzer:
         return planned
 
     def _random_target(self, stage: KillChainStage) -> str:
+        """Return a random plausible target string for the given stage (used in simulation)."""
         targets = {
             KillChainStage.RECONNAISSANCE: ["/etc/passwd", "/proc/self/status", "agent-registry", "10.0.0.0/24", "api.internal:8080"],
             KillChainStage.RESOURCE_ACQUISITION: ["heap:256MB", "cpu:4cores", "disk:10GB", "connections:100"],
@@ -687,6 +745,7 @@ class KillChainAnalyzer:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
+    """CLI entry point: parse arguments, run analysis, and print or export the report."""
     import argparse
     parser = argparse.ArgumentParser(description="Kill Chain Analyzer")
     parser.add_argument("--agents", type=int, default=5)
