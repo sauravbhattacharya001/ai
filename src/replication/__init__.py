@@ -471,6 +471,16 @@ from .capability_fingerprint import (
     CapabilityAlert,
     AlertSeverity,
 )
+from .shadow_ai import (
+    ShadowAIDetector,
+    ScanPolicy,
+    AIInventory,
+    Observation,
+    ShadowAIFinding,
+    ShadowAIReport,
+    FindingCategory,
+    SignalType,
+)
 
 __all__ = [
     # contract
@@ -850,4 +860,13 @@ __all__ = [
     "CapabilityDelta",
     "CapabilityAlert",
     "AlertSeverity",
+    # shadow_ai
+    "ShadowAIDetector",
+    "ScanPolicy",
+    "AIInventory",
+    "Observation",
+    "ShadowAIFinding",
+    "ShadowAIReport",
+    "FindingCategory",
+    "SignalType",
 ]

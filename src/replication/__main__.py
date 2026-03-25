@@ -227,6 +227,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "dlp-scan":          (_make_handler("dlp_scanner"),                      "Scan agent outputs for sensitive data leakage (PII, secrets, credentials)"),
     "mutate":            (_make_handler("mutation_tester"),                   "Mutation testing — verify safety policies catch real violations"),
     "severity":          (_make_handler("severity_classifier"),                "Classify incident severity (P0–P4) with multi-dimensional scoring"),
+    "shadow-ai":         (_make_handler("shadow_ai"),                         "Detect unauthorized shadow AI deployments bypassing safety controls"),
 }
 
 
