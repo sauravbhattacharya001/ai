@@ -112,6 +112,13 @@ from .drift import (
     MetricTrend,
     MetricWindow,
 )
+from .decommission import (
+    DecommissionPlanner,
+    AgentInventory,
+    DecommissionPlan,
+    TeardownStep,
+    DecommissionReport,
+)
 from .compliance import (
     ComplianceAuditor,
     AuditConfig,
