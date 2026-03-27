@@ -29,6 +29,7 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import math
 import random
@@ -360,12 +361,12 @@ class SurveyResult:
         recs_html = ""
         for d in self.dimensions:
             if d.recommendations:
-                items = "".join(f"<li>{r}</li>" for r in d.recommendations)
-                recs_html += f'<div class="rec-section"><h3>{d.label} <span class="level">Level {d.maturity_level}</span></h3><ul>{items}</ul></div>'
+                items = "".join(f"<li>{_html.escape(r)}</li>" for r in d.recommendations)
+                recs_html += f'<div class="rec-section"><h3>{_html.escape(d.label)} <span class="level">Level {d.maturity_level}</span></h3><ul>{items}</ul></div>'
 
-        strengths_html = "".join(f"<li>✅ {s}</li>" for s in self.strengths)
-        weaknesses_html = "".join(f"<li>⚠️ {w}</li>" for w in self.weaknesses)
-        actions_html = "".join(f"<li>{a}</li>" for i, a in enumerate(self.priority_actions, 1))
+        strengths_html = "".join(f"<li>✅ {_html.escape(s)}</li>" for s in self.strengths)
+        weaknesses_html = "".join(f"<li>⚠️ {_html.escape(w)}</li>" for w in self.weaknesses)
+        actions_html = "".join(f"<li>{_html.escape(a)}</li>" for i, a in enumerate(self.priority_actions, 1))
 
         return f"""<!DOCTYPE html>
 <html lang="en">

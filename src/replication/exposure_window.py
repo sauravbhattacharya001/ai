@@ -36,6 +36,7 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import random
 import sys
@@ -310,7 +311,7 @@ def generate_html_report(result: AnalysisResult) -> str:
     rows = ""
     for ctrl, info in sorted(result.per_control.items()):
         rows += f"""<tr>
-            <td>{ctrl}</td>
+            <td>{_html.escape(ctrl)}</td>
             <td>{info['window_count']}</td>
             <td>{info['total_exposure_min']:.1f} min</td>
             <td>{info['coverage_pct']:.1f}%</td>
@@ -321,11 +322,11 @@ def generate_html_report(result: AnalysisResult) -> str:
     for w in sorted(result.windows, key=lambda x: -x.duration_sec)[:20]:
         start_str = datetime.fromtimestamp(w.start, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
         window_rows += f"""<tr>
-            <td>{w.control_name}</td>
+            <td>{_html.escape(w.control_name)}</td>
             <td>{start_str}</td>
             <td>{w.duration_min:.1f} min</td>
-            <td><span class="sev-{w.severity}">{w.severity}</span></td>
-            <td>{w.reason}</td>
+            <td><span class="sev-{_html.escape(w.severity)}">{_html.escape(w.severity)}</span></td>
+            <td>{_html.escape(w.reason)}</td>
         </tr>"""
 
     grade_color = {"A": "#27ae60", "B": "#2ecc71", "C": "#f39c12", "D": "#e67e22", "F": "#e74c3c"}.get(result.grade, "#95a5a6")

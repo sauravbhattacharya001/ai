@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import html as _html
 import io
 import json
 import sys
@@ -259,23 +260,23 @@ class AuditTrail:
         for ev in evs:
             icon = cat_icons.get(ev.category, "•")
             color = sev_colors.get(ev.severity, "#666")
-            meta = json.dumps(ev.metadata) if ev.metadata else ""
+            meta = _html.escape(json.dumps(ev.metadata)) if ev.metadata else ""
             rows.append(f"""
             <div class="event" style="border-left:4px solid {color}">
               <div class="header">
                 <span class="icon">{icon}</span>
-                <span class="cat">{ev.category}</span>
-                <span class="sev" style="color:{color}">{ev.severity.upper()}</span>
-                <span class="ts">{ev.timestamp}</span>
+                <span class="cat">{_html.escape(ev.category)}</span>
+                <span class="sev" style="color:{color}">{_html.escape(ev.severity.upper())}</span>
+                <span class="ts">{_html.escape(ev.timestamp)}</span>
                 <span class="seq">#{ev.seq}</span>
               </div>
-              <div class="msg">{ev.message}</div>
+              <div class="msg">{_html.escape(ev.message)}</div>
               <div class="details">
-                {f'<span>Source: {ev.source}</span>' if ev.source else ''}
-                {f'<span>Actor: {ev.actor}</span>' if ev.actor else ''}
-                {f'<span>Target: {ev.target}</span>' if ev.target else ''}
+                {f'<span>Source: {_html.escape(ev.source)}</span>' if ev.source else ''}
+                {f'<span>Actor: {_html.escape(ev.actor)}</span>' if ev.actor else ''}
+                {f'<span>Target: {_html.escape(ev.target)}</span>' if ev.target else ''}
               </div>
-              <div class="hash" title="{ev.hash}">{ev.hash[:16]}…</div>
+              <div class="hash" title="{_html.escape(ev.hash)}">{_html.escape(ev.hash[:16])}…</div>
               {f'<div class="meta">{meta}</div>' if meta else ''}
             </div>""")
 
