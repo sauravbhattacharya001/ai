@@ -411,7 +411,7 @@ class TrustNetwork:
         for aid, agent in self.agents.items():
             age = max(1, self.step_count - agent.created_at)
             rep = self.get_reputation(aid)
-            incoming = sum(1 for (_, t) in self.edges if t == aid)
+            incoming = len(self._incoming.get(aid, set()))
             rate = rep * incoming / age
             if rate > 2.0 and rep > 0.6:
                 detections.append(ThreatDetection(
