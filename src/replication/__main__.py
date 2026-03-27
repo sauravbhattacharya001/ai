@@ -100,7 +100,7 @@ def _cmd_info(_args: List[str]) -> None:
 _HAS_MAIN = {
     "access_control", "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "incident_cost", "metrics_aggregator", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
-    "dlp_scanner", "model_card", "mutation_tester", "severity_classifier",
+    "dlp_scanner", "model_card", "mutation_tester", "severity_classifier", "regulatory_mapper",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
@@ -231,6 +231,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "model-card":        (_make_handler("model_card"),                          "Generate standardized AI model cards with safety documentation"),
     "decommission":      (_make_handler("decommission"),                        "Plan and validate safe AI agent retirement & teardown"),
     "incident-cost":     (_make_handler("incident_cost"),                        "Estimate financial & operational cost of safety incidents"),
+    "regulatory-map":    (_make_handler("regulatory_mapper"),                    "Map safety findings to regulatory framework articles (EU AI Act, NIST, ISO 42001, OECD)"),
 }
 
 
