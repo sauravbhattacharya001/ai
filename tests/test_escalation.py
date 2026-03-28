@@ -858,3 +858,63 @@ class TestURLEncodingBypass:
         action = AgentAction(ActionCategory.FILE_READ, "/home/agent/file%GG.txt", "read")
         # Should not raise -- %GG is not valid hex, decoder should be tolerant
         self._run_rules(action)
+
+
+class TestAuditLogFalsePositives:
+    """Regression tests for DATA-002 audit log detection false positives."""
+
+    def _check_data002(self, target):
+        perms = AgentPermissions()
+        action = AgentAction(ActionCategory.DATA_READ, target, "test")
+        for rule in BUILTIN_RULES:
+            if rule.rule_id == "DATA-002":
+                return rule.check(action, perms) is not None
+        return False
+
+    def test_audit_detected(self):
+        assert self._check_data002("dataset:internal:audit_events")
+
+    def test_log_detected(self):
+        assert self._check_data002("system/logs/access.log")
+
+    def test_logs_detected(self):
+        assert self._check_data002("dataset:internal:agent_logs")
+
+    def test_catalog_not_detected(self):
+        assert not self._check_data002("dataset:public:catalog")
+
+    def test_dialog_not_detected(self):
+        assert not self._check_data002("dataset:public:dialog_history")
+
+    def test_blog_not_detected(self):
+        assert not self._check_data002("dataset:public:blog_posts")
+
+    def test_login_not_detected(self):
+        assert not self._check_data002("dataset:public:login_stats")
+
+
+class TestLateralMovementHostMatching:
+    """Regression tests for NET-004 lateral movement false positives."""
+
+    def _check_net004(self, target, perms=None):
+        perms = perms or AgentPermissions()
+        action = AgentAction(ActionCategory.NET_CONNECT, target, "test")
+        for rule in BUILTIN_RULES:
+            if rule.rule_id == "NET-004":
+                return rule.check(action, perms) is not None
+        return False
+
+    def test_allowed_internal_host_with_port(self):
+        perms = AgentPermissions(allowed_hosts=["api.internal.local"])
+        assert not self._check_net004("api.internal.local:443", perms)
+
+    def test_allowed_internal_host_no_port(self):
+        perms = AgentPermissions(allowed_hosts=["api.internal.local"])
+        assert not self._check_net004("api.internal.local", perms)
+
+    def test_blocked_internal_host_detected(self):
+        perms = AgentPermissions(allowed_hosts=["api.internal.local"])
+        assert self._check_net004("admin.internal:443", perms)
+
+    def test_private_ip_detected(self):
+        assert self._check_net004("192.168.1.100:3306")
