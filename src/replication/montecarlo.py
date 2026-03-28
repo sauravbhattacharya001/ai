@@ -37,7 +37,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
-from ._helpers import stats_mean as _mean, stats_std as _std, box_header as _box_header
+from ._helpers import stats_mean as _mean, stats_std as _std, box_header as _box_header, extract_report_metrics as _extract_metrics
 
 
 # ── Statistics helpers ──────────────────────────────────────────────────
@@ -653,33 +653,18 @@ class MonteCarloAnalyzer:
     ) -> MonteCarloResult:
         """Compute statistics from a batch of simulation reports."""
 
-        # Extract raw metric vectors in a single pass over reports
-        total_workers_v: List[float] = []
-        total_tasks_v: List[float] = []
-        repl_ok_v: List[float] = []
-        repl_denied_v: List[float] = []
-        max_depth_v: List[float] = []
-        efficiency_v: List[float] = []
-        denial_rate_v: List[float] = []
-        duration_v: List[float] = []
+        # Extract metrics using the shared helper, then pivot into
+        # per-metric vectors for statistical analysis.
+        all_metrics = [_extract_metrics(r) for r in reports]
 
-        for r in reports:
-            num_workers = float(len(r.workers))
-            total_workers_v.append(num_workers)
-            total_tasks_v.append(float(r.total_tasks))
-            repl_ok_v.append(float(r.total_replications_succeeded))
-            repl_denied_v.append(float(r.total_replications_denied))
-            max_depth_v.append(
-                float(max((w.depth for w in r.workers.values()), default=0))
-            )
-            efficiency_v.append(
-                r.total_tasks / num_workers if num_workers > 0 else 0.0
-            )
-            denial_rate_v.append(
-                (r.total_replications_denied / r.total_replications_attempted * 100)
-                if r.total_replications_attempted > 0 else 0.0
-            )
-            duration_v.append(r.duration_ms)
+        total_workers_v = [m["total_workers"] for m in all_metrics]
+        total_tasks_v = [m["total_tasks"] for m in all_metrics]
+        repl_ok_v = [m["replications_succeeded"] for m in all_metrics]
+        repl_denied_v = [m["replications_denied"] for m in all_metrics]
+        max_depth_v = [m["max_depth_reached"] for m in all_metrics]
+        efficiency_v = [m["efficiency"] for m in all_metrics]
+        denial_rate_v = [m["denial_rate"] * 100 for m in all_metrics]
+        duration_v = [r.duration_ms for r in reports]
 
         distributions = {
             "total_workers": MetricDistribution("Total Workers", "count", total_workers_v),

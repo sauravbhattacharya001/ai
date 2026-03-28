@@ -32,7 +32,12 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
-from ._helpers import stats_mean as _mean, stats_std as _std
+from ._helpers import (
+    stats_mean as _mean,
+    stats_std as _std,
+    extract_report_metrics as _extract_metrics,
+    REPORT_METRIC_NAMES,
+)
 
 
 # ── Parameter definitions ──────────────────────────────────────────────
@@ -121,44 +126,7 @@ PARAM_DEFS = _make_param_defs()
 
 # ── Metrics extracted from simulation reports ──────────────────────────
 
-METRIC_NAMES = [
-    "total_workers",
-    "total_tasks",
-    "replications_succeeded",
-    "replications_denied",
-    "max_depth_reached",
-    "denial_rate",
-    "efficiency",
-    "total_cpu",
-    "total_memory_mb",
-]
-
-
-def _extract_metrics(report: SimulationReport) -> Dict[str, float]:
-    """Extract key safety metrics from a simulation report."""
-    n_workers = len(report.workers)
-    max_depth = max((w.depth for w in report.workers.values()), default=0)
-    total_attempted = report.total_replications_attempted
-    denial_rate = (
-        report.total_replications_denied / total_attempted
-        if total_attempted > 0
-        else 0.0
-    )
-    efficiency = (
-        report.total_tasks / n_workers if n_workers > 0 else 0.0
-    )
-
-    return {
-        "total_workers": float(n_workers),
-        "total_tasks": float(report.total_tasks),
-        "replications_succeeded": float(report.total_replications_succeeded),
-        "replications_denied": float(report.total_replications_denied),
-        "max_depth_reached": float(max_depth),
-        "denial_rate": denial_rate,
-        "efficiency": efficiency,
-        "total_cpu": report.config.cpu_limit * n_workers,
-        "total_memory_mb": float(report.config.memory_limit_mb * n_workers),
-    }
+METRIC_NAMES = REPORT_METRIC_NAMES
 
 
 # ── Data models ────────────────────────────────────────────────────────
