@@ -181,6 +181,8 @@ class TrustNetwork:
         self.agents: Dict[str, TrustAgent] = {}
         self.edges: Dict[Tuple[str, str], TrustEdge] = {}
         self.interactions: List[Interaction] = []
+        # Per-agent interaction index for O(1) lookup in threat detection
+        self._agent_interactions: Dict[str, List[Interaction]] = defaultdict(list)
         self.decay_rate = decay_rate
         self.propagation_damping = propagation_damping
         self.initial_trust = initial_trust
@@ -233,7 +235,7 @@ class TrustNetwork:
             context=context,
         )
         self.interactions.append(interaction)
-
+        self._agent_interactions[source].append(interaction)
         key = (source, target)
         if key not in self.edges:
             self.edges[key] = TrustEdge(
@@ -428,7 +430,7 @@ class TrustNetwork:
         """Detect agents that were dormant then suddenly became active."""
         detections: List[ThreatDetection] = []
         for aid in self.agents:
-            agent_interactions = [i for i in self.interactions if i.source == aid]
+            agent_interactions = self._agent_interactions.get(aid, [])
             if len(agent_interactions) < 5:
                 continue
             timestamps = [i.timestamp for i in agent_interactions]
