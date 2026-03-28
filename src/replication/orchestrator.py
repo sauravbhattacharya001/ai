@@ -49,6 +49,12 @@ class SandboxOrchestrator:
         record = self.containers.pop(worker_id, None)
         if record:
             self.logger.log("container_killed", worker_id=worker_id, reason=reason)
+        else:
+            self.logger.log(
+                "container_kill_skipped",
+                worker_id=worker_id,
+                reason=f"unknown worker (kill reason: {reason})",
+            )
 
     def kill_all(self, reason: str) -> None:
         """Terminate every running worker container."""
