@@ -469,12 +469,13 @@ class TrustNetwork:
             top_score = max(s for _, s in incoming)
             if total > 0 and top_score / total > 0.5:
                 dominant = max(incoming, key=lambda x: x[1])[0]
+                confidence = round(top_score / total, 2)
                 detections.append(ThreatDetection(
                     threat_type=ThreatType.ECLIPSE,
-                    severity="high",
+                    severity=_severity(confidence),
                     agents_involved=[aid, dominant],
                     evidence=f"{dominant} controls {top_score / total:.0%} of {aid}'s incoming trust",
-                    confidence=round(top_score / total, 2),
+                    confidence=confidence,
                     recommendation=f"Diversify trust sources for {aid}; single point of trust failure",
                 ))
         return detections
