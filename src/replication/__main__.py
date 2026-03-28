@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "access_control", "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
+    "access_control", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
     "dlp_scanner", "model_card", "mutation_tester", "severity_classifier", "regulatory_mapper", "vuln_scanner",
     "chaos", "comparator", "boundary_tester", "playground",
@@ -142,6 +142,7 @@ def _make_handler(module_name: str) -> Callable[[List[str]], None]:
 # (handler, description)
 SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "replay":           (_make_handler("anomaly_replay"),   "Replay behavior traces against safety controls"),
+    "anomaly-cluster":  (_make_handler("anomaly_cluster"),  "Cluster anomalies to detect coordinated attacks"),
     "simulate":         (_make_handler("simulator"),        "Run replication simulations"),
     "threats":          (_make_handler("threats"),           "Simulate threat scenarios"),
     "compliance":       (_make_handler("compliance"),        "Run compliance audits"),
