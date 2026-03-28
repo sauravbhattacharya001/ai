@@ -1,10 +1,8 @@
 """Tests for the preflight check module."""
 
 import json
-import sys
 import pytest
 
-sys.path.insert(0, "src")
 from replication.preflight import (
     PreflightChecker,
     PreflightConfig,
@@ -16,7 +14,6 @@ from replication.preflight import (
     main,
 )
 
-
 class TestSeverity:
     def test_symbols(self):
         assert Severity.ERROR.symbol == "✖"
@@ -27,7 +24,6 @@ class TestSeverity:
         assert "\033[91m" in Severity.ERROR.color_code
         assert "\033[93m" in Severity.WARNING.color_code
         assert "\033[94m" in Severity.INFO.color_code
-
 
 class TestFinding:
     def test_to_dict(self):
@@ -42,7 +38,6 @@ class TestFinding:
         f = Finding(Category.RESOURCES, Severity.INFO, "RES-010", "ok")
         d = f.to_dict()
         assert "fix" not in d
-
 
 class TestPreflightResult:
     def test_passed_no_errors(self):
@@ -104,7 +99,6 @@ class TestPreflightResult:
         assert d["passed"] is False
         assert d["counts"]["errors"] == 1
         assert "config" in d
-
 
 class TestPreflightChecker:
     def test_default_config_passes(self):
@@ -233,7 +227,6 @@ class TestPreflightChecker:
     def test_elapsed_time_recorded(self):
         result = PreflightChecker(PreflightConfig()).run()
         assert result.elapsed_ms >= 0
-
 
 class TestCLI:
     def test_default_run(self, capsys):

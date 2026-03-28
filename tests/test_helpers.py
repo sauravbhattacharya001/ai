@@ -1,13 +1,8 @@
 """Tests for replication._helpers — stats_mean, stats_std, box_header."""
 
 import math
-import sys, os
-
-# Ensure src/ is importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from replication._helpers import stats_mean, stats_std, box_header
-
 
 # ── stats_mean ───────────────────────────────────────────────────────
 
@@ -30,7 +25,6 @@ class TestStatsMean:
     def test_floats(self):
         assert abs(stats_mean([0.1, 0.2, 0.3]) - 0.2) < 1e-9
 
-
 # ── stats_std ────────────────────────────────────────────────────────
 
 class TestStatsStd:
@@ -52,7 +46,6 @@ class TestStatsStd:
         # [0, 10] mean=5, sample std = sqrt(50/1) = sqrt(50)
         expected = math.sqrt(50)
         assert abs(stats_std([0, 10]) - expected) < 1e-9
-
 
 # ── box_header ───────────────────────────────────────────────────────
 

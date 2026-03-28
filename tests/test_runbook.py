@@ -1,16 +1,11 @@
 """Tests for replication.runbook — Safety Runbook Generator."""
 
 import json
-import sys
-import os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from replication.runbook import (
     RunbookGenerator, ThreatScenario, Runbook, Severity,
     ChecklistItem, EscalationLevel, RecoveryStep,
 )
-
 
 class TestThreatScenario:
     def test_severity_enum_valid(self):
@@ -24,7 +19,6 @@ class TestThreatScenario:
     def test_severity_case_insensitive(self):
         s = ThreatScenario(name="test", severity="LOW")
         assert s.severity_enum == Severity.LOW
-
 
 class TestRunbookGenerator:
     def setup_method(self):
@@ -84,7 +78,6 @@ class TestRunbookGenerator:
         assert "db" in evidence_text
         assert "api" in evidence_text
 
-
 class TestRunbookExport:
     def setup_method(self):
         gen = RunbookGenerator()
@@ -122,7 +115,6 @@ class TestRunbookExport:
         j = json.dumps(d)
         d2 = json.loads(j)
         assert d2["title"] == d["title"]
-
 
 class TestCustomTemplates:
     def test_custom_template_added(self):
