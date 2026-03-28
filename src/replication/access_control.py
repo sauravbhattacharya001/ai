@@ -28,6 +28,7 @@ CLI usage::
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import sys
 from dataclasses import dataclass, field
@@ -387,24 +388,35 @@ def _generate_html(policy: AccessPolicy) -> str:
     audit_rows = ""
     for r in audit:
         cls = "allow" if r.decision == Decision.ALLOW else "deny"
-        audit_rows += f"<tr class='{cls}'><td>{r.request.agent}</td><td>{r.request.action}</td><td>{r.request.resource}</td><td>{r.decision.value}</td><td>{r.reason}</td></tr>\n"
+        audit_rows += (
+            f"<tr class='{cls}'><td>{_html.escape(r.request.agent)}</td>"
+            f"<td>{_html.escape(r.request.action)}</td>"
+            f"<td>{_html.escape(r.request.resource)}</td>"
+            f"<td>{_html.escape(r.decision.value)}</td>"
+            f"<td>{_html.escape(r.reason)}</td></tr>\n"
+        )
 
     esc_rows = ""
     for e in escalations:
-        sev_cls = e['severity'].lower()
-        esc_rows += f"<tr class='{sev_cls}'><td>{e['type']}</td><td>{e['severity']}</td><td>{e.get('role', e.get('agent', '-'))}</td><td>{e['detail']}</td></tr>\n"
+        sev_cls = _html.escape(e['severity'].lower())
+        esc_rows += (
+            f"<tr class='{sev_cls}'><td>{_html.escape(str(e['type']))}</td>"
+            f"<td>{_html.escape(e['severity'])}</td>"
+            f"<td>{_html.escape(e.get('role', e.get('agent', '-')))}</td>"
+            f"<td>{_html.escape(e['detail'])}</td></tr>\n"
+        )
 
     role_cards = ""
     for name, role in policy.roles.items():
-        perms = ", ".join(f"{p.action}@{p.resource}" for p in role.permissions)
-        inh = ", ".join(role.inherits) if role.inherits else "none"
-        role_cards += f"<div class='card'><h3>{name}</h3><p><b>Inherits:</b> {inh}</p><p><b>Permissions:</b> {perms}</p></div>\n"
+        perms = _html.escape(", ".join(f"{p.action}@{p.resource}" for p in role.permissions))
+        inh = _html.escape(", ".join(role.inherits) if role.inherits else "none")
+        role_cards += f"<div class='card'><h3>{_html.escape(name)}</h3><p><b>Inherits:</b> {inh}</p><p><b>Permissions:</b> {perms}</p></div>\n"
 
     agent_cards = ""
     for name, agent in policy.agents.items():
-        roles = ", ".join(agent.roles)
-        attrs = ", ".join(f"{k}={v}" for k, v in agent.attributes.items())
-        agent_cards += f"<div class='card'><h3>{name}</h3><p><b>Roles:</b> {roles}</p><p><b>Attributes:</b> {attrs}</p></div>\n"
+        roles = _html.escape(", ".join(agent.roles))
+        attrs = _html.escape(", ".join(f"{k}={v}" for k, v in agent.attributes.items()))
+        agent_cards += f"<div class='card'><h3>{_html.escape(name)}</h3><p><b>Roles:</b> {roles}</p><p><b>Attributes:</b> {attrs}</p></div>\n"
 
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
