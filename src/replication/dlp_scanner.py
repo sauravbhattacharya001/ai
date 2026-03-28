@@ -132,7 +132,9 @@ _BUILTIN_PATTERNS: List[Tuple[str, str, Category, Severity, str]] = [
     # Secrets / API keys
     ("AWS_KEY", r"\bAKIA[0-9A-Z]{16}\b",
      Category.SECRET, Severity.CRITICAL, "[AWS_KEY]"),
-    ("AWS_SECRET", r"\b[A-Za-z0-9/+=]{40}\b",
+    ("AWS_SECRET",
+     r"(?i)(?:aws.{0,20})?(?:secret.?(?:access)?.?key|secret_key|aws_secret)"
+     r"\s*[:=]\s*['\"]?([A-Za-z0-9/+=]{40})['\"]?",
      Category.SECRET, Severity.CRITICAL, "[AWS_SECRET]"),
     ("OPENAI_KEY", r"\bsk-[A-Za-z0-9]{20,}\b",
      Category.SECRET, Severity.CRITICAL, "[API_KEY]"),
