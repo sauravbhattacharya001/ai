@@ -12,11 +12,23 @@ from .signer import ManifestSigner
 
 @dataclass
 class RegistryEntry:
+    """A registry record pairing a worker's manifest with its last heartbeat timestamp.
+
+    Used by :class:`Controller` to track active replicas and detect stale workers
+    whose heartbeats have expired.
+    """
+
     manifest: Manifest
     last_heartbeat: datetime
 
 
 class ReplicationDenied(Exception):
+    """Raised when a replication request violates a safety policy.
+
+    Possible causes include kill-switch engagement, quota exhaustion,
+    cooldown violations, depth limits, quarantine, or contract stop-conditions.
+    """
+
     pass
 
 
@@ -44,9 +56,20 @@ class Controller:
     # -- Manifest helpers (delegate to signer) -------------------------
 
     def sign_manifest(self, manifest: Manifest) -> Manifest:
+        """Sign *manifest* using the configured HMAC secret and return it.
+
+        Delegates to :class:`ManifestSigner`. The manifest is mutated
+        in-place (its ``signature`` field is set) and also returned for
+        convenience.
+        """
         return self.signer.sign(manifest)
 
     def verify_manifest(self, manifest: Manifest) -> None:
+        """Verify the HMAC signature on *manifest*.
+
+        Raises :class:`ReplicationDenied` and logs an audit event if the
+        signature is invalid or missing.
+        """
         if not self.signer.verify(manifest):
             self.logger.audit("reject_manifest_signature", worker_id=manifest.worker_id)
             raise ReplicationDenied("Manifest signature invalid")
@@ -166,6 +189,12 @@ class Controller:
             return None
 
     def register_worker(self, manifest: Manifest) -> None:
+        """Register a new worker after verifying its manifest and enforcing all policies.
+
+        Performs signature verification, structural depth validation, and
+        contract stop-condition evaluation before adding the worker to the
+        registry. Raises :class:`ReplicationDenied` if any check fails.
+        """
         self.verify_manifest(manifest)
 
         # Defense-in-depth: validate manifest depth independently of
@@ -206,6 +235,11 @@ class Controller:
         self.logger.log("worker_registered", worker_id=manifest.worker_id, parent_id=manifest.parent_id, depth=manifest.depth)
 
     def heartbeat(self, worker_id: str) -> None:
+        """Record a heartbeat for *worker_id*, refreshing its last-seen timestamp.
+
+        Raises :class:`ReplicationDenied` if the worker is quarantined.
+        Logs an audit event if the worker is unknown (not registered).
+        """
         if self.is_quarantined(worker_id):
             self.logger.audit("heartbeat_quarantined", worker_id=worker_id)
             raise ReplicationDenied("Worker is quarantined")
@@ -244,6 +278,12 @@ class Controller:
         return stale
 
     def deregister(self, worker_id: str, reason: str) -> None:
+        """Remove *worker_id* from the registry and clean up ancillary state.
+
+        Removes the registry entry, spawn-timestamp record, and quarantine
+        mark (if any) so the worker doesn't leak memory in long-running
+        controllers.  No-op if the worker is not registered.
+        """
         if worker_id in self.registry:
             del self.registry[worker_id]
             # Clean up ancillary state so deregistered workers don't
@@ -253,6 +293,12 @@ class Controller:
             self.logger.log("worker_deregistered", worker_id=worker_id, reason=reason)
 
     def kill_switch(self, orchestrator) -> None:
+        """Engage the kill switch — terminates all active workers immediately.
+
+        Sets the kill-switch flag (blocking future spawns), iterates over
+        all registered workers to kill their containers via *orchestrator*,
+        and deregisters each one. Logs the total count of terminated workers.
+        """
         self.kill_switch_engaged = True
         active_before = len(self.registry)
         for worker_id in list(self.registry.keys()):
