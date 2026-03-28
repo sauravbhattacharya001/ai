@@ -100,7 +100,7 @@ def _cmd_info(_args: List[str]) -> None:
 _HAS_MAIN = {
     "access_control", "alert_router", "alignment", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
-    "dlp_scanner", "model_card", "mutation_tester", "severity_classifier", "regulatory_mapper",
+    "dlp_scanner", "model_card", "mutation_tester", "severity_classifier", "regulatory_mapper", "vuln_scanner",
     "chaos", "comparator", "boundary_tester", "playground",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
@@ -236,6 +236,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "harden":             (_make_handler("hardening_advisor"),                    "Analyze safety config and recommend hardening improvements"),
     "exposure":           (_make_handler("exposure_window"),                     "Analyze safety control exposure windows & coverage gaps"),
     "comms":              (_make_handler("incident_comms"),                      "Draft templated incident communications for stakeholders"),
+    "vuln-scan":          (_make_handler("vuln_scanner"),                        "Scan agent code & configs for security vulnerabilities"),
 }
 
 
