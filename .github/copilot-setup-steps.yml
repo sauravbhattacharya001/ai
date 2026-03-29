@@ -26,6 +26,9 @@ jobs:
           python -c "from replication import Controller, Worker, ReplicationContract; print('core imports OK')"
           python -c "from replication.alignment import AlignmentAuditor; print('alignment OK')"
           python -c "from replication.forensics import ForensicsEngine; print('forensics OK')"
+          python -c "from replication.fleet import FleetManager; print('fleet OK')"
+          python -c "from replication.supply_chain import SupplyChainAnalyzer; print('supply_chain OK')"
+          python -c "from replication.drift import DriftTracker; print('drift OK')"
 
       - name: Run tests
         run: python -m pytest tests/ -v --tb=short

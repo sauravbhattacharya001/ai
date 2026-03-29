@@ -74,6 +74,60 @@ python -m flake8 src/replication/ --max-line-length=120
 - No global mutable state — pass dependencies explicitly
 - Max line length: 120 characters
 
+### Supply Chain & Dependencies
+- `supply_chain.py` — Supply chain risk analysis
+- `dependency_graph.py` — Dependency graph tracking
+- `dlp_scanner.py` — Data loss prevention scanning
+
+### Fleet & Multi-Agent
+- `fleet.py` — Fleet-wide agent management
+- `consensus.py` — Multi-agent consensus protocols
+- `coordinated_threats.py` — Coordinated threat detection
+- `trust_propagation.py` — Trust propagation across agent networks
+- `influence.py` — Influence analysis between agents
+- `topology.py` — Network topology modeling
+
+### Self-Modification & Drift
+- `selfmod.py` — Self-modification detection
+- `drift.py` — Behavioral drift tracking
+- `mutation_tester.py` — Mutation testing for safety invariants
+- `emergent.py` — Emergent behavior detection
+- `goal_inference.py` — Goal inference from agent behavior
+
+### Defensive & Detection
+- `honeypot.py` — Honeypot deployment for agent traps
+- `canary.py` — Canary token monitoring
+- `deception_detector.py` — Deception detection
+- `watermark.py` — Output watermarking
+- `capability_fingerprint.py` — Capability fingerprinting
+- `capability_catalog.py` — Capability catalog management
+
+### Operations & Readiness
+- `runbook.py` — Operational runbooks
+- `preflight.py` — Pre-deployment checks
+- `hardening_advisor.py` — Security hardening recommendations
+- `blast_radius.py` — Blast radius estimation
+- `exposure_window.py` — Exposure window calculation
+- `fatigue_detector.py` — Alert fatigue detection
+- `escalation.py` — Escalation workflow management
+- `culture_survey.py` — Security culture assessment
+
+### Analysis & Utilities
+- `comparator.py` — Configuration comparison
+- `sensitivity.py` — Sensitivity analysis
+- `severity_classifier.py` — Severity classification
+- `regression.py` — Regression detection
+- `optimizer.py` — Resource optimization
+- `capacity.py` — Capacity planning
+- `lineage.py` — Data/model lineage tracking
+- `knowledge_base.py` — Knowledge base for incidents/patterns
+- `shadow_ai.py` — Shadow AI detection
+- `profiles.py`, `persona.py` — Agent profiling and persona management
+- `playground.py` — Safe experimentation sandbox
+- `templates.py` — Template management
+- `correlation_graph.py` — Event correlation graphing
+- `injection_intel_bridge.py` — Prompt injection intelligence bridge
+
 ## When Making Changes
 
 1. Run the full test suite before and after changes
