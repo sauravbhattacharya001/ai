@@ -98,7 +98,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "access_control", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
+    "access_control", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_graph", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
     "dlp_scanner", "model_card", "mutation_tester", "severity_classifier", "regulatory_mapper", "vuln_scanner",
     "chaos", "comparator", "boundary_tester", "escape_route", "playground",
@@ -181,6 +181,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "comparator":       (_make_handler("comparator"),        "Compare simulation runs"),
     "what-if":          (_make_handler("what_if"),            "What-if analysis for config changes"),
     "attack-tree":      (_make_handler("attack_tree"),       "Attack tree threat modeling"),
+    "attack-graph":     (_make_handler("attack_graph"),      "Multi-step attack graph generation & choke-point analysis"),
     "behavior-profile": (_make_handler("behavior_profiler"), "Agent behavioral anomaly detection"),
     "dep-graph":        (_make_handler("dependency_graph"),  "Resource dependency & cascade analysis"),
     "canary":           (_make_handler("canary"),            "Canary token planting & exfiltration detection"),
