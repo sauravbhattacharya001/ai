@@ -782,7 +782,7 @@ def _score_to_grade(score: float) -> str:
 def _build_demo_feed(n_agents: int = 3) -> ThreatIntelFeed:
     """Build a demo feed with simulated IOCs."""
     import random
-    random.seed(42)
+    rng = random.Random(42)
     feed = ThreatIntelFeed()
 
     feed.add_alert_rule(ThreatIntelFeed.rule_critical_spike(3))
@@ -803,18 +803,18 @@ def _build_demo_feed(n_agents: int = 3) -> ThreatIntelFeed:
 
     base_time = time.time() - 3600
     for i in range(40):
-        src, ioc_type, desc = random.choice(sources_and_types)
-        agent = f"agent-{random.randint(0, n_agents - 1):03d}"
+        src, ioc_type, desc = rng.choice(sources_and_types)
+        agent = f"agent-{rng.randint(0, n_agents - 1):03d}"
         ioc = IOC(
             ioc_type=ioc_type,
             source=src,
             agent_id=agent,
             description=f"{desc} (event #{i})",
-            confidence=round(random.uniform(0.3, 1.0), 2),
-            score=round(random.uniform(20, 95), 1),
-            timestamp=base_time + i * 90 + random.uniform(0, 30),
-            tags=[random.choice(["automated", "manual", "high-priority", "routine"])],
-            correlation_keys=[f"campaign-{random.randint(0, 3)}"],
+            confidence=round(rng.uniform(0.3, 1.0), 2),
+            score=round(rng.uniform(20, 95), 1),
+            timestamp=base_time + i * 90 + rng.uniform(0, 30),
+            tags=[rng.choice(["automated", "manual", "high-priority", "routine"])],
+            correlation_keys=[f"campaign-{rng.randint(0, 3)}"],
         )
         feed.ingest(ioc)
 

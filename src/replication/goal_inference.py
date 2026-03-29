@@ -679,7 +679,7 @@ def _demo_run(
 ) -> InferenceReport:
     """Run a demo with simulated agents showing different behavior patterns."""
     import random
-    random.seed(42)
+    rng = random.Random(42)
 
     strategy = PriorStrategy(prior)
     engine = GoalInferenceEngine(
@@ -728,7 +728,7 @@ def _demo_run(
     for i in range(len(action_sets), num_agents):
         agent_id = f"agent-{i}"
         for _ in range(10):
-            engine.observe(agent_id, random.choice(all_actions))
+            engine.observe(agent_id, rng.choice(all_actions))
 
     return engine.analyze()
 
