@@ -310,7 +310,18 @@ class CapacityPlanner:
                 cfg.lifetime_steps if cfg.lifetime_steps > 0 else -1
             ),
         )
-        all_nodes: List[_SimNode] = [root]
+        # Maintain a set of alive nodes to avoid O(n) filtering each step.
+        # Nodes with expires_at_step == -1 never expire and stay in the set
+        # until the simulation ends.  Nodes with a finite lifetime are
+        # indexed in _expiry_schedule so they can be evicted in O(k) where
+        # k is the number of nodes expiring at a given step.
+        alive_set: set[int] = {root.worker_id}
+        node_by_id: Dict[int, _SimNode] = {root.worker_id: root}
+        _expiry_schedule: Dict[int, List[int]] = {}  # step → [worker_ids]
+        if root.expires_at_step >= 0:
+            _expiry_schedule.setdefault(root.expires_at_step, []).append(
+                root.worker_id
+            )
 
         projection = CapacityProjection(
             config=cfg,
@@ -320,29 +331,32 @@ class CapacityPlanner:
         ceiling_hit = False
 
         for step in range(max_steps):
+            # Evict workers whose lifetime expired at this step
+            for wid in _expiry_schedule.pop(step, []):
+                alive_set.discard(wid)
+
             # Determine which nodes can replicate this step
             new_nodes: List[_SimNode] = []
 
-            # Filter to alive workers (not expired)
-            alive_nodes = [
-                n for n in all_nodes
-                if n.expires_at_step < 0 or n.expires_at_step > step
-            ]
-
             if not ceiling_hit:
+                # Build alive + eligible lists from the set
+                alive_nodes = [
+                    node_by_id[wid] for wid in alive_set
+                ]
                 eligible = [
                     n for n in alive_nodes
                     if n.cooldown_until <= step
                 ]
+                alive_count = len(alive_set)
 
                 for node in eligible:
                     children_to_spawn = self._children_for_strategy(
-                        node, len(alive_nodes) + len(new_nodes), step
+                        node, alive_count + len(new_nodes), step
                     )
 
                     for _ in range(children_to_spawn):
                         total_after = (
-                            len(alive_nodes) + len(new_nodes) + 1
+                            alive_count + len(new_nodes) + 1
                         )
 
                         # Check replica limit (against total ever created)
@@ -394,19 +408,21 @@ class CapacityPlanner:
                     if ceiling_hit:
                         break
 
-            all_nodes.extend(new_nodes)
-
-            # Recompute alive nodes after adding new ones
-            alive_now = [
-                n for n in all_nodes
-                if n.expires_at_step < 0 or n.expires_at_step > step
-            ]
+            # Register new nodes in alive set and expiry schedule
+            for n in new_nodes:
+                alive_set.add(n.worker_id)
+                node_by_id[n.worker_id] = n
+                if n.expires_at_step >= 0:
+                    _expiry_schedule.setdefault(
+                        n.expires_at_step, []
+                    ).append(n.worker_id)
 
             # Record snapshot based on concurrent (alive) workers
-            total = len(alive_now)
+            total = len(alive_set)
             by_depth: Dict[int, int] = {}
-            for n in alive_now:
-                by_depth[n.depth] = by_depth.get(n.depth, 0) + 1
+            for wid in alive_set:
+                d = node_by_id[wid].depth
+                by_depth[d] = by_depth.get(d, 0) + 1
 
             total_cpu = total * cfg.cpu_per_worker
             total_mem = total * cfg.memory_mb_per_worker
