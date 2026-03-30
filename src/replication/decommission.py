@@ -237,7 +237,7 @@ class DecommissionPlanner:
         for demonstration and testing.
         """
         import hashlib
-        seed = int(hashlib.md5(agent_id.encode()).hexdigest()[:8], 16)
+        seed = int(hashlib.sha256(agent_id.encode()).hexdigest()[:8], 16)
 
         resource_templates = [
             (ResourceKind.COMPUTE, f"{agent_id}-container", False),
