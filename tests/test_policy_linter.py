@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 import unittest
 from io import StringIO
 
@@ -21,7 +20,6 @@ from replication.policy_linter import (
     LintReport,
     PolicyLinter,
 )
-
 
 class TestLintFinding(unittest.TestCase):
     """Tests for the LintFinding data class."""
@@ -62,7 +60,6 @@ class TestLintFinding(unittest.TestCase):
         self.assertEqual(d["category"], "best_practice")
         self.assertEqual(d["rule_index"], 2)
         self.assertEqual(d["suggestion"], "Add it")
-
 
 class TestLintReport(unittest.TestCase):
     """Tests for the LintReport data class."""
@@ -114,7 +111,6 @@ class TestLintReport(unittest.TestCase):
         s = r.summary()
         self.assertIn("1 errors", s)
         self.assertIn("1 style", s)
-
 
 class TestPolicyLinter(unittest.TestCase):
     """Tests for the PolicyLinter analysis checks."""
@@ -341,7 +337,6 @@ class TestPolicyLinter(unittest.TestCase):
         d = report.to_dict()
         parsed = json.loads(json.dumps(d))  # Ensure serializable
         self.assertEqual(parsed["policy_name"], "JSON")
-
 
 if __name__ == "__main__":
     unittest.main()

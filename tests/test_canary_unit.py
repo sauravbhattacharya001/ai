@@ -1,9 +1,6 @@
 """Unit tests for replication.canary — tokens, detections, profiles, config, system."""
 
 import random
-import sys, os
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from replication.canary import (
     TokenCategory, DetectionEvent, Severity,
@@ -11,7 +8,6 @@ from replication.canary import (
     CanaryToken, Detection, AgentProfile, CanaryConfig, CanarySystem,
     _generate_token,
 )
-
 
 # ── Enums ────────────────────────────────────────────────────────────
 
@@ -37,7 +33,6 @@ class TestEnums:
         for sev in Severity:
             assert sev in SEVERITY_SCORE
 
-
 # ── CanaryToken ──────────────────────────────────────────────────────
 
 class TestCanaryToken:
@@ -62,7 +57,6 @@ class TestCanaryToken:
     def test_to_dict_exactly_16(self):
         t = self._make_token("b" * 16)
         assert t.to_dict()["value_preview"] == "b" * 16  # no "..."
-
 
 # ── Detection ────────────────────────────────────────────────────────
 
@@ -94,7 +88,6 @@ class TestDetection:
             "token_id", "category", "agent_id", "event",
             "severity", "score", "context", "timestamp",
         }
-
 
 # ── AgentProfile ─────────────────────────────────────────────────────
 
@@ -151,7 +144,6 @@ class TestAgentProfile:
         assert bd["accessed"] == 2
         assert bd["copied"] == 1
 
-
 # ── CanaryConfig ─────────────────────────────────────────────────────
 
 class TestCanaryConfig:
@@ -168,7 +160,6 @@ class TestCanaryConfig:
     def test_effective_categories_custom(self):
         c = CanaryConfig(categories=[TokenCategory.API_KEY, TokenCategory.DNS])
         assert c.effective_categories() == [TokenCategory.API_KEY, TokenCategory.DNS]
-
 
 # ── CanarySystem ─────────────────────────────────────────────────────
 
@@ -205,7 +196,6 @@ class TestCanarySystem:
         assert "CANARY TOKEN DETECTOR" in text
         d = report.to_dict()
         assert d["summary"]["tokens_planted"] == 5
-
 
 # ── _generate_token ─────────────────────────────────────────────────
 
