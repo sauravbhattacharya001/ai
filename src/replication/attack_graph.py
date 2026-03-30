@@ -180,11 +180,22 @@ class AttackGraph:
     target: ObjectiveType = ObjectiveType.DATA_EXFILTRATION
     profile_name: str = "default"
 
+    _paths_cache: Optional[List["AttackPath"]] = field(
+        default=None, repr=False, compare=False,
+    )
+    _paths_cache_depth: int = field(default=0, repr=False, compare=False)
+
+    def _invalidate_cache(self) -> None:
+        object.__setattr__(self, "_paths_cache", None)
+        object.__setattr__(self, "_paths_cache_depth", 0)
+
     def add_node(self, node: AttackNode) -> None:
         self.nodes[node.id] = node
+        self._invalidate_cache()
 
     def add_edge(self, edge: AttackEdge) -> None:
         self.edges.append(edge)
+        self._invalidate_cache()
 
     def _adjacency(self) -> Dict[str, List[Tuple[str, AttackEdge]]]:
         adj: Dict[str, List[Tuple[str, AttackEdge]]] = {nid: [] for nid in self.nodes}
@@ -194,7 +205,18 @@ class AttackGraph:
         return adj
 
     def _find_all_paths(self, max_depth: int = 10) -> List[AttackPath]:
-        """BFS/DFS to find all paths from INITIAL nodes to OBJECTIVE nodes."""
+        """BFS/DFS to find all paths from INITIAL nodes to OBJECTIVE nodes.
+
+        Results are cached and reused until the graph is mutated via
+        ``add_node``/``add_edge``.  A cache hit requires the same or
+        larger ``max_depth`` as the cached computation.
+        """
+        if (
+            self._paths_cache is not None
+            and max_depth <= self._paths_cache_depth
+        ):
+            return self._paths_cache
+
         adj = self._adjacency()
         starts = [n for n in self.nodes.values() if n.node_type == NodeType.INITIAL]
         goals = {n.id for n in self.nodes.values() if n.node_type == NodeType.OBJECTIVE}
@@ -220,6 +242,8 @@ class AttackGraph:
                             path_edges + [edge],
                             prob * edge.probability,
                         ))
+        self._paths_cache = paths
+        self._paths_cache_depth = max_depth
         return paths
 
     def shortest_paths(self, max_depth: int = 10, limit: int = 5) -> List[AttackPath]:
