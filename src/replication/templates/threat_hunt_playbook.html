@@ -1,0 +1,93 @@
+{{cards_html}}{{filter_buttons}}{{stats_html}}{{mission_count}}{{generated_at}}{{category_count}}{{mission_count}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎯 Threat Hunt Playbook</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.6;padding:2rem}
+.header{text-align:center;margin-bottom:2rem}
+.header h1{font-size:2rem;color:#f1f5f9;margin-bottom:.5rem}
+.header p{color:#94a3b8;font-size:.9rem}
+.stats{display:flex;gap:1rem;justify-content:center;margin:1.5rem 0;flex-wrap:wrap}
+.stat{background:#1e293b;border-radius:8px;padding:.75rem 1.5rem;text-align:center;min-width:80px}
+.stat-val{font-size:1.5rem;font-weight:700;color:#38bdf8}
+.stat-label{font-size:.75rem;color:#94a3b8;text-transform:uppercase}
+.filters{text-align:center;margin-bottom:1.5rem}
+.filter-btn{background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:4px;padding:.4rem .8rem;margin:.2rem;cursor:pointer;font-size:.8rem;transition:all .2s}
+.filter-btn:hover,.filter-btn.active{background:#38bdf8;color:#0f172a;border-color:#38bdf8}
+.search-bar{text-align:center;margin-bottom:1.5rem}
+.search-bar input{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:.5rem 1rem;width:min(400px,90%);font-size:.9rem}
+.search-bar input::placeholder{color:#64748b}
+.missions{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem}
+.mission-card{background:#1e293b;border-radius:12px;overflow:hidden;border:1px solid #334155;transition:border-color .2s}
+.mission-card:hover{border-color:#38bdf8}
+.mission-card.hidden{display:none}
+.card-header{padding:1.25rem;border-bottom:1px solid #334155}
+.card-id{font-size:.75rem;color:#64748b;font-family:monospace}
+.card-header h2{font-size:1.15rem;color:#f1f5f9;margin:.25rem 0}
+.card-meta{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0}
+.card-meta span{font-size:.7rem;padding:.2rem .5rem;border-radius:4px;font-weight:600}
+.cat-badge{background:#312e81;color:#a5b4fc}
+.diff-badge{background:#1c1917;color:#fbbf24}
+.pri-badge{background:#7f1d1d;color:#fca5a5}
+.hours-badge{background:#064e3b;color:#6ee7b7}
+.card-tags{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.5rem}
+.tag{font-size:.65rem;background:#334155;color:#94a3b8;padding:.15rem .4rem;border-radius:3px}
+.card-body{padding:1.25rem}
+details{margin-bottom:.75rem}
+summary{cursor:pointer;font-weight:600;color:#38bdf8;font-size:.9rem;padding:.3rem 0}
+summary:hover{color:#7dd3fc}
+details p{margin:.5rem 0;color:#cbd5e1;font-size:.85rem}
+.indicator{background:#0f172a;border-radius:6px;padding:.6rem;margin:.4rem 0}
+.severity-badge{font-size:.6rem;padding:.15rem .4rem;border-radius:3px;color:#fff;font-weight:700}
+.ind-type{font-size:.7rem;color:#94a3b8;margin-left:.4rem}
+.indicator p{font-size:.8rem;margin:.3rem 0 .2rem}
+.indicator small{color:#64748b;font-size:.75rem}
+.procedure-step{display:flex;gap:.75rem;margin:.5rem 0}
+.step-num{background:#38bdf8;color:#0f172a;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0}
+.step-body{font-size:.85rem}
+.step-meta{color:#94a3b8;font-size:.75rem;margin-top:.2rem}
+.step-meta code{background:#334155;padding:.1rem .3rem;border-radius:3px;color:#38bdf8}
+.criteria li{font-size:.85rem;margin:.3rem 0;margin-left:1.2rem;color:#cbd5e1}
+.mitre-tag{display:inline-block;background:#312e81;color:#a5b4fc;font-size:.7rem;padding:.2rem .5rem;border-radius:3px;margin:.2rem}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎯 Threat Hunt Playbook</h1>
+  <p>AI Safety — $mission_count missions across $category_count categories | Generated $generated_at</p>
+</div>
+<div class="stats">
+  <div class="stat"><div class="stat-val">$mission_count</div><div class="stat-label">Missions</div></div>
+  $stats_html
+</div>
+<div class="filters">
+  <button class="filter-btn active" data-filter="all">All</button>
+  $filter_buttons
+</div>
+<div class="search-bar"><input type="text" id="search" placeholder="Search missions..."></div>
+<div class="missions">
+  $cards_html
+</div>
+<script>
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const f=btn.dataset.filter;
+    document.querySelectorAll('.mission-card').forEach(c=>{
+      c.classList.toggle('hidden',f!=='all'&&c.dataset.category!==f);
+    });
+  });
+});
+document.getElementById('search').addEventListener('input',e=>{
+  const q=e.target.value.toLowerCase();
+  document.querySelectorAll('.mission-card').forEach(c=>{
+    c.classList.toggle('hidden',q&&!c.textContent.toLowerCase().includes(q));
+  });
+});
+</script>
+</body>
+</html>
