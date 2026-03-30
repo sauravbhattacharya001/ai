@@ -295,26 +295,101 @@ def _canonicalize_path(target: str) -> str:
     return posixpath.normpath(decoded.replace("\\", "/")).lower()
 
 
+def _extract_host(target: str) -> str:
+    """Extract hostname from a target string, stripping protocol/port/path."""
+    t = target.lower().strip()
+    for prefix in ("https://", "http://", "//"):
+        if t.startswith(prefix):
+            t = t[len(prefix):]
+            break
+    t = t.split("/", 1)[0]
+    return t.rsplit(":", 1)[0] if ":" in t else t
+
+
+def _make_substring_check(
+    categories: tuple[ActionCategory, ...],
+    patterns: list[str],
+    message_template: str,
+    *,
+    case_sensitive: bool = False,
+    use_canonicalized_path: bool = False,
+    check_permission_flag: Optional[str] = None,
+) -> Any:
+    """Factory for the common 'check category + substring match' rule pattern.
+
+    Returns a check callable ``(action, perms) -> Optional[str]`` that:
+    1. Skips actions whose category is not in *categories*.
+    2. Searches *patterns* in the (optionally canonicalized/lowered) target.
+    3. Returns a formatted message on match, ``None`` otherwise.
+
+    Parameters
+    ----------
+    categories :
+        Action categories this rule applies to.
+    patterns :
+        Substrings to search for in the target.
+    message_template :
+        Format string with ``{matched}`` and ``{target}`` placeholders.
+    case_sensitive :
+        Compare without lowering when True.
+    use_canonicalized_path :
+        Apply ``_canonicalize_path`` before comparison (filesystem rules).
+    check_permission_flag :
+        If set, only fire when ``getattr(perms, flag)`` is falsy.
+    """
+
+    def _check(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
+        if action.category not in categories:
+            return None
+        if check_permission_flag and getattr(perms, check_permission_flag, False):
+            return None
+        if use_canonicalized_path:
+            target = _canonicalize_path(action.target)
+        elif case_sensitive:
+            target = action.target
+        else:
+            target = action.target.lower()
+        compare_patterns = patterns if case_sensitive else [p.lower() for p in patterns]
+        for pat in compare_patterns:
+            if pat in target:
+                matched = pat if case_sensitive else patterns[compare_patterns.index(pat)]
+                return message_template.format(matched=matched, target=action.target)
+        return None
+
+    return _check
+
+
+# ── Category groups used by multiple rules ───────────────────────────
+
+_FS_CATEGORIES = (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST)
+_FS_READ_CATEGORIES = (ActionCategory.FILE_READ, ActionCategory.DIR_LIST)
+_NET_CATEGORIES = (ActionCategory.NET_CONNECT, ActionCategory.NET_DNS)
+_DATA_CATEGORIES = (ActionCategory.DATA_READ, ActionCategory.DATA_QUERY)
+
+
 def _build_rules() -> List[DetectionRule]:
-    """Construct the built-in detection rule set."""
+    """Construct the built-in detection rule set.
+
+    Simple pattern-matching rules use :func:`_make_substring_check` to
+    eliminate boilerplate.  Complex rules that need permission lookups,
+    multi-step decoding, or structural analysis remain as explicit
+    closures for clarity.
+    """
     rules: List[DetectionRule] = []
 
     # ── Filesystem rules ─────────────────────────────────────────
 
     def _fs_traversal(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
+        if action.category not in _FS_CATEGORIES:
             return None
         target = action.target
-        # Check raw path for literal traversal sequences
         if ".." in target:
-            return f"Path traversal detected: {action.target}"
-        # Check for URL-encoded traversal (%2e = '.', %2f = '/')
+            return f"Path traversal detected: {target}"
         decoded = _decode_percent_encoding(target)
         if ".." in decoded:
-            return f"Path traversal detected (encoded): {action.target}"
-        # Check for null-byte injection (truncation attack)
+            return f"Path traversal detected (encoded): {target}"
         if "\x00" in target or "%00" in target.lower():
-            return f"Null byte injection in path: {action.target}"
+            return f"Null byte injection in path: {target}"
         return None
 
     rules.append(DetectionRule(
@@ -326,15 +401,13 @@ def _build_rules() -> List[DetectionRule]:
     ))
 
     def _fs_blocked_path(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
+        if action.category not in _FS_CATEGORIES:
             return None
         target = _canonicalize_path(action.target)
         for blocked in perms.blocked_paths:
             norm_blocked = posixpath.normpath(blocked.replace("\\", "/")).lower()
             if target == norm_blocked or target.startswith(norm_blocked + "/"):
                 return f"Access to blocked path: {action.target} (matches {blocked})"
-            # Also check if the blocked path is a component anywhere in target
-            # to catch symlink-style evasion where a deeper path contains it
             if norm_blocked in target:
                 return f"Access to blocked path: {action.target} (matches {blocked})"
         return None
@@ -348,14 +421,13 @@ def _build_rules() -> List[DetectionRule]:
     ))
 
     def _fs_outside_scope(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.FILE_READ, ActionCategory.FILE_WRITE, ActionCategory.DIR_LIST):
+        if action.category not in _FS_CATEGORIES:
             return None
         target = _canonicalize_path(action.target)
         for allowed in perms.allowed_paths:
             norm_allowed = posixpath.normpath(allowed.replace("\\", "/")).lower()
             if target == norm_allowed or target.startswith(norm_allowed + "/"):
                 return None
-        # Not in any allowed path
         return f"File access outside allowed scope: {action.target}"
 
     rules.append(DetectionRule(
@@ -366,47 +438,31 @@ def _build_rules() -> List[DetectionRule]:
         check=_fs_outside_scope,
     ))
 
-    def _fs_credential_access(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.FILE_READ, ActionCategory.DIR_LIST):
-            return None
-        sensitive = [".ssh", ".env", "credentials", "password", "secret", "token",
-                     ".aws", ".kube", "id_rsa", ".gnupg", "shadow", "passwd"]
-        # Decode percent-encoded characters so that %2Essh or %70asswd
-        # is correctly matched against the sensitive filename patterns.
-        target_lower = _canonicalize_path(action.target)
-        for s in sensitive:
-            if s in target_lower:
-                return f"Credential/secret file access: {action.target}"
-        return None
-
+    _SENSITIVE_FILENAMES = [
+        ".ssh", ".env", "credentials", "password", "secret", "token",
+        ".aws", ".kube", "id_rsa", ".gnupg", "shadow", "passwd",
+    ]
     rules.append(DetectionRule(
         rule_id="FS-004",
         vector=EscalationVector.FILESYSTEM,
         severity=EscalationSeverity.CRITICAL,
         description="Access to credential or secret files",
-        check=_fs_credential_access,
+        check=_make_substring_check(
+            _FS_READ_CATEGORIES,
+            _SENSITIVE_FILENAMES,
+            "Credential/secret file access: {target}",
+            use_canonicalized_path=True,
+        ),
     ))
 
     # ── Network rules ────────────────────────────────────────────
 
     def _net_blocked_host(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.NET_CONNECT, ActionCategory.NET_DNS):
+        if action.category not in _NET_CATEGORIES:
             return None
-        # Extract hostname from target (strip port, protocol, path)
-        target = action.target.lower().strip()
-        # Remove protocol prefix if present
-        for prefix in ("https://", "http://", "//"):
-            if target.startswith(prefix):
-                target = target[len(prefix):]
-                break
-        # Strip path
-        target = target.split("/", 1)[0]
-        # Strip port
-        host = target.rsplit(":", 1)[0] if ":" in target else target
+        host = _extract_host(action.target)
         for blocked in perms.blocked_hosts:
             blocked_lower = blocked.lower().strip()
-            # Exact match or subdomain match (e.g., block "evil.com"
-            # catches "sub.evil.com" but not "notevil.com")
             if host == blocked_lower or host.endswith("." + blocked_lower):
                 return f"Connection to blocked host: {action.target}"
         return None
@@ -419,43 +475,28 @@ def _build_rules() -> List[DetectionRule]:
         check=_net_blocked_host,
     ))
 
-    def _net_metadata(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category != ActionCategory.NET_CONNECT:
-            return None
-        target_lower = action.target.lower()
-        # AWS/GCP/Azure metadata endpoints — standard IPv4
-        if "169.254.169.254" in action.target:
-            return f"Cloud metadata endpoint access: {action.target}"
-        # Hex, octal, and decimal IP representations of 169.254.169.254
-        # 0xA9FEA9FE, 0xa9.0xfe.0xa9.0xfe, 2852039166, etc.
-        metadata_aliases = [
-            "0xa9fea9fe", "0xa9.0xfe.0xa9.0xfe",
-            "2852039166",  # decimal form
-            "0251.0376.0251.0376",  # octal form
-        ]
-        for alias in metadata_aliases:
-            if alias in target_lower:
-                return f"Cloud metadata endpoint access (aliased IP): {action.target}"
-        # GCP metadata header-based detection
-        if "metadata.google.internal" in target_lower:
-            return f"Cloud metadata endpoint access (GCP): {action.target}"
-        # Azure metadata
-        if "metadata.azure.com" in target_lower:
-            return f"Cloud metadata endpoint access (Azure): {action.target}"
-        return None
-
+    # Cloud metadata detection: standard IP, aliases, and cloud-specific hostnames
+    _METADATA_INDICATORS = [
+        "169.254.169.254",
+        "0xa9fea9fe", "0xa9.0xfe.0xa9.0xfe",
+        "2852039166", "0251.0376.0251.0376",
+        "metadata.google.internal", "metadata.azure.com",
+    ]
     rules.append(DetectionRule(
         rule_id="NET-002",
         vector=EscalationVector.NETWORK,
         severity=EscalationSeverity.CRITICAL,
         description="Cloud metadata service access (SSRF/credential theft)",
-        check=_net_metadata,
+        check=_make_substring_check(
+            (ActionCategory.NET_CONNECT,),
+            _METADATA_INDICATORS,
+            "Cloud metadata endpoint access: {target}",
+        ),
     ))
 
     def _net_unauthorized_port(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category != ActionCategory.NET_CONNECT:
             return None
-        # Extract port from target like "host:port"
         if ":" in action.target:
             parts = action.target.rsplit(":", 1)
             try:
@@ -474,23 +515,17 @@ def _build_rules() -> List[DetectionRule]:
         check=_net_unauthorized_port,
     ))
 
+    _LATERAL_INDICATORS = [
+        "10.0.", "172.16.", "192.168.", "internal", "localhost:22",
+        "localhost:3389", "agent-",
+    ]
+
     def _net_lateral(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category != ActionCategory.NET_CONNECT:
             return None
-        lateral_indicators = ["10.0.", "172.16.", "192.168.", "internal", "localhost:22",
-                              "localhost:3389", "agent-"]
-        # Extract hostname without port so "api.internal.local:443"
-        # correctly matches allowed host "api.internal.local".
-        target = action.target.lower().strip()
-        for prefix in ("https://", "http://", "//"):
-            if target.startswith(prefix):
-                target = target[len(prefix):]
-                break
-        target = target.split("/", 1)[0]
-        host = target.rsplit(":", 1)[0] if ":" in target else target
+        host = _extract_host(action.target)
         allowed_lower = [h.lower() for h in perms.allowed_hosts]
-
-        for ind in lateral_indicators:
+        for ind in _LATERAL_INDICATORS:
             if ind in action.target:
                 if host not in allowed_lower:
                     return f"Lateral movement attempt: {action.target}"
@@ -506,52 +541,51 @@ def _build_rules() -> List[DetectionRule]:
 
     # ── Process rules ────────────────────────────────────────────
 
-    def _proc_eval(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category != ActionCategory.PROC_EXEC:
-            return None
-        dangerous = ["eval(", "exec(", "system(", "subprocess", "os.popen",
-                      "sh -c", "bash -c", "cmd /c", "powershell"]
-        target_lower = action.target.lower()
-        for d in dangerous:
-            if d in target_lower:
-                if not perms.can_use_eval:
-                    return f"Dangerous execution primitive: {d} in {action.target}"
-        return None
-
+    _DANGEROUS_EXEC_PRIMITIVES = [
+        "eval(", "exec(", "system(", "subprocess", "os.popen",
+        "sh -c", "bash -c", "cmd /c", "powershell",
+    ]
     rules.append(DetectionRule(
         rule_id="PROC-001",
         vector=EscalationVector.PROCESS,
         severity=EscalationSeverity.HIGH,
         description="Use of dangerous execution primitives (eval/exec/system)",
-        check=_proc_eval,
+        check=_make_substring_check(
+            (ActionCategory.PROC_EXEC,),
+            _DANGEROUS_EXEC_PRIMITIVES,
+            "Dangerous execution primitive: {matched} in {target}",
+            check_permission_flag="can_use_eval",
+        ),
     ))
 
-    def _proc_spawn(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category != ActionCategory.PROC_SPAWN:
-            return None
-        # Check for privilege-related flags
-        elevated = ["sudo", "runas", "setuid", "root", "SYSTEM", "admin",
-                     "chmod +s", "pkexec", "doas"]
-        for e in elevated:
-            if e in action.target:
-                return f"Elevated process spawn: {e} in {action.target}"
-        return None
-
+    _ELEVATED_SPAWN_INDICATORS = [
+        "sudo", "runas", "setuid", "root", "SYSTEM", "admin",
+        "chmod +s", "pkexec", "doas",
+    ]
     rules.append(DetectionRule(
         rule_id="PROC-002",
         vector=EscalationVector.PROCESS,
         severity=EscalationSeverity.CRITICAL,
         description="Process spawn with elevated privileges",
-        check=_proc_spawn,
+        check=_make_substring_check(
+            (ActionCategory.PROC_SPAWN,),
+            _ELEVATED_SPAWN_INDICATORS,
+            "Elevated process spawn: {matched} in {target}",
+            case_sensitive=True,
+        ),
     ))
+
+    _SENSITIVE_ENV_VARS = [
+        "PATH", "LD_PRELOAD", "LD_LIBRARY_PATH", "PYTHONPATH",
+        "HOME", "USER", "SHELL", "SUDO_ASKPASS",
+    ]
 
     def _proc_env_tamper(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
         if action.category != ActionCategory.ENV_WRITE:
             return None
-        sensitive_vars = ["PATH", "LD_PRELOAD", "LD_LIBRARY_PATH", "PYTHONPATH",
-                          "HOME", "USER", "SHELL", "SUDO_ASKPASS"]
-        for sv in sensitive_vars:
-            if sv in action.target.upper():
+        upper_target = action.target.upper()
+        for sv in _SENSITIVE_ENV_VARS:
+            if sv in upper_target:
                 return f"Sensitive environment variable modification: {sv}"
         return None
 
@@ -571,7 +605,6 @@ def _build_rules() -> List[DetectionRule]:
         for admin_scope in perms.admin_api_scopes:
             if admin_scope in action.target:
                 return f"Admin scope request: {admin_scope}"
-        # Check if requested scope is outside allowed
         if action.target not in perms.allowed_api_scopes:
             return f"Scope escalation request: {action.target} (not in allowed scopes)"
         return None
@@ -584,22 +617,20 @@ def _build_rules() -> List[DetectionRule]:
         check=_api_scope_escalation,
     ))
 
-    def _api_admin_endpoint(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category != ActionCategory.API_CALL:
-            return None
-        admin_paths = ["/admin", "/manage", "/config", "/policy", "/users",
-                       "/agents/control", "/system", "/debug", "/metrics/write"]
-        for ap in admin_paths:
-            if ap in action.target:
-                return f"Admin API endpoint access: {action.target}"
-        return None
-
+    _ADMIN_API_PATHS = [
+        "/admin", "/manage", "/config", "/policy", "/users",
+        "/agents/control", "/system", "/debug", "/metrics/write",
+    ]
     rules.append(DetectionRule(
         rule_id="API-002",
         vector=EscalationVector.API,
         severity=EscalationSeverity.CRITICAL,
         description="Access to administrative API endpoints",
-        check=_api_admin_endpoint,
+        check=_make_substring_check(
+            (ActionCategory.API_CALL,),
+            _ADMIN_API_PATHS,
+            "Admin API endpoint access: {target}",
+        ),
     ))
 
     def _api_other_agent(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
@@ -620,9 +651,8 @@ def _build_rules() -> List[DetectionRule]:
     # ── Data rules ───────────────────────────────────────────────
 
     def _data_clearance(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.DATA_READ, ActionCategory.DATA_QUERY):
+        if action.category not in _DATA_CATEGORIES:
             return None
-        # Parse clearance level from target (e.g. "dataset:confidential:users")
         parts = action.target.split(":")
         clearance_map = {"public": 1, "internal": 2, "confidential": 3, "restricted": 4}
         for part in parts:
@@ -640,11 +670,9 @@ def _build_rules() -> List[DetectionRule]:
     ))
 
     def _data_audit_log(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.DATA_READ, ActionCategory.DATA_QUERY):
+        if action.category not in _DATA_CATEGORIES:
             return None
         target_lower = action.target.lower()
-        # Use word-boundary matching to avoid false positives on
-        # substrings like "catalog", "dialog", "blog", "login".
         audit_pattern = r'(?:^|[/:._ -])audit(?:$|[/:._ -])'
         log_pattern = r'(?:^|[/:._ -])logs?(?:$|[/:._ -])'
         if re.search(audit_pattern, target_lower) or re.search(log_pattern, target_lower):
@@ -660,7 +688,7 @@ def _build_rules() -> List[DetectionRule]:
     ))
 
     def _data_cross_tenant(action: AgentAction, perms: AgentPermissions) -> Optional[str]:
-        if action.category not in (ActionCategory.DATA_READ, ActionCategory.DATA_QUERY):
+        if action.category not in _DATA_CATEGORIES:
             return None
         if "tenant:" in action.target and action.agent_id not in action.target:
             return f"Cross-tenant data access: {action.target}"
