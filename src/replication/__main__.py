@@ -103,7 +103,7 @@ _HAS_MAIN = {
     "access_control", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_graph", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "roi_calculator", "safety_checklist", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
     "dlp_scanner", "model_card", "mutation_tester", "severity_classifier", "regulatory_mapper", "vuln_scanner",
-    "chaos", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "lateral_movement", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
+    "chaos", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "ir_simulator", "lateral_movement", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -251,6 +251,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "threat-matrix":      (_make_handler("threat_matrix"),                               "Generate interactive MITRE ATT&CK-style AI agent threat matrix (HTML)"),
     "warroom":             (_make_handler("warroom"),                                      "Generate interactive War Room incident command dashboard (HTML)"),
     "contract-wizard":     (_make_handler("contract_wizard"),                                "Interactive HTML wizard for building safe ReplicationContract configs"),
+    "ir-sim":              (_make_handler("ir_simulator"),                                    "Interactive incident response simulator — choose-your-own-adventure for AI safety"),
 }
 
 
