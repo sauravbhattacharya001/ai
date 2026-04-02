@@ -488,6 +488,15 @@ from .shadow_ai import (
     FindingCategory,
     SignalType,
 )
+from .risk_register import (
+    RiskRegister,
+    RiskEntry,
+    RegisterConfig,
+    RiskStatus,
+    RiskCategory,
+    Mitigation,
+    AuditEntry,
+)
 
 __all__ = [
     # contract
@@ -915,4 +924,12 @@ __all__ = [
     "ShadowAIReport",
     "FindingCategory",
     "SignalType",
+    # risk_register
+    "RiskRegister",
+    "RiskEntry",
+    "RegisterConfig",
+    "RiskStatus",
+    "RiskCategory",
+    "Mitigation",
+    "AuditEntry",
 ]

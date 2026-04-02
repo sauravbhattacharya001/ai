@@ -253,6 +253,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "contract-wizard":     (_make_handler("contract_wizard"),                                "Interactive HTML wizard for building safe ReplicationContract configs"),
     "ir-sim":              (_make_handler("ir_simulator"),                                    "Interactive incident response simulator — choose-your-own-adventure for AI safety"),
     "fleet-sim":           (_make_handler("fleet_sim"),                                       "Generate interactive animated fleet replication simulator (HTML)"),
+    "risk-register":       (_make_handler("risk_register"),                                    "Formal risk tracking & lifecycle management with HTML/CSV/JSON export"),
 }
 
 
