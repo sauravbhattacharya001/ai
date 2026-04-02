@@ -16,6 +16,10 @@
 [![GitHub stars](https://img.shields.io/github/stars/sauravbhattacharya001/ai?style=flat&logo=github)](https://github.com/sauravbhattacharya001/ai/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/sauravbhattacharya001/ai?logo=github)](https://github.com/sauravbhattacharya001/ai/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/sauravbhattacharya001/ai/pulls)
+[![Last Commit](https://img.shields.io/github/last-commit/sauravbhattacharya001/ai?logo=github)](https://github.com/sauravbhattacharya001/ai/commits)
+[![Repo Size](https://img.shields.io/github/repo-size/sauravbhattacharya001/ai?logo=github)](https://github.com/sauravbhattacharya001/ai)
+[![Security Policy](https://img.shields.io/badge/security-policy-green?logo=shield)](SECURITY.md)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](https://github.com/sauravbhattacharya001/ai/network/updates)
 
 </div>
 
