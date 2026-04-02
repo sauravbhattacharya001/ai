@@ -33,7 +33,7 @@ import math
 import random
 import time
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
@@ -613,37 +613,14 @@ class MonteCarloAnalyzer:
 
     def _make_scenario(self, **overrides: Any) -> ScenarioConfig:
         base = self.config.base_scenario or ScenarioConfig()
-        return ScenarioConfig(
-            max_depth=overrides.get("max_depth", base.max_depth),
-            max_replicas=overrides.get("max_replicas", base.max_replicas),
-            cooldown_seconds=overrides.get("cooldown_seconds", base.cooldown_seconds),
-            expiration_seconds=overrides.get("expiration_seconds", base.expiration_seconds),
-            strategy=overrides.get("strategy", base.strategy),
-            tasks_per_worker=overrides.get("tasks_per_worker", base.tasks_per_worker),
-            replication_probability=overrides.get("replication_probability", base.replication_probability),
-            secret=overrides.get("secret", base.secret),
-            seed=overrides.get("seed", base.seed),
-            cpu_limit=overrides.get("cpu_limit", base.cpu_limit),
-            memory_limit_mb=overrides.get("memory_limit_mb", base.memory_limit_mb),
-        )
+        return replace(base, **overrides) if overrides else replace(base)
 
     def _run_batch(self, scenario: ScenarioConfig) -> List[SimulationReport]:
         """Run num_runs simulations and return all reports."""
         reports: List[SimulationReport] = []
         for i in range(self.config.num_runs):
-            cfg = ScenarioConfig(
-                max_depth=scenario.max_depth,
-                max_replicas=scenario.max_replicas,
-                cooldown_seconds=scenario.cooldown_seconds,
-                expiration_seconds=scenario.expiration_seconds,
-                strategy=scenario.strategy,
-                tasks_per_worker=scenario.tasks_per_worker,
-                replication_probability=scenario.replication_probability,
-                secret=scenario.secret,
-                seed=self._rng.randint(0, 2**31) if self.config.randomize_seeds else scenario.seed,
-                cpu_limit=scenario.cpu_limit,
-                memory_limit_mb=scenario.memory_limit_mb,
-            )
+            seed = self._rng.randint(0, 2**31) if self.config.randomize_seeds else scenario.seed
+            cfg = replace(scenario, seed=seed)
             sim = Simulator(cfg)
             reports.append(sim.run())
         return reports
