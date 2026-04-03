@@ -498,6 +498,15 @@ from .risk_register import (
     AuditEntry,
 )
 
+from .safety_diff import (
+    SafetyDiff,
+    SafetyDiffResult,
+    DimensionChange,
+    ComplianceChange,
+    RiskChange,
+    ChangeKind,
+)
+
 __all__ = [
     # contract
     "Manifest",
@@ -932,4 +941,11 @@ __all__ = [
     "RiskCategory",
     "Mitigation",
     "AuditEntry",
+    # safety_diff
+    "SafetyDiff",
+    "SafetyDiffResult",
+    "DimensionChange",
+    "ComplianceChange",
+    "RiskChange",
+    "ChangeKind",
 ]

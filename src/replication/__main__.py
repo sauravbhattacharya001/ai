@@ -254,6 +254,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "ir-sim":              (_make_handler("ir_simulator"),                                    "Interactive incident response simulator — choose-your-own-adventure for AI safety"),
     "fleet-sim":           (_make_handler("fleet_sim"),                                       "Generate interactive animated fleet replication simulator (HTML)"),
     "risk-register":       (_make_handler("risk_register"),                                    "Formal risk tracking & lifecycle management with HTML/CSV/JSON export"),
+    "safety-diff":         (_make_handler("safety_diff"),                                      "Compare two safety snapshots — scorecard/compliance diff with HTML report"),
 }
 
 
