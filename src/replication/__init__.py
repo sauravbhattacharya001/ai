@@ -506,6 +506,12 @@ from .safety_diff import (
     RiskChange,
     ChangeKind,
 )
+from .nutrition_label import (
+    NutritionLabelGenerator,
+    AgentProfile,
+    NutritionLabel,
+    RiskTier,
+)
 
 __all__ = [
     # contract
@@ -948,4 +954,9 @@ __all__ = [
     "ComplianceChange",
     "RiskChange",
     "ChangeKind",
+    # nutrition_label
+    "NutritionLabelGenerator",
+    "AgentProfile",
+    "NutritionLabel",
+    "RiskTier",
 ]
