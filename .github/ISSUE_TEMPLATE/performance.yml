@@ -1,0 +1,62 @@
+name: Performance Issue
+description: Report a performance problem or regression
+title: "[Perf]: "
+labels: ["performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Found a performance bottleneck or regression? Help us track it down.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue
+      description: Describe the performance problem you're observing.
+      placeholder: "e.g., Worker spawning takes 5s+ when registry has >100 entries"
+    validations:
+      required: true
+
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Benchmark / Measurements
+      description: Include timing data, profiling output, or before/after comparisons.
+      placeholder: |
+        - Registry lookup: 450ms avg (expected <10ms)
+        - Memory usage: 2.1GB for 50 workers (expected ~500MB)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      options:
+        - Controller (registry, lifecycle)
+        - Worker (task execution, replication)
+        - ManifestSigner (signing, verification)
+        - Orchestrator (container sandbox)
+        - Contract (policies, stop conditions)
+        - Observability (logging, metrics)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      placeholder: "Python 3.12.x"
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Details
+      description: OS, hardware, Docker version, or any relevant environment info.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Profiling output, flame graphs, or anything else relevant.
