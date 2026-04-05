@@ -1,0 +1,47 @@
+name: Documentation Issue
+description: Report missing, incorrect, or unclear documentation
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the documentation! Let us know what's unclear, missing, or incorrect.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      options:
+        - README / Getting Started
+        - API Reference
+        - Architecture / Design Docs
+        - Code Comments / Docstrings
+        - Examples / Tutorials
+        - CONTRIBUTING / Development Guide
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What documentation is missing, incorrect, or unclear?
+      placeholder: "e.g., The ReplicationContract parameters aren't documented — unclear what depth_limit vs max_depth controls"
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How should the documentation be improved?
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Links to the relevant docs, screenshots, or anything else that helps.
