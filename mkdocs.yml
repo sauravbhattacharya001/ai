@@ -77,30 +77,100 @@ nav:
       - Security Model: concepts/security.md
       - Privilege Escalation Detection: concepts/escalation.md
       - Threat Model & Limitations: concepts/threat-model.md
+  - Tutorials:
+      - Building Custom Safety Policies: tutorials/custom-safety-policies.md
   - API Reference:
       - Overview: api/index.md
-      - Contract: api/contract.md
-      - Controller: api/controller.md
-      - Worker: api/worker.md
-      - Orchestrator: api/orchestrator.md
-      - Observability: api/observability.md
-      - Signer: api/signer.md
-      - Threats: api/threats.md
-      - Self-Modification: api/selfmod.md
-      - Forensics: api/forensics.md
-      - Chaos: api/chaos.md
-      - Game Theory: api/game_theory.md
-      - Simulator: api/simulator.md
-      - Topology: api/topology.md
-      - Drift Detector: api/drift.md
-      - Honeypot: api/honeypot.md
-      - Kill Chain: api/killchain.md
-      - Escalation: api/escalation.md
-      - Monte Carlo: api/montecarlo.md
-      - Prompt Injection: api/prompt_injection.md
-      - Quarantine: api/quarantine.md
-      - Compliance: api/compliance.md
-      - Lineage: api/lineage.md
+      - Core:
+          - Contract: api/contract.md
+          - Controller: api/controller.md
+          - Worker: api/worker.md
+          - Orchestrator: api/orchestrator.md
+          - Signer: api/signer.md
+          - Templates: api/templates.md
+      - Safety & Compliance:
+          - Alignment: api/alignment.md
+          - Compliance: api/compliance.md
+          - Kill Switch: api/kill_switch.md
+          - Quarantine: api/quarantine.md
+          - Safety Drill: api/safety_drill.md
+          - Safety Net: api/safety_net.md
+          - Safety Quiz: api/safety_quiz.md
+          - Preflight: api/preflight.md
+          - Policy: api/policy.md
+      - Threat Detection:
+          - Threats: api/threats.md
+          - Threat Intel: api/threat_intel.md
+          - Threat Correlator: api/threat_correlator.md
+          - Kill Chain: api/killchain.md
+          - Attack Surface: api/attack_surface.md
+          - Attack Tree: api/attack_tree.md
+          - Coordinated Threats: api/coordinated_threats.md
+          - Prompt Injection: api/prompt_injection.md
+          - Evasion: api/evasion.md
+          - Covert Channels: api/covert_channels.md
+          - Deception Detector: api/deception_detector.md
+          - Injection Intel Bridge: api/injection_intel_bridge.md
+      - Monitoring & Analysis:
+          - Observability: api/observability.md
+          - Dashboard: api/dashboard.md
+          - Scorecard: api/scorecard.md
+          - Drift Detector: api/drift.md
+          - Anomaly Cluster: api/anomaly_cluster.md
+          - Anomaly Replay: api/anomaly_replay.md
+          - Behavior Profiler: api/behavior_profiler.md
+          - Boundary Tester: api/boundary_tester.md
+          - Sensitivity: api/sensitivity.md
+          - Alert Router: api/alert_router.md
+          - Fatigue Detector: api/fatigue_detector.md
+      - Simulation & Testing:
+          - Simulator: api/simulator.md
+          - Chaos: api/chaos.md
+          - Game Theory: api/game_theory.md
+          - Monte Carlo: api/montecarlo.md
+          - Scenarios: api/scenarios.md
+          - What-If Analysis: api/what_if.md
+          - IR Simulator: api/ir_simulator.md
+          - Mutation Tester: api/mutation_tester.md
+      - Incident Response:
+          - Incident: api/incident.md
+          - Escalation: api/escalation.md
+          - Forensics: api/forensics.md
+          - Root Cause: api/root_cause.md
+          - Postmortem: api/postmortem.md
+          - Runbook: api/runbook.md
+          - DLP Scanner: api/dlp_scanner.md
+      - Infrastructure:
+          - Topology: api/topology.md
+          - Capacity: api/capacity.md
+          - Consensus: api/consensus.md
+          - Comparator: api/comparator.md
+          - Canary: api/canary.md
+          - Honeypot: api/honeypot.md
+          - Dependency Graph: api/dependency_graph.md
+          - Credential Rotation: api/credential_rotation.md
+          - Decommission: api/decommission.md
+      - Governance:
+          - Lineage: api/lineage.md
+          - Audit Trail: api/audit_trail.md
+          - Self-Modification: api/selfmod.md
+          - Persona: api/persona.md
+          - Influence: api/influence.md
+          - Goal Inference: api/goal_inference.md
+          - Hoarding: api/hoarding.md
+          - Trust Propagation: api/trust_propagation.md
+          - Watermark: api/watermark.md
+          - Steganography: api/steganography.md
+          - Nutrition Label: api/nutrition_label.md
+      - Reporting:
+          - Reporter: api/reporter.md
+          - Exporter: api/exporter.md
+          - Optimizer: api/optimizer.md
+          - Risk Profiler: api/risk_profiler.md
+          - Risk Register: api/risk_register.md
+          - Shadow AI: api/shadow_ai.md
+          - Swarm: api/swarm.md
+          - War Room: api/warroom.md
   - Changelog: changelog.md
 
 extra:
