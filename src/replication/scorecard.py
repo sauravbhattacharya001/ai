@@ -28,7 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -670,35 +670,23 @@ def main() -> None:
     # Build scenario config
     if args.scenario:
         scenario = PRESETS[args.scenario]
-        # Allow overrides on top of preset
         if args.strategy:
-            scenario = ScenarioConfig(
-                **{
-                    **scenario.__dict__,
-                    "strategy": args.strategy,
-                }
-            )
+            scenario = replace(scenario, strategy=args.strategy)
     else:
         scenario = ScenarioConfig()
 
     if args.strategy and not args.scenario:
-        scenario = ScenarioConfig(**{**scenario.__dict__, "strategy": args.strategy})
+        scenario = replace(scenario, strategy=args.strategy)
     if args.max_depth is not None:
-        scenario = ScenarioConfig(**{**scenario.__dict__, "max_depth": args.max_depth})
+        scenario = replace(scenario, max_depth=args.max_depth)
     if args.max_replicas is not None:
-        scenario = ScenarioConfig(
-            **{**scenario.__dict__, "max_replicas": args.max_replicas}
-        )
+        scenario = replace(scenario, max_replicas=args.max_replicas)
     if args.cooldown is not None:
-        scenario = ScenarioConfig(
-            **{**scenario.__dict__, "cooldown_seconds": args.cooldown}
-        )
+        scenario = replace(scenario, cooldown_seconds=args.cooldown)
     if args.tasks is not None:
-        scenario = ScenarioConfig(
-            **{**scenario.__dict__, "tasks_per_worker": args.tasks}
-        )
+        scenario = replace(scenario, tasks_per_worker=args.tasks)
     if args.seed is not None:
-        scenario = ScenarioConfig(**{**scenario.__dict__, "seed": args.seed})
+        scenario = replace(scenario, seed=args.seed)
 
     # Build scorecard config
     sc_config = ScorecardConfig(
