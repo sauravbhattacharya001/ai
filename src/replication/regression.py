@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -532,15 +532,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Apply overrides
     if args.strategy:
-        b_config = ScenarioConfig(**{**b_config.__dict__, "strategy": args.strategy})
-        c_config = ScenarioConfig(**{**c_config.__dict__, "strategy": args.strategy})
+        b_config = replace(b_config, strategy=args.strategy)
+        c_config = replace(c_config, strategy=args.strategy)
     if args.candidate_depth is not None:
-        c_config = ScenarioConfig(**{**c_config.__dict__, "max_depth": args.candidate_depth})
+        c_config = replace(c_config, max_depth=args.candidate_depth)
     if args.candidate_replicas is not None:
-        c_config = ScenarioConfig(**{**c_config.__dict__, "max_replicas": args.candidate_replicas})
+        c_config = replace(c_config, max_replicas=args.candidate_replicas)
     if args.seed is not None:
-        b_config = ScenarioConfig(**{**b_config.__dict__, "seed": args.seed})
-        c_config = ScenarioConfig(**{**c_config.__dict__, "seed": args.seed + 1})
+        b_config = replace(b_config, seed=args.seed)
+        c_config = replace(c_config, seed=args.seed + 1)
 
     # Run comparison
     if args.runs > 1:

@@ -35,7 +35,7 @@ import argparse
 import json
 import sys
 import textwrap
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -621,7 +621,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     if args.preset:
         profile = PRESETS[args.preset]
         if args.name != "UnnamedAgent":
-            profile = AgentProfile(**{**profile.__dict__, "agent_name": args.name})
+            profile = replace(profile, agent_name=args.name)
     else:
         profile = AgentProfile(
             agent_name=args.name,
