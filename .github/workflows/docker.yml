@@ -6,10 +6,13 @@ on:
     tags: ["v*"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
+  id-token: write
+  attestations: write
 
 env:
   REGISTRY: ghcr.io
@@ -21,7 +24,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (multi-platform)
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -47,6 +53,7 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -56,3 +63,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          sbom: true
+          provenance: mode=max
+
+      - name: Generate artifact attestation
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Scan image for vulnerabilities
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
