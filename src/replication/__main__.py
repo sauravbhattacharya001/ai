@@ -100,7 +100,7 @@ def _cmd_info(_args: List[str]) -> None:
 
 # Modules that export a main() function
 _HAS_MAIN = {
-    "access_control", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_graph", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "roi_calculator", "root_cause", "safety_checklist", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
+    "access_control", "adaptive_thresholds", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_graph", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "culture_survey", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "roi_calculator", "root_cause", "safety_checklist", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
     "dlp_scanner", "model_card", "mutation_tester", "nutrition_label", "severity_classifier", "regulatory_mapper", "vuln_scanner",
     "chaos", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "fleet_sim", "ir_simulator", "lateral_movement", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
@@ -257,6 +257,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "safety-diff":         (_make_handler("safety_diff"),                                      "Compare two safety snapshots — scorecard/compliance diff with HTML report"),
     "root-cause":          (_make_handler("root_cause"),                                        "Root cause analysis — 5 Whys, Fishbone, Fault Tree with cut-set analysis"),
     "nutrition-label":     (_make_handler("nutrition_label"),                                    "Generate FDA-style Safety Nutrition Labels for AI agents"),
+    "adaptive-thresholds": (_make_handler("adaptive_thresholds"),                                "Self-tuning safety thresholds with breach forecasting"),
 }
 
 
