@@ -53,6 +53,8 @@ __all__ = [
 
 
 class Likelihood(Enum):
+    """Qualitative likelihood levels for risk assessment (1–5 scale)."""
+
     RARE = 1
     UNLIKELY = 2
     POSSIBLE = 3
@@ -61,6 +63,8 @@ class Likelihood(Enum):
 
 
 class Impact(Enum):
+    """Qualitative impact severity levels for risk assessment (1–5 scale)."""
+
     NEGLIGIBLE = 1
     MINOR = 2
     MODERATE = 3
@@ -69,6 +73,8 @@ class Impact(Enum):
 
 
 class RiskCategory(Enum):
+    """Taxonomy of AI-agent risk categories used to classify heatmap entries."""
+
     REPLICATION = "replication"
     RESOURCE_ABUSE = "resource_abuse"
     DECEPTION = "deception"
@@ -121,9 +127,11 @@ class RiskItem:
     score: float = 0.0  # likelihood × impact
 
     def __post_init__(self) -> None:
+        """Compute the composite risk score (likelihood × impact)."""
         self.score = self.likelihood * self.impact
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize the risk item to a plain dictionary for JSON export."""
         return {
             "name": self.name,
             "category": self.category,
@@ -136,6 +144,7 @@ class RiskItem:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "RiskItem":
+        """Construct a :class:`RiskItem` from a dictionary (e.g. loaded from JSON)."""
         return cls(
             name=d["name"],
             category=d.get("category", "unknown"),
@@ -148,6 +157,16 @@ class RiskItem:
 
 @dataclass
 class HeatmapConfig:
+    """Configuration for risk heatmap generation.
+
+    Attributes:
+        agent_count: Number of simulated agents to generate risks for.
+        risks_per_agent: How many risk entries each agent contributes.
+        seed: Optional RNG seed for reproducible output.
+        import_path: Path to a JSON file of pre-defined risks to import
+            instead of generating synthetic ones.
+    """
+
     agent_count: int = 10
     risks_per_agent: int = 3
     seed: Optional[int] = None
@@ -156,14 +175,18 @@ class HeatmapConfig:
 
 @dataclass
 class HeatmapResult:
+    """Container for a generated heatmap: rendered HTML, risk list, and config."""
+
     risks: List[RiskItem] = field(default_factory=list)
     html: str = ""
     config: Optional[HeatmapConfig] = None
 
     def save(self, path: str) -> None:
+        """Write the rendered HTML heatmap to *path*."""
         Path(path).write_text(self.html, encoding="utf-8")
 
     def to_json(self) -> str:
+        """Return a JSON string with risk data, categories, and the grid summary."""
         return json.dumps(
             {
                 "risk_count": len(self.risks),
@@ -175,6 +198,7 @@ class HeatmapResult:
         )
 
     def _build_grid(self) -> Dict[str, int]:
+        """Build a sparse grid mapping ``'likelihood,impact'`` keys to risk counts."""
         grid: Dict[str, int] = {}
         for r in self.risks:
             key = f"{r.likelihood},{r.impact}"
@@ -189,6 +213,11 @@ class RiskHeatmap:
         self.config = config or HeatmapConfig()
 
     def generate(self) -> HeatmapResult:
+        """Generate or import risks and render the HTML heatmap.
+
+        Returns:
+            A :class:`HeatmapResult` containing the risk list and rendered HTML.
+        """
         if self.config.import_path:
             risks = self._load_risks(self.config.import_path)
         else:
@@ -198,11 +227,13 @@ class RiskHeatmap:
         return HeatmapResult(risks=risks, html=html, config=self.config)
 
     def _load_risks(self, path: str) -> List[RiskItem]:
+        """Load risk items from a JSON file at *path*."""
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         items = data if isinstance(data, list) else data.get("risks", [])
         return [RiskItem.from_dict(d) for d in items]
 
     def _generate_risks(self) -> List[RiskItem]:
+        """Synthesize risk items from built-in templates using the configured RNG seed."""
         rng = random.Random(self.config.seed)
         risks: List[RiskItem] = []
         for i in range(self.config.agent_count):
@@ -237,11 +268,13 @@ class RiskHeatmap:
 
     @classmethod
     def _load_template(cls) -> str:
+        """Read and cache the HTML template from the templates directory."""
         if cls._template_cache is None:
             cls._template_cache = cls._TEMPLATE_PATH.read_text(encoding="utf-8")
         return cls._template_cache
 
     def _render_html(self, risks: List[RiskItem]) -> str:
+        """Render the HTML heatmap by injecting risk data into the template."""
         risks_json = json.dumps([r.to_dict() for r in risks])
         categories = sorted({r.category for r in risks})
         cat_json = json.dumps(categories)
@@ -260,6 +293,7 @@ class RiskHeatmap:
 # ── CLI ──────────────────────────────────────────────────────────────
 
 def main(argv: Optional[list[str]] = None) -> None:
+    """CLI entry-point: parse arguments, generate the heatmap, and write output."""
     parser = argparse.ArgumentParser(
         prog="replication risk-heatmap",
         description="Generate interactive risk heatmap (likelihood × impact grid)",
