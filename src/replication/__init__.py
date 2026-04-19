@@ -519,6 +519,13 @@ from .nutrition_label import (
     NutritionLabel,
     RiskTier,
 )
+from .sitrep import (
+    SituationalAwareness,
+    SitrepReport,
+    SectorStatus,
+    RecommendedAction,
+    render_html as render_sitrep_html,
+)
 
 __all__ = [
     # contract
@@ -971,4 +978,10 @@ __all__ = [
     "AgentProfile",
     "NutritionLabel",
     "RiskTier",
+    # sitrep
+    "SituationalAwareness",
+    "SitrepReport",
+    "SectorStatus",
+    "RecommendedAction",
+    "render_sitrep_html",
 ]
