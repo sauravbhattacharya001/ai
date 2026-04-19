@@ -109,7 +109,7 @@ _HAS_MAIN = {
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
     "scenarios", "scorecard", "sensitivity", "simulator", "swarm",
     "templates", "threat_intel", "threats", "watermark", "what_if",
-    "safety_autopilot",
+    "safety_autopilot", "sitrep",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -262,6 +262,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "forecast":              (_make_handler("incident_forecast"),                                  "Predict future safety incidents from historical patterns"),
     "autopilot":             (_make_handler("safety_autopilot"),                                    "Autonomous safety monitoring loop with escalation & corrective actions"),
     "debate":                (_make_handler("debate"),                                               "Adversarial Red vs Blue team safety debate with Judge verdict"),
+    "sitrep":                (_make_handler("sitrep"),                                               "Unified situational awareness report — DEFCON-style threat level + sector status"),
 }
 
 
