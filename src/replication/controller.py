@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import secrets
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
@@ -48,6 +49,7 @@ class Controller:
         self.contract = contract
         self.signer = ManifestSigner(secret)
         self.logger = logger or StructuredLogger()
+        self._lock = threading.Lock()
         self.registry: Dict[str, RegistryEntry] = {}
         self.spawn_timestamps: Dict[str, datetime] = {}
         self._quarantined: set[str] = set()
@@ -88,7 +90,8 @@ class Controller:
         callers from lying about their position in the tree.
         """
         now = datetime.now(timezone.utc)
-        parent_entry = self._can_spawn_returning_parent(parent_id, _now=now)
+        with self._lock:
+            parent_entry = self._can_spawn_returning_parent(parent_id, _now=now)
 
         # Derive depth from the parent's registry entry rather than
         # trusting the caller-supplied value.  This prevents depth
@@ -132,22 +135,28 @@ class Controller:
         Returns True when *worker_id* is in the quarantined set.
         QuarantineManager calls :meth:`mark_quarantined` /
         :meth:`clear_quarantine` to keep this in sync.
+
+        Note: Callers that need an atomic check-then-act sequence
+        should hold ``self._lock`` around the combined operation.
         """
         return worker_id in self._quarantined
 
     def mark_quarantined(self, worker_id: str) -> None:
         """Mark a worker as quarantined — blocks replication and heartbeats."""
-        self._quarantined.add(worker_id)
-        self.logger.audit("controller_quarantine_mark", worker_id=worker_id)
+        with self._lock:
+            self._quarantined.add(worker_id)
+            self.logger.audit("controller_quarantine_mark", worker_id=worker_id)
 
     def clear_quarantine(self, worker_id: str) -> None:
         """Remove quarantine mark — re-enables replication and heartbeats."""
-        self._quarantined.discard(worker_id)
-        self.logger.audit("controller_quarantine_clear", worker_id=worker_id)
+        with self._lock:
+            self._quarantined.discard(worker_id)
+            self.logger.audit("controller_quarantine_clear", worker_id=worker_id)
 
     def can_spawn(self, parent_id: Optional[str], _now: Optional[datetime] = None) -> None:
         """Public check — raises :class:`ReplicationDenied` on policy violation."""
-        self._can_spawn_returning_parent(parent_id, _now=_now)
+        with self._lock:
+            self._can_spawn_returning_parent(parent_id, _now=_now)
 
     def _can_spawn_returning_parent(
         self, parent_id: Optional[str], _now: Optional[datetime] = None
@@ -156,6 +165,8 @@ class Controller:
 
         Returns *None* for root workers.  Used by :meth:`issue_manifest`
         to avoid a redundant ``registry.get`` after the policy check.
+
+        .. note:: Caller must hold ``self._lock``.
         """
         if self.kill_switch_engaged:
             raise ReplicationDenied("Kill switch engaged")
@@ -194,6 +205,9 @@ class Controller:
         Performs signature verification, structural depth validation, and
         contract stop-condition evaluation before adding the worker to the
         registry. Raises :class:`ReplicationDenied` if any check fails.
+
+        Thread-safe: acquires ``self._lock`` for the quota check +
+        insertion so concurrent callers cannot exceed ``max_replicas``.
         """
         self.verify_manifest(manifest)
 
@@ -222,32 +236,37 @@ class Controller:
                 f"Manifest depth {manifest.depth} exceeds max_depth {self.contract.max_depth}"
             )
 
-        context = ReplicationContext(manifest=manifest, active_count=len(self.registry), contract=self.contract)
-        stop_condition = self.contract.evaluate(context)
-        if stop_condition:
-            self.logger.audit("deny_stop_condition", condition=stop_condition.name, worker_id=manifest.worker_id)
-            raise ReplicationDenied(f"Stop condition triggered: {stop_condition.name}")
+        with self._lock:
+            context = ReplicationContext(manifest=manifest, active_count=len(self.registry), contract=self.contract)
+            stop_condition = self.contract.evaluate(context)
+            if stop_condition:
+                self.logger.audit("deny_stop_condition", condition=stop_condition.name, worker_id=manifest.worker_id)
+                raise ReplicationDenied(f"Stop condition triggered: {stop_condition.name}")
 
-        now = datetime.now(timezone.utc)
-        self.registry[manifest.worker_id] = RegistryEntry(manifest=manifest, last_heartbeat=now)
-        if manifest.parent_id:
-            self.spawn_timestamps[manifest.parent_id] = now
-        self.logger.log("worker_registered", worker_id=manifest.worker_id, parent_id=manifest.parent_id, depth=manifest.depth)
+            now = datetime.now(timezone.utc)
+            self.registry[manifest.worker_id] = RegistryEntry(manifest=manifest, last_heartbeat=now)
+            if manifest.parent_id:
+                self.spawn_timestamps[manifest.parent_id] = now
+            self.logger.log("worker_registered", worker_id=manifest.worker_id, parent_id=manifest.parent_id, depth=manifest.depth)
 
     def heartbeat(self, worker_id: str) -> None:
         """Record a heartbeat for *worker_id*, refreshing its last-seen timestamp.
 
         Raises :class:`ReplicationDenied` if the worker is quarantined.
         Logs an audit event if the worker is unknown (not registered).
+
+        Thread-safe: acquires ``self._lock`` so the quarantine check and
+        timestamp update are atomic with respect to :meth:`reap_stale_workers`.
         """
-        if self.is_quarantined(worker_id):
-            self.logger.audit("heartbeat_quarantined", worker_id=worker_id)
-            raise ReplicationDenied("Worker is quarantined")
-        if worker_id in self.registry:
-            self.registry[worker_id].last_heartbeat = datetime.now(timezone.utc)
-            self.logger.log("heartbeat", worker_id=worker_id)
-        else:
-            self.logger.audit("heartbeat_unknown", worker_id=worker_id)
+        with self._lock:
+            if self.is_quarantined(worker_id):
+                self.logger.audit("heartbeat_quarantined", worker_id=worker_id)
+                raise ReplicationDenied("Worker is quarantined")
+            if worker_id in self.registry:
+                self.registry[worker_id].last_heartbeat = datetime.now(timezone.utc)
+                self.logger.log("heartbeat", worker_id=worker_id)
+            else:
+                self.logger.audit("heartbeat_unknown", worker_id=worker_id)
 
     def reap_stale_workers(self, timeout: timedelta, orchestrator=None) -> List[str]:
         """Remove workers whose last heartbeat exceeds the given timeout.
@@ -260,34 +279,40 @@ class Controller:
         are killed before deregistration so that no orphaned resources
         remain.  Without it, only the registry entry is removed (kept
         for backward compatibility, but callers should always pass it).
+
+        Thread-safe: the stale snapshot and deregistration happen under
+        ``self._lock`` so a concurrent heartbeat cannot refresh a worker
+        between the staleness check and its removal.
         """
-        now = datetime.now(timezone.utc)
-        stale = [
-            wid for wid, entry in self.registry.items()
-            if now - entry.last_heartbeat > timeout
-        ]
-        for wid in stale:
-            self.logger.audit(
-                "reap_stale",
-                worker_id=wid,
-                last_heartbeat=self.registry[wid].last_heartbeat.isoformat(),
-            )
-            if orchestrator is not None:
-                orchestrator.kill_worker(wid, reason="heartbeat_timeout")
-            self.deregister(wid, reason="heartbeat_timeout")
+        with self._lock:
+            now = datetime.now(timezone.utc)
+            stale = [
+                wid for wid, entry in self.registry.items()
+                if now - entry.last_heartbeat > timeout
+            ]
+            for wid in stale:
+                self.logger.audit(
+                    "reap_stale",
+                    worker_id=wid,
+                    last_heartbeat=self.registry[wid].last_heartbeat.isoformat(),
+                )
+                if orchestrator is not None:
+                    orchestrator.kill_worker(wid, reason="heartbeat_timeout")
+                self._deregister_unlocked(wid, reason="heartbeat_timeout")
         return stale
 
     def deregister(self, worker_id: str, reason: str) -> None:
         """Remove *worker_id* from the registry and clean up ancillary state.
 
-        Removes the registry entry, spawn-timestamp record, and quarantine
-        mark (if any) so the worker doesn't leak memory in long-running
-        controllers.  No-op if the worker is not registered.
+        Thread-safe wrapper around :meth:`_deregister_unlocked`.
         """
+        with self._lock:
+            self._deregister_unlocked(worker_id, reason)
+
+    def _deregister_unlocked(self, worker_id: str, reason: str) -> None:
+        """Remove *worker_id* without acquiring the lock (caller must hold it)."""
         if worker_id in self.registry:
             del self.registry[worker_id]
-            # Clean up ancillary state so deregistered workers don't
-            # leak memory in long-running controllers.
             self.spawn_timestamps.pop(worker_id, None)
             self._quarantined.discard(worker_id)
             self.logger.log("worker_deregistered", worker_id=worker_id, reason=reason)
@@ -298,10 +323,14 @@ class Controller:
         Sets the kill-switch flag (blocking future spawns), iterates over
         all registered workers to kill their containers via *orchestrator*,
         and deregisters each one. Logs the total count of terminated workers.
+
+        Thread-safe: holds ``self._lock`` for the entire operation so no
+        new workers can register between the flag set and the sweep.
         """
-        self.kill_switch_engaged = True
-        active_before = len(self.registry)
-        for worker_id in list(self.registry.keys()):
-            orchestrator.kill_worker(worker_id, reason="kill_switch")
-            self.deregister(worker_id, "kill_switch")
-        self.logger.audit("kill_switch_engaged", active_before=active_before)
+        with self._lock:
+            self.kill_switch_engaged = True
+            active_before = len(self.registry)
+            for worker_id in list(self.registry.keys()):
+                orchestrator.kill_worker(worker_id, reason="kill_switch")
+                self._deregister_unlocked(worker_id, "kill_switch")
+            self.logger.audit("kill_switch_engaged", active_before=active_before)
