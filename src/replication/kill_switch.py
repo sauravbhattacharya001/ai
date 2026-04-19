@@ -97,6 +97,21 @@ class KillOutcome(Enum):
     FAILED = "failed"
 
 
+# Map trigger kinds to agent-state dictionary keys.
+# Shared by TriggerCondition._check_breach and KillSwitchManager.evaluate
+# to avoid drift between breach detection and proximity scoring.
+TRIGGER_STATE_KEY: Dict[TriggerKind, str] = {
+    TriggerKind.RESOURCE_CPU: "cpu_percent",
+    TriggerKind.RESOURCE_MEMORY: "memory_mb",
+    TriggerKind.RESOURCE_DISK: "disk_percent",
+    TriggerKind.RESOURCE_NETWORK: "network_mbps",
+    TriggerKind.BEHAVIOR_ANOMALY: "anomaly_score",
+    TriggerKind.TIME_LIMIT: "uptime_seconds",
+    TriggerKind.REQUEST_RATE: "request_rate",
+    TriggerKind.ERROR_RATE: "error_rate",
+}
+
+
 class Severity(Enum):
     """Trigger severity levels."""
     LOW = "low"
@@ -171,19 +186,7 @@ class TriggerCondition:
         if self.kind == TriggerKind.MANUAL:
             return state.get("manual_kill", False)
 
-        # Map trigger kinds to state keys
-        key_map = {
-            TriggerKind.RESOURCE_CPU: "cpu_percent",
-            TriggerKind.RESOURCE_MEMORY: "memory_mb",
-            TriggerKind.RESOURCE_DISK: "disk_percent",
-            TriggerKind.RESOURCE_NETWORK: "network_mbps",
-            TriggerKind.BEHAVIOR_ANOMALY: "anomaly_score",
-            TriggerKind.TIME_LIMIT: "uptime_seconds",
-            TriggerKind.REQUEST_RATE: "request_rate",
-            TriggerKind.ERROR_RATE: "error_rate",
-        }
-
-        key = key_map.get(self.kind)
+        key = TRIGGER_STATE_KEY.get(self.kind)
         if key is None:
             return False
 
@@ -397,17 +400,7 @@ class KillSwitchManager:
                 self._fire_hooks("on_trigger", trigger=trigger, agent_state=agent_state)
 
             # Track proximity to threshold for scoring
-            key_map = {
-                TriggerKind.RESOURCE_CPU: "cpu_percent",
-                TriggerKind.RESOURCE_MEMORY: "memory_mb",
-                TriggerKind.RESOURCE_DISK: "disk_percent",
-                TriggerKind.RESOURCE_NETWORK: "network_mbps",
-                TriggerKind.BEHAVIOR_ANOMALY: "anomaly_score",
-                TriggerKind.TIME_LIMIT: "uptime_seconds",
-                TriggerKind.REQUEST_RATE: "request_rate",
-                TriggerKind.ERROR_RATE: "error_rate",
-            }
-            key = key_map.get(trigger.kind)
+            key = TRIGGER_STATE_KEY.get(trigger.kind)
             if key and key in agent_state and trigger.threshold > 0:
                 scores[trigger.label] = float(agent_state[key]) / trigger.threshold
 
