@@ -258,6 +258,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "root-cause":          (_make_handler("root_cause"),                                        "Root cause analysis — 5 Whys, Fishbone, Fault Tree with cut-set analysis"),
     "nutrition-label":     (_make_handler("nutrition_label"),                                    "Generate FDA-style Safety Nutrition Labels for AI agents"),
     "adaptive-thresholds": (_make_handler("adaptive_thresholds"),                                "Self-tuning safety thresholds with breach forecasting"),
+    "forecast":              (_make_handler("incident_forecast"),                                  "Predict future safety incidents from historical patterns"),
 }
 
 

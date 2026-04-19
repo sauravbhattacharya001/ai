@@ -171,6 +171,13 @@ from .incident import (
     StepPriority,
     StepStatus,
 )
+from .incident_forecast import (
+    IncidentForecaster,
+    ForecastConfig,
+    ForecastReport,
+    IncidentEvent,
+    CategoryForecast,
+)
 from .topology import (
     TopologyAnalyzer,
     TopologyReport,
@@ -659,6 +666,11 @@ __all__ = [
     "IncidentConfig",
     "IncidentCategory",
     "IncidentSeverity",
+    "IncidentForecaster",
+    "ForecastConfig",
+    "ForecastReport",
+    "IncidentEvent",
+    "CategoryForecast",
     "Playbook",
     "ResponseStep",
     "StepPriority",
