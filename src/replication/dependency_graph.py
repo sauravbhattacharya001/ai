@@ -400,12 +400,24 @@ class DependencyGraph:
             edge_count += len(res.depends_on)
         result.total_edges = edge_count
 
-        # Blast radii for every resource
-        for rname in self._resources:
-            result.blast_radii[rname] = self._compute_blast_radius(rname)
+        # Pre-compute transitive failures once for all resources and
+        # reuse for both blast-radius and SPOF detection (avoids
+        # redundant BFS traversals — O(R) instead of O(R²)).
+        failure_cache: Dict[str, Set[str]] = {
+            rname: self._transitive_resource_failures(rname)
+            for rname in self._resources
+        }
 
-        # SPOF detection
-        result.spofs = self._find_spofs()
+        # Blast radii for every resource (using cache)
+        for rname, failed in failure_cache.items():
+            affected = sum(
+                1 for a in self._agents.values()
+                if self._agent_affected(a, failed)
+            )
+            result.blast_radii[rname] = affected
+
+        # SPOF detection (using cache instead of recomputing)
+        result.spofs = self._find_spofs_cached(failure_cache)
 
         # Cycle detection (among resources)
         result.cycles = self._find_cycles()
@@ -507,20 +519,27 @@ class DependencyGraph:
         return False
 
     def _find_spofs(self) -> List[Dict[str, Any]]:
-        """Find resources that are single points of failure.
+        """Find resources that are single points of failure."""
+        return self._find_spofs_cached({
+            rname: self._transitive_resource_failures(rname)
+            for rname in self._resources
+        })
+
+    def _find_spofs_cached(
+        self, failure_cache: Dict[str, Set[str]]
+    ) -> List[Dict[str, Any]]:
+        """Find SPOFs using a pre-computed failure cache.
 
         A resource is a SPOF if its failure alone (considering redundancy)
         would take down at least one agent.
         """
         spofs: List[Dict[str, Any]] = []
-        for rname in self._resources:
-            failed = self._transitive_resource_failures(rname)
+        for rname, failed in failure_cache.items():
             affected = sum(
                 1 for a in self._agents.values()
                 if self._agent_affected(a, failed)
             )
             if affected > 0:
-                # Verify no redundancy covers it
                 res = self._resources[rname]
                 if res.redundancy_group:
                     group = self._redundancy_groups[res.redundancy_group]
@@ -574,36 +593,49 @@ class DependencyGraph:
     def _find_critical_path(self) -> Tuple[List[str], int]:
         """Find the longest dependency chain (agents -> resources -> resources).
 
-        Uses BFS from each agent, following dependency edges.
+        Uses memoised DFS over the resource DAG, then prepends the agent.
+        The memo cache avoids exponential re-exploration of shared sub-trees.
         """
+        # Memoise longest chain from each resource (only valid for DAGs;
+        # cycles are handled by the visited guard).
+        memo: Dict[str, List[str]] = {}
         longest: List[str] = []
 
         for agent in self._agents.values():
             for rname, _ in agent.depends_on:
-                # BFS/DFS from this resource
-                path = self._longest_chain(rname, set())
+                path = self._longest_chain(rname, set(), memo)
                 full_path = [agent.name] + path
                 if len(full_path) > len(longest):
                     longest = full_path
 
         return longest, max(len(longest) - 1, 0)
 
-    def _longest_chain(self, resource: str, visited: Set[str]) -> List[str]:
-        """Recursively find longest chain from a resource."""
+    def _longest_chain(
+        self,
+        resource: str,
+        visited: Set[str],
+        memo: Dict[str, List[str]],
+    ) -> List[str]:
+        """Recursively find longest chain from a resource (memoised)."""
         if resource in visited or resource not in self._resources:
             return [resource] if resource in self._resources else []
+
+        # Use cached result when the node isn't on the current DFS path
+        if resource in memo:
+            return list(memo[resource])
 
         visited.add(resource)
         res = self._resources[resource]
         best: List[str] = [resource]
 
         for dep in res.depends_on:
-            chain = self._longest_chain(dep, visited)
+            chain = self._longest_chain(dep, visited, memo)
             candidate = [resource] + chain
             if len(candidate) > len(best):
                 best = candidate
 
         visited.discard(resource)
+        memo[resource] = best
         return best
 
     def _redundancy_score(self, agent: AgentNode) -> float:
@@ -819,8 +851,12 @@ class DependencyGraph:
             ResourceKind.CACHE: "hexagon",
         }
         # Pre-compute SPOFs once instead of calling _find_spofs() per resource
+        failure_cache: Dict[str, Set[str]] = {
+            rname: self._transitive_resource_failures(rname)
+            for rname in self._resources
+        }
         spof_names: FrozenSet[str] = frozenset(
-            s["resource"] for s in self._find_spofs()
+            s["resource"] for s in self._find_spofs_cached(failure_cache)
         )
         for res in self._resources.values():
             shape = kind_shapes.get(res.kind, "box")
