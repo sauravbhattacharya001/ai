@@ -109,6 +109,7 @@ _HAS_MAIN = {
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
     "scenarios", "scorecard", "sensitivity", "simulator", "swarm",
     "templates", "threat_intel", "threats", "watermark", "what_if",
+    "safety_autopilot",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -259,6 +260,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "nutrition-label":     (_make_handler("nutrition_label"),                                    "Generate FDA-style Safety Nutrition Labels for AI agents"),
     "adaptive-thresholds": (_make_handler("adaptive_thresholds"),                                "Self-tuning safety thresholds with breach forecasting"),
     "forecast":              (_make_handler("incident_forecast"),                                  "Predict future safety incidents from historical patterns"),
+    "autopilot":             (_make_handler("safety_autopilot"),                                    "Autonomous safety monitoring loop with escalation & corrective actions"),
 }
 
 
