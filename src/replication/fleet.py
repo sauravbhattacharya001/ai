@@ -74,11 +74,21 @@ class FleetSummary:
 
 
 def snapshot_fleet(controller: Controller) -> List[WorkerSnapshot]:
-    """Capture a snapshot of all workers registered with *controller*."""
+    """Capture a snapshot of all workers registered with *controller*.
+
+    Takes a snapshot of the registry under the controller lock to avoid
+    ``RuntimeError: dictionary changed size during iteration`` when
+    another thread modifies the registry concurrently.
+    """
     now = datetime.now(timezone.utc)
     snapshots: List[WorkerSnapshot] = []
 
-    for wid, entry in controller.registry.items():
+    # Copy the registry under the lock so iteration is safe against
+    # concurrent register/deregister calls from other threads.
+    with controller._lock:
+        registry_snapshot = dict(controller.registry)
+
+    for wid, entry in registry_snapshot.items():
         m = entry.manifest
         age = (now - m.issued_at).total_seconds()
 
