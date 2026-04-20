@@ -386,13 +386,8 @@ class SteganographyDetector:
                 mid_caps.append((i, word))
         if len(cap_bits) >= 16:
             ones = sum(cap_bits)
-            zeros = len(cap_bits) - ones
             total = len(cap_bits)
-            if ones > 0 and zeros > 0:
-                p1 = ones / total
-                entropy = -(p1 * math.log2(p1) + (1 - p1) * math.log2(1 - p1))
-            else:
-                entropy = 0.0
+            entropy = self._binary_entropy(ones, total)
             if entropy >= self.config.cap_entropy_threshold:
                 findings.append(StegoFinding(
                     vector=StegoVector.CAPITALIZATION, risk=RiskLevel.MEDIUM,
@@ -422,20 +417,18 @@ class SteganographyDetector:
             punct = [(i, ch) for i, ch in enumerate(text) if ch in '.,;:!?']
             if len(punct) >= 8:
                 bits = ['0' if ch in '.,' else '1' for _, ch in punct]
-                ones, zeros = bits.count('1'), bits.count('0')
+                ones = bits.count('1')
                 total = len(bits)
-                if ones > 0 and zeros > 0:
-                    p1 = ones / total
-                    entropy = -(p1 * math.log2(p1) + (1 - p1) * math.log2(1 - p1))
-                    if entropy > 0.9 and total >= 16:
-                        findings.append(StegoFinding(
-                            vector=StegoVector.PUNCTUATION, risk=RiskLevel.LOW,
-                            confidence=0.3,
-                            description="Punctuation pattern has high entropy, could encode data",
-                            evidence=[f"Punctuation bits: {''.join(bits[:30])}",
-                                      f"Entropy: {entropy:.3f}"],
-                            decoded_payload=self._bits_to_text(''.join(bits)) if len(bits) >= 8 else None,
-                        ))
+                entropy = self._binary_entropy(ones, total)
+                if entropy > 0.9 and total >= 16:
+                    findings.append(StegoFinding(
+                        vector=StegoVector.PUNCTUATION, risk=RiskLevel.LOW,
+                        confidence=0.3,
+                        description="Punctuation pattern has high entropy, could encode data",
+                        evidence=[f"Punctuation bits: {''.join(bits[:30])}",
+                                  f"Entropy: {entropy:.3f}"],
+                        decoded_payload=self._bits_to_text(''.join(bits)) if len(bits) >= 8 else None,
+                    ))
         double = list(re.finditer(r'([.!?,;:])\1{2,}', text))
         if len(double) >= 2:
             findings.append(StegoFinding(
@@ -458,8 +451,7 @@ class SteganographyDetector:
         ones, zeros = bits.count('1'), bits.count('0')
         total = len(bits)
         if total >= 8 and ones > 0 and zeros > 0:
-            p1 = ones / total
-            entropy = -(p1 * math.log2(p1) + (1 - p1) * math.log2(1 - p1))
+            entropy = self._binary_entropy(ones, total)
             if entropy > 0.95:
                 findings.append(StegoFinding(
                     vector=StegoVector.SENTENCE_LENGTH, risk=RiskLevel.LOW,
@@ -491,6 +483,14 @@ class SteganographyDetector:
         return findings
 
     # ── Helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _binary_entropy(ones: int, total: int) -> float:
+        """Compute Shannon entropy for a binary distribution (ones vs zeros)."""
+        if total == 0 or ones == 0 or ones == total:
+            return 0.0
+        p1 = ones / total
+        return -(p1 * math.log2(p1) + (1 - p1) * math.log2(1 - p1))
 
     def _decode_zero_width(self, text: str) -> Optional[str]:
         zw = [ch for ch in text if ch in ZERO_WIDTH_CHARS]
