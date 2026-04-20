@@ -16,6 +16,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import math
 import random
@@ -200,24 +201,34 @@ class CollusionDetector:
         signals: List[CollusionSignal] = []
         window = self._thresholds["sync_window"]
 
-        # Group actions by agent
+        # Group actions by agent, pre-sort timestamps for bisect lookups
         by_agent: Dict[str, List[AgentAction]] = defaultdict(list)
         for a in actions:
             by_agent[a.agent_id].append(a)
 
+        # Pre-sort each agent's actions and extract sorted timestamp arrays
+        sorted_times: Dict[str, List[float]] = {}
+        for aid, acts in by_agent.items():
+            acts.sort(key=lambda a: a.timestamp)
+            sorted_times[aid] = [a.timestamp for a in acts]
+
         agent_ids = list(by_agent.keys())
         for a1, a2 in combinations(agent_ids, 2):
+            times1 = sorted_times[a1]
+            times2 = sorted_times[a2]
+            total_compared = len(times1) * len(times2)
             sync_count = 0
-            total_compared = 0
             sync_times: List[float] = []
 
-            for act1 in by_agent[a1]:
-                for act2 in by_agent[a2]:
-                    total_compared += 1
-                    delta = abs(act1.timestamp - act2.timestamp)
-                    if delta <= window:
-                        sync_count += 1
-                        sync_times.append(min(act1.timestamp, act2.timestamp))
+            # For each action in agent1, use bisect to count agent2 actions
+            # within [t - window, t + window] in O(log n2) per action.
+            for t in times1:
+                lo = bisect.bisect_left(times2, t - window)
+                hi = bisect.bisect_right(times2, t + window)
+                matches = hi - lo
+                if matches > 0:
+                    sync_count += matches
+                    sync_times.append(t)
 
             if total_compared == 0:
                 continue
