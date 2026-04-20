@@ -673,13 +673,9 @@ class ThreatCorrelator:
             if anchor.signal_id in used_ids:
                 continue
 
-            window_signals: List[Signal] = []
-            for j in range(i, len(eligible)):
-                if eligible[j].timestamp - anchor.timestamp > window:
-                    break
-                if eligible[j].signal_id not in used_ids:
-                    window_signals.append(eligible[j])
-
+            window_signals = self._collect_window_signals(
+                eligible, i, window, used_ids
+            )
             if len(window_signals) < rule.min_signals:
                 continue
 
@@ -687,71 +683,113 @@ class ThreatCorrelator:
             if not rule.required_sources.issubset(window_sources):
                 continue
 
-            window_signals.sort(
-                key=lambda s: _SEVERITY_WEIGHT[s.severity], reverse=True
+            matched = self._select_matched_signals(
+                window_signals, rule
             )
-
-            # Ensure all required sources are represented in matched.
-            # Start with the top signals by severity, then guarantee
-            # required-source coverage by pulling in lower-severity
-            # signals if needed (fixes bug where required sources
-            # present only in LOW/INFO signals were dropped).
-            top_count = max(rule.min_signals, len(rule.required_sources))
-            matched = window_signals[:top_count]
-            matched_sources = {s.source for s in matched}
-
-            # Phase 1: ensure required sources are covered
-            for s in window_signals[len(matched):]:
-                if s.source in rule.required_sources and s.source not in matched_sources:
-                    matched.append(s)
-                    matched_sources.add(s.source)
-
-            # Phase 2: add remaining high-severity signals
-            for s in window_signals[top_count:]:
-                if s not in matched and _SEVERITY_WEIGHT[s.severity] >= 0.5:
-                    matched.append(s)
-
-            # If we still can't cover required sources, skip this match
-            if not rule.required_sources.issubset(matched_sources):
+            if matched is None:
                 continue
 
             for s in matched:
                 used_ids.add(s.signal_id)
 
-            severity_sum = sum(_SEVERITY_WEIGHT[s.severity] for s in matched)
-            source_diversity = len({s.source for s in matched})
-            base_score = (severity_sum / len(matched)) * source_diversity
-            risk_score = min(10.0, base_score * rule.risk_multiplier)
-
-            # Compute time span from actual timestamps, not severity-sorted order
-            timestamps = [s.timestamp for s in matched]
-            time_span = max(timestamps) - min(timestamps)
-            threat_level = self._score_to_level(risk_score)
-            urgency = self._level_to_urgency(threat_level)
-
-            summary = (
-                f"{rule.name}: {len(matched)} signals from "
-                f"{source_diversity} sources over {time_span:.0f}s "
-                f"for {agent_id}"
-            )
-
-            threats.append(
-                CompoundThreat(
-                    rule_name=rule.name,
-                    rule_description=rule.description,
-                    agent_id=agent_id,
-                    signals=matched,
-                    risk_score=round(risk_score, 2),
-                    threat_level=threat_level,
-                    urgency=urgency,
-                    summary=summary,
-                    response_actions=list(rule.response_actions),
-                    time_span=round(time_span, 2),
-                    source_coverage={s.source for s in matched},
-                )
-            )
+            threat = self._build_threat(rule, agent_id, matched)
+            threats.append(threat)
 
         return threats
+
+    @staticmethod
+    def _collect_window_signals(
+        eligible: List[Signal],
+        start: int,
+        window: float,
+        used_ids: Set[str],
+    ) -> List[Signal]:
+        """Gather unused signals within *window* seconds of the anchor."""
+        anchor_ts = eligible[start].timestamp
+        result: List[Signal] = []
+        for j in range(start, len(eligible)):
+            if eligible[j].timestamp - anchor_ts > window:
+                break
+            if eligible[j].signal_id not in used_ids:
+                result.append(eligible[j])
+        return result
+
+    @staticmethod
+    def _select_matched_signals(
+        window_signals: List[Signal],
+        rule: CorrelationRule,
+    ) -> Optional[List[Signal]]:
+        """Select the best signals from *window_signals* that satisfy *rule*.
+
+        Returns ``None`` when the required-source constraint cannot be met.
+        The selection prioritises high-severity signals, then ensures all
+        required sources are represented, and finally pulls in additional
+        medium-or-higher signals for richer context.
+        """
+        by_severity = sorted(
+            window_signals,
+            key=lambda s: _SEVERITY_WEIGHT[s.severity],
+            reverse=True,
+        )
+
+        top_count = max(rule.min_signals, len(rule.required_sources))
+        matched = by_severity[:top_count]
+        matched_sources = {s.source for s in matched}
+        matched_set: Set[str] = {s.signal_id for s in matched}
+
+        # Phase 1: ensure every required source is covered.
+        for s in by_severity[top_count:]:
+            if s.source in rule.required_sources and s.source not in matched_sources:
+                matched.append(s)
+                matched_sources.add(s.source)
+                matched_set.add(s.signal_id)
+
+        # Phase 2: pull in remaining medium-or-higher signals.
+        for s in by_severity[top_count:]:
+            if s.signal_id not in matched_set and _SEVERITY_WEIGHT[s.severity] >= 0.5:
+                matched.append(s)
+                matched_set.add(s.signal_id)
+
+        if not rule.required_sources.issubset(matched_sources):
+            return None
+        return matched
+
+    def _build_threat(
+        self,
+        rule: CorrelationRule,
+        agent_id: str,
+        matched: List[Signal],
+    ) -> CompoundThreat:
+        """Compute scores and assemble a :class:`CompoundThreat`."""
+        severity_sum = sum(_SEVERITY_WEIGHT[s.severity] for s in matched)
+        source_diversity = len({s.source for s in matched})
+        base_score = (severity_sum / len(matched)) * source_diversity
+        risk_score = min(10.0, base_score * rule.risk_multiplier)
+
+        timestamps = [s.timestamp for s in matched]
+        time_span = max(timestamps) - min(timestamps)
+        threat_level = self._score_to_level(risk_score)
+        urgency = self._level_to_urgency(threat_level)
+
+        summary = (
+            f"{rule.name}: {len(matched)} signals from "
+            f"{source_diversity} sources over {time_span:.0f}s "
+            f"for {agent_id}"
+        )
+
+        return CompoundThreat(
+            rule_name=rule.name,
+            rule_description=rule.description,
+            agent_id=agent_id,
+            signals=matched,
+            risk_score=round(risk_score, 2),
+            threat_level=threat_level,
+            urgency=urgency,
+            summary=summary,
+            response_actions=list(rule.response_actions),
+            time_span=round(time_span, 2),
+            source_coverage={s.source for s in matched},
+        )
 
     def _compute_agent_risks(
         self,
