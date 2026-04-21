@@ -110,6 +110,7 @@ _HAS_MAIN = {
     "scenarios", "scorecard", "sensitivity", "simulator", "swarm",
     "templates", "threat_intel", "threats", "watermark", "what_if",
     "safety_autopilot", "sitrep",
+    "trust_decay",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -265,6 +266,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "sitrep":                (_make_handler("sitrep"),                                               "Unified situational awareness report — DEFCON-style threat level + sector status"),
     "collusion":             (_make_handler("collusion_detector"),                                    "Detect multi-agent collusion patterns & coordinated safety bypasses"),
     "circuit-breaker":       (_make_handler("circuit_breaker"),                                       "Autonomous safety circuit breaker with trip/recover & fleet management"),
+    "trust-decay":           (_make_handler("trust_decay"),                                             "Model trust as a perishable quantity with decay, deposits & violation penalties"),
 }
 
 
