@@ -530,12 +530,21 @@ class GameTheoryAnalyzer:
         mixed_p = payoffs.mixed_nash()
 
         agent_list = self.agents
+
+        # Pre-build per-agent move histories in a single pass over
+        # interactions so downstream methods avoid redundant O(N) scans.
+        agent_move_seqs: Dict[str, List[Move]] = defaultdict(list)
+        for ix in self._interactions:
+            agent_move_seqs[ix.agent_a].append(ix.move_a)
+            agent_move_seqs[ix.agent_b].append(ix.move_b)
+
         pair_stats = self._compute_pair_stats(payoffs)
         strategy_profiles = self._detect_strategies(payoffs)
-        alerts = self._detect_alerts(pair_stats, strategy_profiles)
+        # Compute global cooperation rate once and reuse it.
         global_coop = self._global_cooperation_rate()
+        alerts = self._detect_alerts(pair_stats, strategy_profiles, agent_move_seqs)
         trend = self._cooperation_trend()
-        risk = self._compute_risk_score(pair_stats, strategy_profiles, alerts)
+        risk = self._compute_risk_score(pair_stats, strategy_profiles, alerts, global_coop)
 
         return GameReport(
             game_type=game_type,
@@ -746,6 +755,7 @@ class GameTheoryAnalyzer:
         self,
         pair_stats: List[PairStats],
         profiles: List[StrategyProfile],
+        agent_move_seqs: Optional[Dict[str, List[Move]]] = None,
     ) -> List[StrategicAlert]:
         """Detect safety-relevant strategic patterns."""
         alerts: List[StrategicAlert] = []
@@ -840,15 +850,20 @@ class GameTheoryAnalyzer:
                 )
 
         # 4. Strategy instability: agent keeps switching behavior
+        # Use pre-built move sequences when available (O(1) lookup per
+        # agent instead of O(N) full-interaction scan).
         for profile in profiles:
             if profile.total_moves < cfg.instability_window:
                 continue
             agent_id = profile.agent_id
-            moves = [
-                ix.move_a if ix.agent_a == agent_id else ix.move_b
-                for ix in self._interactions
-                if ix.agent_a == agent_id or ix.agent_b == agent_id
-            ]
+            if agent_move_seqs is not None:
+                moves = agent_move_seqs.get(agent_id, [])
+            else:
+                moves = [
+                    ix.move_a if ix.agent_a == agent_id else ix.move_b
+                    for ix in self._interactions
+                    if ix.agent_a == agent_id or ix.agent_b == agent_id
+                ]
             if len(moves) < cfg.instability_window:
                 continue
             recent = moves[-cfg.instability_window :]
@@ -948,16 +963,20 @@ class GameTheoryAnalyzer:
         pair_stats: List[PairStats],
         profiles: List[StrategyProfile],
         alerts: List[StrategicAlert],
+        global_coop: Optional[float] = None,
     ) -> float:
         """Compute a composite risk score (0-100).
 
         Higher = more concerning strategic behavior.
+        ``global_coop`` is accepted to avoid recomputing the cooperation
+        rate when the caller already has it.
         """
         score = 0.0
 
         # Factor 1: Defection prevalence (0-30)
         if self._interactions:
-            defect_rate = 1.0 - self._global_cooperation_rate()
+            coop = global_coop if global_coop is not None else self._global_cooperation_rate()
+            defect_rate = 1.0 - coop
             score += defect_rate * 30
 
         # Factor 2: Alert severity (0-40)
