@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html as html_mod
 import json
 import sys
 import textwrap
@@ -232,18 +233,19 @@ class Postmortem:
         return "\n".join(lines)
 
     def to_html(self) -> str:
+        _e = html_mod.escape
         emoji = _severity_emoji(self.severity)
         sev_colors = {"low": "#22c55e", "medium": "#eab308", "high": "#f97316", "critical": "#ef4444"}
         color = sev_colors.get(self.severity, "#6b7280")
 
         timeline_html = ""
         if self.timeline:
-            items = "".join(f"<li>{e}</li>" for e in self.timeline)
+            items = "".join(f"<li>{_e(e)}</li>" for e in self.timeline)
             timeline_html = f"<h2>Timeline</h2><ol>{items}</ol>"
 
-        factors_html = "".join(f"<li>{f}</li>" for f in self.contributing_factors)
+        factors_html = "".join(f"<li>{_e(f)}</li>" for f in self.contributing_factors)
         actions_html = "".join(
-            f'<li><label><input type="checkbox"> {a}</label></li>'
+            f'<li><label><input type="checkbox"> {_e(a)}</label></li>'
             for a in self.action_items
         )
 
@@ -253,7 +255,7 @@ class Postmortem:
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Postmortem — {self.doc_id}</title>
+        <title>Postmortem — {_e(self.doc_id)}</title>
         <style>
           :root {{ --sev: {color}; }}
           * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -279,19 +281,19 @@ class Postmortem:
         <body>
         <h1>{emoji} Incident Postmortem</h1>
         <table>
-          <tr><th>Document ID</th><td><code>{self.doc_id}</code></td></tr>
-          <tr><th>Incident</th><td>{self.incident}</td></tr>
-          <tr><th>Severity</th><td><span class="badge">{self.severity.upper()}</span></td></tr>
-          <tr><th>Created</th><td>{self.created_at}</td></tr>
-          <tr><th>Responders</th><td>{', '.join(self.responders)}</td></tr>
-          <tr><th>Detection</th><td>{self.detection_method}</td></tr>
+          <tr><th>Document ID</th><td><code>{_e(self.doc_id)}</code></td></tr>
+          <tr><th>Incident</th><td>{_e(self.incident)}</td></tr>
+          <tr><th>Severity</th><td><span class="badge">{_e(self.severity.upper())}</span></td></tr>
+          <tr><th>Created</th><td>{_e(self.created_at)}</td></tr>
+          <tr><th>Responders</th><td>{_e(', '.join(self.responders))}</td></tr>
+          <tr><th>Detection</th><td>{_e(self.detection_method)}</td></tr>
         </table>
 
         <h2>Description</h2>
-        <p>{self.description}</p>
+        <p>{_e(self.description)}</p>
 
         <h2>Impact</h2>
-        <p>{self.impact}</p>
+        <p>{_e(self.impact)}</p>
 
         {timeline_html}
 
