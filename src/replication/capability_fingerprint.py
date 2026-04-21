@@ -45,7 +45,7 @@ from __future__ import annotations
 import dataclasses as _dc
 import enum
 import time
-from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
+from typing import Dict, FrozenSet, List, Optional, Sequence
 
 
 # ---------------------------------------------------------------------------

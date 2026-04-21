@@ -31,11 +31,9 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
-import html as html_mod
 import json
 import random
-import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional

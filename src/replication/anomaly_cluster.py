@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ._helpers import box_header, stats_mean, stats_std
+from ._helpers import box_header, stats_mean
 
 
 # ── Data types ───────────────────────────────────────────────────────

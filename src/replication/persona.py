@@ -40,7 +40,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy, PRESETS as SIM_PRESETS
+from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
 
 
 # ── Persona Definitions ────────────────────────────────────────────────

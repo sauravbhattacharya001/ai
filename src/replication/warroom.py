@@ -31,7 +31,6 @@ import argparse
 import sys
 import webbrowser
 from pathlib import Path
-from typing import Optional
 
 
 def generate_warroom() -> str:
