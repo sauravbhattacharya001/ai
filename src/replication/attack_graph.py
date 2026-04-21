@@ -205,7 +205,14 @@ class AttackGraph:
         return adj
 
     def _find_all_paths(self, max_depth: int = 10) -> List[AttackPath]:
-        """BFS/DFS to find all paths from INITIAL nodes to OBJECTIVE nodes.
+        """DFS to find all paths from INITIAL nodes to OBJECTIVE nodes.
+
+        Uses in-place append/pop on shared path lists instead of
+        allocating new ``path_ids + [x]`` / ``path_edges + [e]`` copies
+        at every expansion.  The old approach created O(depth) list
+        copies per stack entry — for a graph with branching factor *b*
+        and depth *d* that's O(b^d * d) total list allocations.  The
+        in-place version allocates only when a complete path is found.
 
         Results are cached and reused until the graph is mutated via
         ``add_node``/``add_edge``.  A cache hit requires the same or
@@ -223,25 +230,49 @@ class AttackGraph:
         paths: List[AttackPath] = []
 
         for start in starts:
-            stack: List[Tuple[List[str], List[AttackEdge], float]] = [
-                ([start.id], [], 1.0)
-            ]
-            while stack:
-                path_ids, path_edges, prob = stack.pop()
+            # In-place DFS with a visited set for O(1) cycle checks.
+            path_ids: List[str] = [start.id]
+            path_edges: List[AttackEdge] = []
+            prob_stack: List[float] = [1.0]
+            visited: Set[str] = {start.id}
+            iter_stack: List[int] = [0]
+
+            while iter_stack:
                 current = path_ids[-1]
+                neighbors = adj.get(current, [])
+                idx = iter_stack[-1]
+
                 if current in goals:
                     path_nodes = [self.nodes[pid] for pid in path_ids]
-                    paths.append(AttackPath(path_nodes, list(path_edges), prob))
+                    paths.append(AttackPath(path_nodes, list(path_edges), prob_stack[-1]))
+                    visited.discard(path_ids.pop())
+                    iter_stack.pop()
+                    prob_stack.pop()
+                    if path_edges:
+                        path_edges.pop()
                     continue
-                if len(path_ids) >= max_depth:
-                    continue
-                for neighbor_id, edge in adj.get(current, []):
-                    if neighbor_id not in path_ids:  # avoid cycles
-                        stack.append((
-                            path_ids + [neighbor_id],
-                            path_edges + [edge],
-                            prob * edge.probability,
-                        ))
+
+                advanced = False
+                while idx < len(neighbors):
+                    neighbor_id, edge = neighbors[idx]
+                    idx += 1
+                    if neighbor_id not in visited and len(path_ids) < max_depth:
+                        iter_stack[-1] = idx
+                        path_ids.append(neighbor_id)
+                        path_edges.append(edge)
+                        prob_stack.append(prob_stack[-1] * edge.probability)
+                        visited.add(neighbor_id)
+                        iter_stack.append(0)
+                        advanced = True
+                        break
+
+                if not advanced:
+                    visited.discard(path_ids.pop())
+                    iter_stack.pop()
+                    prob_stack.pop()
+                    if path_edges:
+                        path_edges.pop()
+
         self._paths_cache = paths
         self._paths_cache_depth = max_depth
         return paths
