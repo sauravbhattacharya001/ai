@@ -101,7 +101,7 @@ def _cmd_info(_args: List[str]) -> None:
 # Modules that export a main() function
 _HAS_MAIN = {
     "access_control", "adaptive_thresholds", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_graph", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "circuit_breaker", "culture_survey", "debate", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "risk_heatmap", "policy_linter", "roi_calculator", "root_cause", "safety_checklist", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
-    "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
+    "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "persuasion_detector", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
     "dlp_scanner", "model_card", "mutation_tester", "nutrition_label", "severity_classifier", "regulatory_mapper", "vuln_scanner",
     "chaos", "collusion_detector", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "fleet_sim", "ir_simulator", "lateral_movement", "memory_forensics", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -194,6 +194,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "threat-correlate":  (_make_handler("threat_correlator"), "Cross-module threat signal correlation"),
     "risk-profile":      (_make_handler("risk_profiler"),    "Unified agent risk profiling & fleet dossiers"),
     "deception":         (_make_handler("deception_detector"), "Agent deception detection & trust analysis"),
+    "persuasion":        (_make_handler("persuasion_detector"), "Agent persuasion & social engineering detection"),
     "evasion":           (_make_handler("evasion"),             "Simulate agent evasion of safety controls"),
     "dashboard":         (_make_handler("dashboard"),            "Generate HTML simulation dashboards"),
     "safety-benchmark":  (_make_handler("safety_benchmark"),     "Run standardised safety control benchmarks"),
