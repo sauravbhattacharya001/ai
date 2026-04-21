@@ -450,6 +450,16 @@ class FleetRiskReport:
         self.total_findings = sum(len(d.findings) for d in self.dossiers)
 
         # Fleet-level top mitigations (deduplicated by action)
+        # Pre-count how many dossiers each mitigation action appears in
+        # (avoids O(D²·M²) nested scan that re-iterated all dossiers per action)
+        action_agent_count: Dict[str, int] = defaultdict(int)
+        for d in self.dossiers:
+            seen_actions: set = set()
+            for m in d.mitigations:
+                if m.action not in seen_actions:
+                    action_agent_count[m.action] += 1
+                    seen_actions.add(m.action)
+
         all_mits: Dict[str, Mitigation] = {}
         for d in self.dossiers:
             for m in d.mitigations:
@@ -459,11 +469,7 @@ class FleetRiskReport:
                         impact=m.impact,
                         category=m.category,
                         effort=m.effort,
-                        source_findings=sum(
-                            1 for d2 in self.dossiers
-                            for m2 in d2.mitigations
-                            if m2.action == m.action
-                        ),
+                        source_findings=action_agent_count[m.action],
                     )
         self.top_mitigations = sorted(
             all_mits.values(), key=lambda m: -m.impact

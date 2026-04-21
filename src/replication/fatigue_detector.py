@@ -149,12 +149,25 @@ class FatigueDetector:
         total = len(self._events)
         span_h = max((self._events[-1].timestamp - self._events[0].timestamp) / 3600, 0.01)
 
-        # Basic stats
+        # Single-pass aggregation (was 5 separate iterations over _events)
+        sev_counts: Counter = Counter()
+        type_counts: Counter = Counter()
+        acked: List[AlertEvent] = []
+        suppressed = 0
+        off_count = 0
+        _off_start = t.off_hours_start
+        _off_end = t.off_hours_end
+        for e in self._events:
+            sev_counts[e.severity] += 1
+            type_counts[e.alert_type] += 1
+            if e.ack_delay_s is not None:
+                acked.append(e)
+            if e.suppressed:
+                suppressed += 1
+            if _is_off_hours(e.timestamp, _off_start, _off_end):
+                off_count += 1
+
         rate = total / span_h
-        sev_counts = Counter(e.severity for e in self._events)
-        type_counts = Counter(e.alert_type for e in self._events)
-        acked = [e for e in self._events if e.ack_delay_s is not None]
-        suppressed = sum(1 for e in self._events if e.suppressed)
 
         # 1. Volume overload
         vol_score = min(100, (rate / t.max_alerts_per_hour) * 50) if t.max_alerts_per_hour > 0 else 0
@@ -206,7 +219,7 @@ class FatigueDetector:
                 ack_sev,
             ))
 
-        # 5. Suppression rate
+        # 5. Suppression rate (suppressed already counted in single pass)
         sup_ratio = suppressed / total if total > 0 else 0
         sup_score = min(100, (sup_ratio / t.suppression_ratio) * 50) if t.suppression_ratio > 0 else 0
         sup_sev = "warning" if sup_ratio > t.suppression_ratio else "info"
@@ -216,8 +229,7 @@ class FatigueDetector:
             sup_sev,
         ))
 
-        # 6. Off-hours load
-        off_count = sum(1 for e in self._events if _is_off_hours(e.timestamp, t.off_hours_start, t.off_hours_end))
+        # 6. Off-hours load (off_count already counted in single pass)
         off_ratio = off_count / total if total > 0 else 0
         off_score = min(100, (off_ratio / t.off_hours_ratio) * 50) if t.off_hours_ratio > 0 else 0
         off_sev = "warning" if off_ratio > t.off_hours_ratio else "info"
