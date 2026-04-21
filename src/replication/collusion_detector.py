@@ -196,38 +196,58 @@ class CollusionDetector:
         )
 
     def detect_temporal_sync(self, actions: List[AgentAction]) -> List[CollusionSignal]:
-        """Find suspiciously synchronized action timing between agents."""
+        """Find suspiciously synchronized action timing between agents.
+
+        Uses a two-pointer sliding window on pre-sorted timestamps per agent
+        pair, reducing per-pair cost from O(n*m) to O(n+m).
+        """
         signals: List[CollusionSignal] = []
         window = self._thresholds["sync_window"]
 
-        # Group actions by agent
-        by_agent: Dict[str, List[AgentAction]] = defaultdict(list)
+        # Group actions by agent, pre-sort timestamps
+        by_agent: Dict[str, List[float]] = defaultdict(list)
         for a in actions:
-            by_agent[a.agent_id].append(a)
+            by_agent[a.agent_id].append(a.timestamp)
+        for ts_list in by_agent.values():
+            ts_list.sort()
+
+        time_span = (
+            max(a.timestamp for a in actions) - min(a.timestamp for a in actions)
+        ) if actions else 0.0
+        expected_ratio = window * 2 / max(time_span, 1.0)
 
         agent_ids = list(by_agent.keys())
         for a1, a2 in combinations(agent_ids, 2):
-            sync_count = 0
-            total_compared = 0
-            sync_times: List[float] = []
-
-            for act1 in by_agent[a1]:
-                for act2 in by_agent[a2]:
-                    total_compared += 1
-                    delta = abs(act1.timestamp - act2.timestamp)
-                    if delta <= window:
-                        sync_count += 1
-                        sync_times.append(min(act1.timestamp, act2.timestamp))
-
+            ts1 = by_agent[a1]
+            ts2 = by_agent[a2]
+            total_compared = len(ts1) * len(ts2)
             if total_compared == 0:
                 continue
 
+            # Two-pointer: count pairs within window in O(n+m)
+            # For each element in ts1, find the range [lo, hi) in ts2
+            # within [t - window, t + window]. Slide lo/hi forward.
+            sync_count = 0
+            lo = 0
+            hi = 0
+            n2 = len(ts2)
+            t_min_sync = float("inf")
+            t_max_sync = float("-inf")
+
+            for t in ts1:
+                # Advance lo to first ts2 >= t - window
+                while lo < n2 and ts2[lo] < t - window:
+                    lo += 1
+                # Advance hi to first ts2 > t + window
+                while hi < n2 and ts2[hi] <= t + window:
+                    hi += 1
+                count = hi - lo
+                if count > 0:
+                    sync_count += count
+                    t_min_sync = min(t_min_sync, min(t, ts2[lo]))
+                    t_max_sync = max(t_max_sync, max(t, ts2[hi - 1]))
+
             sync_ratio = sync_count / total_compared
-            # Expect some coincidental overlap; flag if ratio is high
-            expected_ratio = window * 2 / max(
-                (max(a.timestamp for a in actions) - min(a.timestamp for a in actions)),
-                1.0,
-            )
             if sync_ratio > expected_ratio * 3 and sync_count >= 3:
                 confidence = min(1.0, sync_ratio / max(expected_ratio * 5, 0.01))
                 signals.append(CollusionSignal(
@@ -241,8 +261,8 @@ class CollusionDetector:
                     ),
                     evidence={"sync_count": sync_count, "sync_ratio": sync_ratio},
                     timestamp_range=(
-                        min(sync_times) if sync_times else 0.0,
-                        max(sync_times) if sync_times else 0.0,
+                        t_min_sync if t_min_sync != float("inf") else 0.0,
+                        t_max_sync if t_max_sync != float("-inf") else 0.0,
                     ),
                 ))
 
@@ -338,28 +358,46 @@ class CollusionDetector:
         return signals
 
     def detect_cover_behavior(self, actions: List[AgentAction]) -> List[CollusionSignal]:
-        """Find agents generating noise while another performs critical actions."""
+        """Find agents generating noise while another performs critical actions.
+
+        Pre-sorts non-critical actions by timestamp and uses bisect to
+        find the window slice in O(log N) instead of scanning all actions
+        per critical event.
+        """
+        import bisect
+
         signals: List[CollusionSignal] = []
         window = self._thresholds["sync_window"] * 3
 
         # Find critical actions
         critical = [a for a in actions if a.action_type in _CRITICAL_ACTIONS]
+        if not critical:
+            return signals
+
+        # Pre-sort non-critical actions by timestamp for bisect
+        others = sorted(
+            (a for a in actions if a.action_type not in _CRITICAL_ACTIONS),
+            key=lambda a: a.timestamp,
+        )
+        other_times = [a.timestamp for a in others]
 
         for crit_action in critical:
-            # Look for noise bursts from other agents around this critical action
             t_start = crit_action.timestamp - window
             t_end = crit_action.timestamp + window
+
+            lo = bisect.bisect_left(other_times, t_start)
+            hi = bisect.bisect_right(other_times, t_end)
 
             noise_by_agent: Dict[str, int] = defaultdict(int)
             total_by_agent: Dict[str, int] = defaultdict(int)
 
-            for a in actions:
+            for idx in range(lo, hi):
+                a = others[idx]
                 if a.agent_id == crit_action.agent_id:
                     continue
-                if t_start <= a.timestamp <= t_end:
-                    total_by_agent[a.agent_id] += 1
-                    if a.action_type in _NOISE_ACTIONS:
-                        noise_by_agent[a.agent_id] += 1
+                total_by_agent[a.agent_id] += 1
+                if a.action_type in _NOISE_ACTIONS:
+                    noise_by_agent[a.agent_id] += 1
 
             for agent_id, noise_count in noise_by_agent.items():
                 total = total_by_agent[agent_id]
