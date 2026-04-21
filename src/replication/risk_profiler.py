@@ -42,6 +42,7 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import logging
 import random
@@ -425,10 +426,12 @@ class FleetRiskReport:
                 self.fleet_risk_tier = tier
                 break
 
-        # Peer percentiles
+        # Peer percentiles — O(N log N) via sorted scores + bisect
+        asc_scores = sorted(scores)
+        n = len(scores)
         for d in self.dossiers:
-            below = sum(1 for s in scores if s < d.overall_score)
-            d.peer_percentile = (below / len(scores)) * 100
+            below = bisect.bisect_left(asc_scores, d.overall_score)
+            d.peer_percentile = (below / n) * 100
 
         # Category hotspots (fleet-wide)
         cat_findings: Dict[RiskCategory, List[Finding]] = defaultdict(list)
