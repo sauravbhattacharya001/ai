@@ -669,8 +669,10 @@ class MonteCarloAnalyzer:
             prob_all_denied=all_denied_count / n if n else 0,
             max_depth_breach_pct=depth_breach_count / n * 100 if n else 0,
             quota_saturation_pct=quota_sat_count / n * 100 if n else 0,
-            peak_worker_p95=_percentile(total_workers_v, 95),
-            peak_depth_p95=_percentile(max_depth_v, 95),
+            # Reuse the already-created distributions' cached sorted
+            # lists instead of re-sorting via standalone _percentile().
+            peak_worker_p95=distributions["total_workers"].p95,
+            peak_depth_p95=distributions["max_depth_reached"].p95,
         )
 
         # Histograms
