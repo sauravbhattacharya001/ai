@@ -372,20 +372,16 @@ class ReputationNetwork:
                             ))
 
         # Detect endorsement rings (A→B→C→A with ≥3 members)
+        seen_rings: Set[Tuple[str, ...]] = set()
         for a in graph:
             for b in graph.get(a, {}):
                 for c in graph.get(b, {}):
                     if c != a and c != b and a in graph.get(c, {}):
-                        ring = tuple(sorted([a, b, c]))
-                        # Deduplicate
-                        ring_key = ring
-                        if not any(
-                            tuple(sorted(al.coalition_members)) == ring_key
-                            and al.pattern == "ring"
-                            for al in alerts
-                        ):
+                        ring_key = tuple(sorted([a, b, c]))
+                        if ring_key not in seen_rings:
+                            seen_rings.add(ring_key)
                             alerts.append(CoalitionAlert(
-                                coalition_members=list(ring),
+                                coalition_members=list(ring_key),
                                 pattern="ring",
                                 confidence=0.7,
                                 description=f"Circular endorsement ring detected: "
@@ -393,6 +389,7 @@ class ReputationNetwork:
                             ))
 
         # Detect Sybil clusters: agents that only endorse each other
+        seen_clusters: Set[Tuple[str, ...]] = set()
         for a in graph:
             targets_of_a = set(graph[a].keys())
             if len(targets_of_a) < 2:
@@ -409,11 +406,8 @@ class ReputationNetwork:
                 density = internal_edges / total_possible if total_possible > 0 else 0
                 if density > 0.6:
                     cluster_key = tuple(sorted(clique))
-                    if not any(
-                        tuple(sorted(al.coalition_members)) == cluster_key
-                        and al.pattern == "sybil_cluster"
-                        for al in alerts
-                    ):
+                    if cluster_key not in seen_clusters:
+                        seen_clusters.add(cluster_key)
                         alerts.append(CoalitionAlert(
                             coalition_members=sorted(clique),
                             pattern="sybil_cluster",
