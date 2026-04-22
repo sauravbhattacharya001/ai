@@ -162,6 +162,17 @@ nav:
           - Watermark: api/watermark.md
           - Steganography: api/steganography.md
           - Nutrition Label: api/nutrition_label.md
+      - Advanced Safety:
+          - Access Control: api/access_control.md
+          - Red Team: api/red_team.md
+          - Supply Chain: api/supply_chain.md
+          - STRIDE: api/stride.md
+          - Hardening Advisor: api/hardening_advisor.md
+          - Culture Survey: api/culture_survey.md
+          - Debate Engine: api/debate.md
+          - Model Card: api/model_card.md
+          - Safety Autopilot: api/safety_autopilot.md
+          - Safety Benchmark: api/safety_benchmark.md
       - Reporting:
           - Reporter: api/reporter.md
           - Exporter: api/exporter.md
