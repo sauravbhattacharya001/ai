@@ -46,6 +46,28 @@ def box_header(title: str, width: int = 57) -> List[str]:
     ]
 
 
+def linear_regression(ys: "list[float]") -> "tuple[float, float, float]":
+    """Simple linear regression over integer indices.
+
+    Returns ``(slope, intercept, r_squared)``.
+    Previously duplicated in *drift* and (slope-only) in *hoarding*.
+    """
+    n = len(ys)
+    if n < 2:
+        return 0.0, ys[0] if ys else 0.0, 0.0
+    x_mean = (n - 1) / 2.0
+    y_mean = sum(ys) / n
+    ss_xy = sum((i - x_mean) * (y - y_mean) for i, y in enumerate(ys))
+    ss_xx = sum((i - x_mean) ** 2 for i in range(n))
+    ss_yy = sum((y - y_mean) ** 2 for y in ys)
+    if ss_xx == 0:
+        return 0.0, y_mean, 0.0
+    slope = ss_xy / ss_xx
+    intercept = y_mean - slope * x_mean
+    r_squared = (ss_xy ** 2) / (ss_xx * ss_yy) if ss_yy != 0 else 0.0
+    return slope, intercept, r_squared
+
+
 # Metric names extracted from simulation reports.  Kept here so that
 # montecarlo, sensitivity, and scorecard modules share a single list.
 REPORT_METRIC_NAMES = [

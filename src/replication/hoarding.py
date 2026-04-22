@@ -36,6 +36,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from ._helpers import linear_regression as _linear_regression_full
+
 
 # ── Data types ──────────────────────────────────────────────────────
 
@@ -141,18 +143,11 @@ class DetectorConfig:
 
 # ── Utility functions ───────────────────────────────────────────────
 
+# Deduplicated: delegates to _helpers.linear_regression, returns slope only.
 def _linear_regression_slope(values: Sequence[float]) -> float:
     """Compute the slope of a simple linear regression over index."""
-    n = len(values)
-    if n < 2:
-        return 0.0
-    mean_x = (n - 1) / 2.0
-    mean_y = sum(values) / n
-    num = sum((i - mean_x) * (v - mean_y) for i, v in enumerate(values))
-    den = sum((i - mean_x) ** 2 for i in range(n))
-    if den == 0:
-        return 0.0
-    return num / den
+    slope, _, _ = _linear_regression_full(list(values))
+    return slope
 
 
 def _monotonic_increase_ratio(values: Sequence[float]) -> float:

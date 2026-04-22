@@ -34,7 +34,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence
 
 from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
-from ._helpers import stats_mean, stats_std
+from ._helpers import stats_mean, stats_std, linear_regression as _linear_regression_impl
 
 
 # ── Enums ──
@@ -260,23 +260,8 @@ def _sparkline(values: Sequence[float]) -> str:
     )
 
 
-def _linear_regression(ys: Sequence[float]) -> tuple[float, float, float]:
-    """Simple linear regression. Returns (slope, intercept, r_squared)."""
-    n = len(ys)
-    if n < 2:
-        return 0.0, ys[0] if ys else 0.0, 0.0
-    xs = list(range(n))
-    x_mean = sum(xs) / n
-    y_mean = sum(ys) / n
-    ss_xy = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys))
-    ss_xx = sum((x - x_mean) ** 2 for x in xs)
-    ss_yy = sum((y - y_mean) ** 2 for y in ys)
-    if ss_xx == 0:
-        return 0.0, y_mean, 0.0
-    slope = ss_xy / ss_xx
-    intercept = y_mean - slope * x_mean
-    r_squared = (ss_xy ** 2) / (ss_xx * ss_yy) if ss_yy != 0 else 0.0
-    return slope, intercept, r_squared
+# Deduplicated: _linear_regression now lives in _helpers.linear_regression
+_linear_regression = _linear_regression_impl
 
 
 def _longest_monotonic_run(values: Sequence[float]) -> int:
