@@ -381,8 +381,16 @@ class TrustNetwork:
         return detections
 
     def _find_ring(self, start: str, max_len: int) -> Optional[List[str]]:
-        """DFS for cycles using adjacency index."""
-        def dfs(node: str, path: List[str]) -> Optional[List[str]]:
+        """DFS for cycles using adjacency index.
+
+        Uses in-place path mutation with a visited set for O(1) membership
+        checks, replacing ``path + [t]`` which allocated O(depth) lists per
+        recursive call and used O(n) ``in`` scans on the path list.
+        """
+        path: List[str] = [start]
+        visited: Set[str] = {start}
+
+        def dfs(node: str) -> Optional[List[str]]:
             if len(path) > max_len:
                 return None
             for t in self._outgoing.get(node, set()):
@@ -390,13 +398,17 @@ class TrustNetwork:
                 if e is None or e.score < 0.5:
                     continue
                 if t == start and len(path) >= 3:
-                    return path
-                if t not in path:
-                    result = dfs(t, path + [t])
+                    return list(path)
+                if t not in visited:
+                    path.append(t)
+                    visited.add(t)
+                    result = dfs(t)
                     if result:
                         return result
+                    path.pop()
+                    visited.discard(t)
             return None
-        return dfs(start, [start])
+        return dfs(start)
 
     def _ring_avg_trust(self, ring: List[str]) -> float:
         scores = []
@@ -555,21 +567,34 @@ class TrustNetwork:
             else:
                 buckets["0.8-1.0"] += 1
 
-        # Rankings
-        reputations = [(a, self.get_reputation(a)) for a in self.agents]
+        # Compute reputations and hubs in a single pass over incoming edges,
+        # replacing two separate O(V × avg_degree) iterations.
+        hub_threshold = max(3, len(self.agents) * 0.3)
+        reputations: List[tuple] = []
+        hubs: List[str] = []
+        for aid in self.agents:
+            sources = self._incoming.get(aid, set())
+            if not sources:
+                reputations.append((aid, 0.0))
+                continue
+            total = 0.0
+            count = 0
+            trusted_by = 0
+            for s in sources:
+                e = self.edges.get((s, aid))
+                if e:
+                    total += e.score
+                    count += 1
+                    if e.score > 0.3:
+                        trusted_by += 1
+            rep = total / count if count else 0.0
+            reputations.append((aid, rep))
+            if trusted_by >= hub_threshold:
+                hubs.append(aid)
+
         reputations.sort(key=lambda x: x[1], reverse=True)
         most_trusted = reputations[:5]
         least_trusted = reputations[-5:] if len(reputations) > 5 else []
-
-        # Hubs: trusted by many — use adjacency index
-        hubs = []
-        threshold = max(3, len(self.agents) * 0.3)
-        for aid in self.agents:
-            trusted_by = sum(1 for s in self._incoming.get(aid, set())
-                           if (s, aid) in self.edges and self.edges[(s, aid)].score > 0.3)
-            if trusted_by >= threshold:
-                hubs.append(aid)
-
         # Isolated
         connected = set()
         for s, t in self.edges:
