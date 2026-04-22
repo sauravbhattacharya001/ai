@@ -105,6 +105,7 @@ _HAS_MAIN = {
     "dlp_scanner", "model_card", "mutation_tester", "nutrition_label", "severity_classifier", "regulatory_mapper", "vuln_scanner",
     "capability_escalation", "chaos", "resource_auditor", "collusion_detector", "comm_interceptor", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "fleet_sim", "ir_simulator", "lateral_movement", "loyalty_tester", "memory_forensics", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
     "sandbagging_detector",
+    "stress_tester",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -274,6 +275,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "reputation":              (_make_handler("reputation_network"),                                       "Peer-to-peer agent reputation network with coalition detection & blacklist recommendations"),
     "loyalty":                 (_make_handler("loyalty_tester"),                                             "Agent loyalty probe battery — structured temptation/pressure testing"),
     "sandbagging":             (_make_handler("sandbagging_detector"),                                        "Detect agents deliberately hiding capabilities (sandbagging)"),
+    "stress":                  (_make_handler("stress_tester"),                                            "Subject agents to degraded conditions & measure safety property degradation"),
 }
 
 
