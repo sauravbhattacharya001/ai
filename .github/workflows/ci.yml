@@ -54,30 +54,50 @@ jobs:
         run: |
           python -m pytest tests/ -v --tb=short \
             --cov=replication \
+            --cov-branch \
             --cov-report=xml:coverage.xml \
             --cov-report=html:htmlcov \
-            --cov-report=term-missing \
+            --cov-report=term-missing:skip-covered \
             --cov-report=json:coverage.json
 
       - name: Coverage threshold check
         if: matrix.python-version == '3.12'
         run: |
-          TOTAL=$(python -c "import json; d=json.load(open('coverage.json')); print(d['totals']['percent_covered_display'])")
-          echo "### 🔬 Coverage: ${TOTAL}%" >> $GITHUB_STEP_SUMMARY
-          python -c "
-          import json, sys
+          python3 << 'PYEOF'
+          import json
           d = json.load(open('coverage.json'))
           pct = d['totals']['percent_covered']
-          print(f'Total coverage: {pct:.1f}%')
-          # Per-file breakdown for uncovered files
+          num_br = d['totals'].get('num_branches', 1) or 1
+          cov_br = d['totals'].get('covered_branches', 0)
+          branch_pct = cov_br / num_br * 100
+          with open('$GITHUB_STEP_SUMMARY' if '$GITHUB_STEP_SUMMARY' else '/dev/null', 'a') as f:
+              pass
+          import os
+          summary = os.environ.get('GITHUB_STEP_SUMMARY', '')
+          if summary:
+              with open(summary, 'a') as f:
+                  f.write(f'### Coverage: {pct:.1f}% (branch: {branch_pct:.1f}%)\n\n')
+                  low = [(name, s['summary']['percent_covered'], s['summary']['missing_lines'])
+                         for name, s in sorted(d['files'].items())
+                         if s['summary']['percent_covered'] < 80]
+                  if low:
+                      f.write(f'<details><summary>{len(low)} files below 80%</summary>\n\n')
+                      f.write('| File | Coverage | Missing |\n|------|----------|---------|\n')
+                      for name, fpct, missing in sorted(low, key=lambda x: x[1]):
+                          short = name.replace('src/replication/', '')
+                          f.write(f'| {short} | {fpct:.0f}% | {missing} lines |\n')
+                      f.write('\n</details>\n')
+                  else:
+                      f.write('All files meet 80% threshold\n')
+          print(f'Total coverage: {pct:.1f}% | Branch: {branch_pct:.1f}%')
           for fname, fdata in sorted(d['files'].items()):
-            fpct = fdata['summary']['percent_covered']
-            if fpct < 80:
-              missing = fdata['summary']['missing_lines']
-              print(f'  ⚠ {fname}: {fpct:.0f}% ({missing} lines uncovered)')
+              fpct = fdata['summary']['percent_covered']
+              if fpct < 80:
+                  missing = fdata['summary']['missing_lines']
+                  print(f'  {fname}: {fpct:.0f}% ({missing} lines uncovered)')
           if pct < 80:
-            print(f'::warning::Coverage {pct:.1f}% is below 80% threshold')
-          "
+              print(f'::warning::Coverage {pct:.1f}% is below 80% threshold')
+          PYEOF
 
       - name: Upload coverage HTML report
         if: matrix.python-version == '3.12'

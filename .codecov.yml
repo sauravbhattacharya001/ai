@@ -17,6 +17,50 @@ coverage:
         target: 80%
         threshold: 5%
 
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        target: auto
+        threshold: 5%
+  individual_components:
+    - component_id: core-safety
+      name: Core Safety Modules
+      paths:
+        - src/replication/contract.py
+        - src/replication/kill_switch.py
+        - src/replication/quarantine.py
+        - src/replication/safety_gate.py
+        - src/replication/safety_net.py
+        - src/replication/containment_planner.py
+        - src/replication/circuit_breaker.py
+    - component_id: threat-analysis
+      name: Threat Analysis
+      paths:
+        - src/replication/attack_graph.py
+        - src/replication/attack_surface.py
+        - src/replication/attack_tree.py
+        - src/replication/threat_*.py
+        - src/replication/killchain.py
+        - src/replication/red_team.py
+    - component_id: monitoring
+      name: Monitoring & Observability
+      paths:
+        - src/replication/observability.py
+        - src/replication/metrics_aggregator.py
+        - src/replication/alert_router.py
+        - src/replication/drift.py
+        - src/replication/anomaly_*.py
+        - src/replication/canary.py
+    - component_id: incident-response
+      name: Incident Response
+      paths:
+        - src/replication/incident*.py
+        - src/replication/ir_*.py
+        - src/replication/forensics.py
+        - src/replication/postmortem.py
+        - src/replication/warroom.py
+
 flags:
   unittests:
     paths:
@@ -24,7 +68,7 @@ flags:
     carryforward: true
 
 comment:
-  layout: "reach,diff,flags,files"
+  layout: "reach,diff,flags,files,components"
   behavior: default
   require_changes: false
   after_n_builds: 1

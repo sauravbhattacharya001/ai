@@ -73,13 +73,21 @@ omit = ["tests/*", "*/conftest.py"]
 
 [tool.coverage.report]
 show_missing = true
+skip_covered = true
 skip_empty = true
 fail_under = 80
+sort = "Cover"
 exclude_lines = [
     "pragma: no cover",
     "if __name__ == .__main__.",
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
+    "@abstractmethod",
+    "@overload",
+]
+exclude_also = [
+    "def __repr__",
+    "def __str__",
 ]
 
 [tool.coverage.html]
