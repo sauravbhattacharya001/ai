@@ -103,7 +103,7 @@ _HAS_MAIN = {
     "access_control", "adaptive_thresholds", "alert_router", "alignment", "anomaly_cluster", "anomaly_replay", "attack_graph", "attack_tree", "audit_trail", "behavior_profiler", "canary", "capability_catalog", "capacity", "circuit_breaker", "culture_survey", "debate", "decommission", "evidence_collector", "fatigue_detector", "fleet", "ir_playbook", "maturity_model", "preflight", "priv_escalation", "radar", "red_team", "reputation_network", "risk_heatmap", "policy_linter", "roi_calculator", "root_cause", "safety_checklist", "safety_quiz", "sla_monitor", "safety_warranty", "tabletop", "threat_hunt",
     "blast_radius", "correlation_graph", "deception_detector", "evasion", "exposure_window", "hardening_advisor", "incident_comms", "incident_cost", "metrics_aggregator", "persuasion_detector", "postmortem", "safety_benchmark", "safety_drill", "safety_gate", "stride", "supply_chain", "threat_correlator", "trend_tracker",
     "dlp_scanner", "model_card", "mutation_tester", "nutrition_label", "severity_classifier", "regulatory_mapper", "vuln_scanner",
-    "capability_escalation", "chaos", "resource_auditor", "collusion_detector", "comm_interceptor", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "fleet_sim", "ir_simulator", "lateral_movement", "memory_forensics", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
+    "capability_escalation", "chaos", "resource_auditor", "collusion_detector", "comm_interceptor", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "fleet_sim", "ir_simulator", "lateral_movement", "loyalty_tester", "memory_forensics", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -271,6 +271,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "capability-escalation": (_make_handler("capability_escalation"),                                    "Detect gradual capability accumulation (boiling frog pattern)"),
     "resource-audit":          (_make_handler("resource_auditor"),                                        "Autonomous resource acquisition monitoring & power-seeking detection"),
     "reputation":              (_make_handler("reputation_network"),                                       "Peer-to-peer agent reputation network with coalition detection & blacklist recommendations"),
+    "loyalty":                 (_make_handler("loyalty_tester"),                                             "Agent loyalty probe battery — structured temptation/pressure testing"),
 }
 
 
