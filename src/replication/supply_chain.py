@@ -378,12 +378,8 @@ def run(args: argparse.Namespace) -> None:
     else:
         out = report.summary()
 
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as fh:
-            fh.write(out)
-        print(f"Written to {args.output}")
-    else:
-        print(out)
+    from ._helpers import emit_output
+    emit_output(out, args.output)
 
 
 def main(argv: Optional[list] = None) -> None:

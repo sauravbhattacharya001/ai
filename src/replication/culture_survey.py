@@ -686,12 +686,8 @@ def main(argv: Optional[list] = None) -> None:
     else:
         output = result.render()
 
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as fh:
-            fh.write(output)
-        print(f"Written to {args.output}")
-    else:
-        print(output)
+    from ._helpers import emit_output
+    emit_output(output, args.output)
 
 
 if __name__ == "__main__":

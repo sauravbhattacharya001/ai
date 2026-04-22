@@ -547,12 +547,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     else:
         output = _render_text(report, category=args.category, min_impact=args.min_impact)
 
-    if args.output:
-        import pathlib
-        pathlib.Path(args.output).write_text(output, encoding="utf-8")
-        print(f"Report written to {args.output}")
-    else:
-        print(output)
+    from ._helpers import emit_output
+    emit_output(output, args.output, "Report")
 
 
 if __name__ == "__main__":

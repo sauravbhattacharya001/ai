@@ -530,12 +530,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     else:
         output = report.render()
 
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Report written to {args.output}")
-    else:
-        print(output)
+    from ._helpers import emit_output
+    emit_output(output, args.output, "Report")
 
 
 if __name__ == "__main__":

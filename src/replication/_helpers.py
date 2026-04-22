@@ -113,3 +113,31 @@ def extract_report_metrics(report: "SimulationReport") -> Dict[str, float]:
         "total_cpu": report.config.cpu_limit * n_workers,
         "total_memory_mb": float(report.config.memory_limit_mb * n_workers),
     }
+
+
+def emit_output(text: str, path: "str | None", label: str = "Report") -> None:
+    """Write *text* to *path* (printing confirmation) or to stdout.
+
+    Consolidates the repeated pattern found in 50+ CLI ``main()`` functions::
+
+        if args.output:
+            Path(args.output).write_text(output, encoding="utf-8")
+            print(f"Report written to {args.output}")
+        else:
+            print(output)
+
+    Parameters
+    ----------
+    text : str
+        The formatted output string.
+    path : str or None
+        Filesystem path to write to, or *None* to print to stdout.
+    label : str
+        Noun used in the confirmation message (e.g. ``"Report"``).
+    """
+    if path:
+        from pathlib import Path as _P
+        _P(path).write_text(text, encoding="utf-8")
+        print(f"{label} written to {path}")
+    else:
+        print(text)

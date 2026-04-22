@@ -645,11 +645,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     else:
         output = card.to_markdown()
 
-    if args.output:
-        Path(args.output).write_text(output, encoding="utf-8")
-        print(f"✅ Model card written to {args.output}")
-    else:
-        print(output)
+    from ._helpers import emit_output
+    emit_output(output, args.output, "Model card")
 
 
 if __name__ == "__main__":

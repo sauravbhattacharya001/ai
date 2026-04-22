@@ -675,12 +675,8 @@ def main(argv: Optional[list] = None) -> None:
                 parts.append(f"      • {m}")
         output = "\n".join(parts)
 
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Written to {args.output}")
-    else:
-        print(output)
+    from ._helpers import emit_output
+    emit_output(output, args.output)
 
 
 if __name__ == "__main__":

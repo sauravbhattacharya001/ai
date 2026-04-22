@@ -623,12 +623,8 @@ def run(args: argparse.Namespace) -> int:
             output += f"\n  {'TOTAL':12s}: {len(results)}"
             output += "\n" + "=" * 70
 
-        if args.output:
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(output)
-            print(f"Wrote {len(results)} debate(s) to {args.output}")
-        else:
-            print(output)
+        from ._helpers import emit_output
+        emit_output(output, args.output, f"{len(results)} debate(s)")
         return 0
 
     if not args.topic:
@@ -640,12 +636,8 @@ def run(args: argparse.Namespace) -> int:
     result = session.execute()
     output = FORMATS[args.format](result)
 
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Wrote debate to {args.output}")
-    else:
-        print(output)
+    from ._helpers import emit_output
+    emit_output(output, args.output, "Debate")
 
     return 0
 
