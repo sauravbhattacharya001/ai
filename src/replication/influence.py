@@ -388,9 +388,13 @@ class InfluenceMapper:
 
         return sorted(coalitions, key=lambda c: c.coordination_score, reverse=True)
 
-    def detect_monopolies(self) -> List[InfluenceMonopoly]:
+    def detect_monopolies(
+        self,
+        graph: Optional[Dict[Tuple[str, str], InfluenceEdge]] = None,
+    ) -> List[InfluenceMonopoly]:
         """Find agents with outsized influence over the group."""
-        graph = self.build_influence_graph()
+        if graph is None:
+            graph = self.build_influence_graph()
         if not graph:
             return []
 
@@ -420,9 +424,13 @@ class InfluenceMapper:
 
         return sorted(monopolies, key=lambda m: m.dominance_ratio, reverse=True)
 
-    def detect_echo_chambers(self) -> List[EchoChamber]:
+    def detect_echo_chambers(
+        self,
+        graph: Optional[Dict[Tuple[str, str], InfluenceEdge]] = None,
+    ) -> List[EchoChamber]:
         """Find clusters of mutually reinforcing agents."""
-        graph = self.build_influence_graph()
+        if graph is None:
+            graph = self.build_influence_graph()
         if not graph:
             return []
 
@@ -489,14 +497,20 @@ class InfluenceMapper:
         return sorted(chambers, key=lambda c: c.isolation_ratio, reverse=True)
 
     def analyze(self) -> "InfluenceReport":
-        """Run full influence analysis."""
+        """Run full influence analysis.
+
+        Builds the influence graph once and reuses it for monopoly and
+        echo-chamber detection, avoiding three redundant O(n) graph
+        constructions per call.
+        """
+        graph = self.build_influence_graph()
         return InfluenceReport(
-            graph=self.build_influence_graph(),
+            graph=graph,
             cascades=self.detect_cascades(),
             convergences=self.detect_convergence(),
             coalitions=self.detect_coalitions(),
-            monopolies=self.detect_monopolies(),
-            echo_chambers=self.detect_echo_chambers(),
+            monopolies=self.detect_monopolies(graph=graph),
+            echo_chambers=self.detect_echo_chambers(graph=graph),
             total_interactions=len(self._windowed_interactions()),
             agents=sorted(set(
                 a for ix in self._interactions
