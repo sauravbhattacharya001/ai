@@ -313,12 +313,23 @@ class CollusionDetector:
         signals: List[CollusionSignal] = []
         ratio_threshold = self._thresholds["convergence_ratio"]
 
-        # Group by resource
+        # Group by resource; pre-compute global stats once instead of
+        # re-scanning all actions inside the per-resource loop (O(N) once
+        # vs O(R×N) where R = unique resources).
         by_resource: Dict[str, List[AgentAction]] = defaultdict(list)
+        all_agents: set = set()
+        global_t_min = float("inf")
+        global_t_max = float("-inf")
         for a in actions:
             by_resource[a.resource].append(a)
+            all_agents.add(a.agent_id)
+            if a.timestamp < global_t_min:
+                global_t_min = a.timestamp
+            if a.timestamp > global_t_max:
+                global_t_max = a.timestamp
 
-        total_agents = len(set(a.agent_id for a in actions))
+        total_agents = len(all_agents)
+        total_span = global_t_max - global_t_min if actions else 0.0
 
         for resource, res_actions in by_resource.items():
             agents_on_resource = set(a.agent_id for a in res_actions)
@@ -330,9 +341,6 @@ class CollusionDetector:
                 # Check if actions are temporally clustered
                 timestamps = [a.timestamp for a in res_actions]
                 time_span = max(timestamps) - min(timestamps) if len(timestamps) > 1 else 0
-                total_span = (
-                    max(a.timestamp for a in actions) - min(a.timestamp for a in actions)
-                )
                 temporal_concentration = 1.0 - (time_span / max(total_span, 1.0))
 
                 confidence = min(1.0, (convergence + temporal_concentration) / 2)
