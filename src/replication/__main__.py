@@ -107,6 +107,7 @@ _HAS_MAIN = {
     "reward_hacking",
     "sandbagging_detector",
     "stress_tester",
+    "isolation_verifier",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -278,6 +279,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "reward-hacking":          (_make_handler("reward_hacking"),                                              "Detect agents gaming proxy metrics instead of true objectives (reward hacking)"),
     "sandbagging":             (_make_handler("sandbagging_detector"),                                        "Detect agents deliberately hiding capabilities (sandbagging)"),
     "stress":                  (_make_handler("stress_tester"),                                            "Subject agents to degraded conditions & measure safety property degradation"),
+    "isolation":               (_make_handler("isolation_verifier"),                                        "Verify sandbox isolation — probe for leakage, side channels & unauthorized communication"),
 }
 
 
