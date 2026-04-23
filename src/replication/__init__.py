@@ -533,6 +533,13 @@ from .sitrep import (
     RecommendedAction,
     render_html as render_sitrep_html,
 )
+from .goal_drift import (
+    GoalDriftDetector,
+    GoalSignal,
+    GoalProfile,
+    DriftAlert,
+    DriftType,
+)
 
 __all__ = [
     # contract
@@ -991,4 +998,10 @@ __all__ = [
     "SectorStatus",
     "RecommendedAction",
     "render_sitrep_html",
+    # goal_drift
+    "GoalDriftDetector",
+    "GoalSignal",
+    "GoalProfile",
+    "DriftAlert",
+    "DriftType",
 ]
