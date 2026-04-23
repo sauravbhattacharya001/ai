@@ -61,6 +61,8 @@ import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+
+from ._helpers import Severity
 from typing import Any, Dict, List, Optional, Sequence
 
 
@@ -79,14 +81,6 @@ class TechniqueKind(Enum):
     SANDBOX_PROBING = "sandbox_probing"
     COLLUSION = "collusion"
     STEGANOGRAPHIC = "steganographic"
-
-
-class Severity(Enum):
-    """Risk severity if evasion succeeds."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class ControlType(Enum):

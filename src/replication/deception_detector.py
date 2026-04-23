@@ -70,6 +70,8 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
+
+from ._helpers import Severity
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 
@@ -86,14 +88,6 @@ class DeceptionCategory(Enum):
     FABRICATION = "fabrication"               # Making up facts or references
     STRATEGIC_AMBIGUITY = "strategic_ambiguity"  # Vague answers to avoid commitment
     SELECTIVE_DISCLOSURE = "selective_disclosure"  # Revealing only favorable info
-
-
-class Severity(Enum):
-    """Signal severity levels."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class TrustLevel(Enum):

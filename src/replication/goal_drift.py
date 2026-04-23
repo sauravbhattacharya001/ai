@@ -31,6 +31,8 @@ import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
+
+from ._helpers import Severity
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
@@ -46,15 +48,6 @@ class DriftType(Enum):
     MESA_OPTIMIZATION = "mesa_optimization"
     GOAL_BROADENING = "goal_broadening"
     GOAL_NARROWING = "goal_narrowing"
-
-
-class Severity(Enum):
-    """Alert severity levels."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 # ── Data Classes ──

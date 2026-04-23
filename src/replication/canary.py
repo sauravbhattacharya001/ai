@@ -57,7 +57,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import box_header
+from ._helpers import Severity, box_header
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -80,14 +80,6 @@ class DetectionEvent(Enum):
     TRANSMITTED = "transmitted"
     DECODED = "decoded"
     MUTATED = "mutated"
-
-
-class Severity(Enum):
-    """Risk severity of a detection event."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 EVENT_SEVERITY: Dict[DetectionEvent, Severity] = {

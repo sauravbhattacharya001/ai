@@ -58,7 +58,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import stats_mean, stats_std, box_header
+from ._helpers import Severity, stats_mean, stats_std, box_header
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -71,13 +71,6 @@ class DeceptionPattern(Enum):
     SANDBAGGING_REVERSAL = "sandbagging_reversal"
     INSTRUMENTAL_DECEPTION = "instrumental_deception"
     TIMING_ANOMALY = "timing_anomaly"
-
-
-class Severity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class Context(Enum):

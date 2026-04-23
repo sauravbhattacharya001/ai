@@ -30,6 +30,8 @@ import statistics
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
+
+from ._helpers import Severity
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 
@@ -42,14 +44,6 @@ class ChannelType(Enum):
     PROTOCOL_DEVIATION = "protocol_deviation"
     FREQUENCY = "frequency"
     METADATA = "metadata"
-
-
-class Severity(Enum):
-    """Alert severity level."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 @dataclass

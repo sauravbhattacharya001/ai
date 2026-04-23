@@ -50,20 +50,14 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+
+from ._helpers import Severity
 from typing import Any, Dict, List
 
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
-
-class Severity(Enum):
-    """Breach severity levels."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
 
 class Strategy(Enum):
     """Available containment strategies."""

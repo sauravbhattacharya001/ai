@@ -13,6 +13,8 @@ import math
 import statistics
 from dataclasses import dataclass, field
 from enum import Enum
+
+from ._helpers import Severity
 from typing import Any
 
 
@@ -26,14 +28,6 @@ class EmergentType(Enum):
     PHASE_TRANSITION = "phase_transition"
     OSCILLATION = "oscillation"
     DEADLOCK = "deadlock"
-
-
-class Severity(Enum):
-    """Severity levels for detected emergent behaviors."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 @dataclass

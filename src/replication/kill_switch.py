@@ -58,6 +58,8 @@ import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+
+from ._helpers import Severity
 from typing import Any, Callable, Dict, List, Optional
 
 
@@ -110,14 +112,6 @@ TRIGGER_STATE_KEY: Dict[TriggerKind, str] = {
     TriggerKind.REQUEST_RATE: "request_rate",
     TriggerKind.ERROR_RATE: "error_rate",
 }
-
-
-class Severity(Enum):
-    """Trigger severity levels."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 # ---------------------------------------------------------------------------

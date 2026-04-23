@@ -8,7 +8,22 @@ them here avoids drift and ensures consistent behavior.
 from __future__ import annotations
 
 import math
+from enum import Enum
 from typing import Any, Dict, List, TYPE_CHECKING
+
+
+class Severity(Enum):
+    """Standard 4-level severity shared across replication modules.
+
+    Previously duplicated in 29 files (canary, dlp_scanner,
+    evasion, goal_drift, etc.) with identical LOW/MEDIUM/HIGH/CRITICAL
+    values.  Centralised here to avoid drift.
+    """
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 if TYPE_CHECKING:
     from .simulator import SimulationReport
