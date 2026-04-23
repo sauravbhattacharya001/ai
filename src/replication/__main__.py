@@ -106,6 +106,7 @@ _HAS_MAIN = {
     "capability_escalation", "chaos", "resource_auditor", "collusion_detector", "comm_interceptor", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "fleet_sim", "ir_simulator", "lateral_movement", "loyalty_tester", "memory_forensics", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
     "reward_hacking",
     "sandbagging_detector",
+    "sycophancy_detector",
     "stress_tester",
     "isolation_verifier",
     "compliance", "drift", "escalation", "exporter", "forensics",
@@ -278,6 +279,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "loyalty":                 (_make_handler("loyalty_tester"),                                             "Agent loyalty probe battery — structured temptation/pressure testing"),
     "reward-hacking":          (_make_handler("reward_hacking"),                                              "Detect agents gaming proxy metrics instead of true objectives (reward hacking)"),
     "sandbagging":             (_make_handler("sandbagging_detector"),                                        "Detect agents deliberately hiding capabilities (sandbagging)"),
+    "sycophancy":              (_make_handler("sycophancy_detector"),                                         "Detect sycophantic behavior — excessive agreement, opinion reversal, truth bending"),
     "stress":                  (_make_handler("stress_tester"),                                            "Subject agents to degraded conditions & measure safety property degradation"),
     "isolation":               (_make_handler("isolation_verifier"),                                        "Verify sandbox isolation — probe for leakage, side channels & unauthorized communication"),
 }
