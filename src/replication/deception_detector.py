@@ -648,6 +648,8 @@ class DeceptionDetector:
     ) -> List[DeceptionSignal]:
         """Detect excessive agreement and flattery patterns."""
         signals: List[DeceptionSignal] = []
+        if not stmts:
+            return signals
         if len(stmts) < self.config.sycophancy_min_statements:
             return signals
 
@@ -779,6 +781,8 @@ class DeceptionDetector:
     ) -> List[DeceptionSignal]:
         """Detect strategic use of ambiguous language."""
         signals: List[DeceptionSignal] = []
+        if not stmts:
+            return signals
         if len(stmts) < 3:
             return signals
 
