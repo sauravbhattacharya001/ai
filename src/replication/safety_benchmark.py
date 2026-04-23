@@ -58,7 +58,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from ._helpers import box_header, stats_mean, stats_std
+from ._helpers import box_header, stats_mean, stats_std, percentile_sorted as _percentile_sorted
 
 
 # ---------------------------------------------------------------------------
@@ -409,15 +409,7 @@ _SUITE_DEFS: Dict[BenchmarkSuite, Tuple[List[ControlUnderTest], int]] = {
 }
 
 
-def _percentile(sorted_values: List[float], pct: float) -> float:
-    """Compute a percentile from pre-sorted values."""
-    if not sorted_values:
-        return 0.0
-    idx = (pct / 100.0) * (len(sorted_values) - 1)
-    lower = int(math.floor(idx))
-    upper = min(lower + 1, len(sorted_values) - 1)
-    frac = idx - lower
-    return sorted_values[lower] * (1 - frac) + sorted_values[upper] * frac
+# _percentile imported from ._helpers as _percentile_sorted
 
 
 def _compute_latency(latencies_ms: List[float]) -> LatencyStats:
@@ -426,9 +418,9 @@ def _compute_latency(latencies_ms: List[float]) -> LatencyStats:
         return LatencyStats()
     s = sorted(latencies_ms)
     return LatencyStats(
-        p50_ms=_percentile(s, 50),
-        p90_ms=_percentile(s, 90),
-        p99_ms=_percentile(s, 99),
+        p50_ms=_percentile_sorted(s, 50),
+        p90_ms=_percentile_sorted(s, 90),
+        p99_ms=_percentile_sorted(s, 99),
         min_ms=s[0],
         max_ms=s[-1],
         mean_ms=stats_mean(latencies_ms),

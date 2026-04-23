@@ -115,6 +115,29 @@ def extract_report_metrics(report: "SimulationReport") -> Dict[str, float]:
     }
 
 
+def percentile_sorted(s: List[float], p: float) -> float:
+    """Compute the *p*-th percentile (0–100) from a **pre-sorted** list.
+
+    Uses linear interpolation between adjacent ranks, matching the
+    algorithm previously duplicated in *montecarlo* and *safety_benchmark*.
+    """
+    if not s:
+        return 0.0
+    k = (p / 100.0) * (len(s) - 1)
+    f = int(k)
+    c = f + 1
+    if c >= len(s):
+        return s[-1]
+    return s[f] + (k - f) * (s[c] - s[f])
+
+
+def percentile(values: List[float], p: float) -> float:
+    """Return the *p*-th percentile (0–100), sorting *values* first."""
+    if not values:
+        return 0.0
+    return percentile_sorted(sorted(values), p)
+
+
 def emit_output(text: str, path: "str | None", label: str = "Report") -> None:
     """Write *text* to *path* (printing confirmation) or to stdout.
 

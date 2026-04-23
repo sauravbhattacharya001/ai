@@ -37,7 +37,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .simulator import PRESETS, ScenarioConfig, SimulationReport, Simulator, Strategy
-from ._helpers import stats_mean as _mean, stats_std as _std, box_header as _box_header, extract_report_metrics as _extract_metrics
+from ._helpers import stats_mean as _mean, stats_std as _std, box_header as _box_header, extract_report_metrics as _extract_metrics, percentile as _percentile, percentile_sorted as _percentile_sorted
 
 
 # ── Statistics helpers ──────────────────────────────────────────────────
@@ -60,24 +60,7 @@ def _median_sorted(s: List[float]) -> float:
     return (s[mid - 1] + s[mid]) / 2 if n % 2 == 0 else s[mid]
 
 
-def _percentile(values: List[float], p: float) -> float:
-    """Return the p-th percentile (0-100)."""
-    if not values:
-        return 0.0
-    s = sorted(values)
-    return _percentile_sorted(s, p)
-
-
-def _percentile_sorted(s: List[float], p: float) -> float:
-    """Percentile from a pre-sorted list (avoids redundant sorting)."""
-    if not s:
-        return 0.0
-    k = (p / 100) * (len(s) - 1)
-    f = int(k)
-    c = f + 1
-    if c >= len(s):
-        return s[-1]
-    return s[f] + (k - f) * (s[c] - s[f])
+# _percentile and _percentile_sorted imported from ._helpers
 
 
 def _ci95(values: List[float]) -> Tuple[float, float]:
