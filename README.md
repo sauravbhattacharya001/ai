@@ -22,11 +22,45 @@
 
 ---
 
+## Table of Contents
+
+- [Why This Exists](#why-this-exists)
+- [Who Is This For?](#who-is-this-for)
+- [Key Concepts](#key-concepts)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [CLI Reference](#cli-reference)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Why This Exists
 
 As AI agents gain autonomy, controlling **how and when they spawn copies of themselves** becomes a critical safety challenge. This project provides a complete testbed for designing, validating, and stress-testing replication controls — from contract enforcement and kill switches to game-theoretic analysis and adversarial red-teaming.
 
 No Docker or Podman required. Everything runs as pure Python simulation while documenting the exact resource and network boundaries each worker would get in production.
+
+## Who Is This For?
+
+| Audience | Use Case |
+|----------|----------|
+| **AI Safety Researchers** | Study replication dynamics, design containment strategies, red-team agent systems |
+| **ML Engineers** | Add safety guardrails to autonomous agent deployments before production |
+| **Compliance Teams** | Validate AI systems against NIST AI RMF, EU AI Act, ISO 42001 |
+| **Security Engineers** | Threat model multi-agent systems, detect covert channels and privilege escalation |
+| **Students & Educators** | Learn AI safety concepts through interactive simulations and visualizations |
+
+## Key Concepts
+
+- **Replication Contract** — An HMAC-signed manifest that specifies *exactly* what resources, network access, and lifetime a spawned agent gets. No valid contract → no replication.
+- **Kill Switch** — A last-resort control that can halt all replication fleet-wide. Supports conservative (graceful drain), aggressive (immediate termination), and quarantine (isolate-and-observe) strategies.
+- **Safety Scorecard** — A multi-dimensional evaluation (containment, transparency, compliance, resilience) that produces a letter grade (A–F) for any simulation run.
+- **Chaos Runner** — Fault injection that tests whether safety controls survive real-world failures: killed workers, network partitions, corrupted state, clock skew.
+- **Red Team / Blue Team** — Automated adversarial testing where one agent tries to bypass safety controls while another defends, with an impartial judge scoring the outcome.
 
 ## Architecture
 
