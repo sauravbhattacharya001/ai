@@ -197,28 +197,51 @@ Explain:
 
 ## Architecture Overview
 
-Understanding the codebase helps you contribute effectively:
+The codebase is large (~140 modules in `src/replication/`). Understanding the major subsystems helps you navigate it:
 
-```
-src/replication/
-├── contract.py      # Contract definitions and enforcement
-├── controller.py    # Central controller managing worker lifecycle
-├── signer.py        # HMAC-based manifest signing and verification
-├── worker.py        # Worker agent with replication capabilities
-├── simulator.py     # Simulation harness for testing policies
-├── orchestrator.py  # Multi-worker orchestration layer
-├── comparator.py    # Worker state comparison utilities
-├── observability.py # Logging and metrics infrastructure
-└── __init__.py      # Package exports
-```
+### Core — Worker Lifecycle & Contracts
 
-**Key concepts:**
+| Module | Purpose |
+|---|---|
+| `contract.py` | Contract definitions and enforcement |
+| `controller.py` | Central authority for replication approval |
+| `signer.py` | HMAC-based manifest signing/verification |
+| `worker.py` | Worker agent with replication capabilities |
+| `orchestrator.py` | Multi-worker orchestration layer |
+| `simulator.py` | Simulation harness for testing policies |
+| `fleet.py` / `fleet_sim.py` | Fleet-level management and simulation |
+| `kill_switch.py` | Emergency termination of workers |
+
+### Threat Detection & Red Teaming
+
+`threats.py`, `threat_intel.py`, `threat_hunt.py`, `threat_matrix.py`, `threat_correlator.py` — threat modeling and intelligence. `red_team.py`, `boundary_tester.py`, `chaos.py`, `stress_tester.py` — adversarial testing. `attack_graph.py`, `attack_tree.py`, `attack_surface.py`, `killchain.py` — attack path analysis.
+
+### AI Safety & Alignment
+
+`alignment.py`, `deceptive_alignment.py`, `sandbagging_detector.py`, `sycophancy_detector.py` — alignment verification. `goal_drift.py`, `goal_inference.py`, `reward_hacking.py` — goal stability. `safety_benchmark.py`, `safety_checklist.py`, `safety_gate.py`, `safety_net.py`, `safety_drill.py` — safety infrastructure. `debate.py`, `loyalty_tester.py`, `persuasion_detector.py` — behavioral probes.
+
+### Incident Response
+
+`incident.py`, `ir_playbook.py`, `ir_simulator.py`, `postmortem.py`, `warroom.py`, `incident_comms.py`, `incident_cost.py`, `incident_forecast.py` — end-to-end IR workflow. `forensics.py`, `memory_forensics.py`, `evidence_collector.py`, `root_cause.py` — investigation.
+
+### Security Analysis
+
+`prompt_injection.py`, `covert_channels.py`, `steganography.py`, `collusion_detector.py`, `evasion.py`, `priv_escalation.py`, `capability_escalation.py`, `lateral_movement.py` — detection of specific attack vectors. `dlp_scanner.py`, `vuln_scanner.py`, `quick_scan.py` — scanning. `policy.py`, `policy_linter.py`, `access_control.py`, `compliance.py`, `regulatory_mapper.py` — governance.
+
+### Observability & Reporting
+
+`observability.py`, `dashboard.py`, `reporter.py`, `exporter.py`, `radar.py`, `scorecard.py`, `risk_heatmap.py`, `sitrep.py`, `model_card.py`, `nutrition_label.py` — monitoring, metrics, and reporting.
+
+### Key Concepts
+
 - **Contracts** define what a worker is allowed to do (CPU, memory, network, replication limits)
 - **Manifests** are HMAC-signed documents that bind a worker to its contract
 - **The Controller** is the central authority that approves or denies replication requests
 - **The Kill Switch** can terminate any worker or all workers instantly
 
 When making changes, keep the security model in mind: every replication must be contract-approved, manifests must be cryptographically verified, and the kill switch must always work.
+
+> **Tip:** Run `grep -r 'class ' src/replication/<module>.py | head` to quickly see a module's public API before modifying it.
 
 ## Questions?
 
