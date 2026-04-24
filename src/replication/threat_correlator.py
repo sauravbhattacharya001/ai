@@ -61,6 +61,7 @@ CLI::
 
 from __future__ import annotations
 
+import bisect
 import random
 import statistics
 from collections import defaultdict
@@ -669,16 +670,23 @@ class ThreatCorrelator:
         threats: List[CompoundThreat] = []
         used_ids: Set[str] = set()
 
+        # Pre-extract timestamps for O(log n) window-end lookup via bisect
+        eligible_ts = [s.timestamp for s in eligible]
+
         for i, anchor in enumerate(eligible):
             if anchor.signal_id in used_ids:
                 continue
 
-            window_signals: List[Signal] = []
-            for j in range(i, len(eligible)):
-                if eligible[j].timestamp - anchor.timestamp > window:
-                    break
-                if eligible[j].signal_id not in used_ids:
-                    window_signals.append(eligible[j])
+            # Binary search for the rightmost index within the time window
+            window_end = bisect.bisect_right(
+                eligible_ts, anchor.timestamp + window
+            )
+
+            window_signals: List[Signal] = [
+                eligible[j]
+                for j in range(i, window_end)
+                if eligible[j].signal_id not in used_ids
+            ]
 
             if len(window_signals) < rule.min_signals:
                 continue
