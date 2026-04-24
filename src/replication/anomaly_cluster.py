@@ -158,8 +158,19 @@ class AnomalyClusterer:
     def add_events(self, events: List[AnomalyEvent]) -> None:
         self.events.extend(events)
 
-    def _similarity(self, a: AnomalyEvent, b: AnomalyEvent) -> float:
-        """Compute pairwise similarity between two events (0–1)."""
+    def _similarity(
+        self,
+        a: AnomalyEvent,
+        b: AnomalyEvent,
+        mag_a: float = 0.0,
+        mag_b: float = 0.0,
+    ) -> float:
+        """Compute pairwise similarity between two events (0–1).
+
+        Parameters *mag_a* / *mag_b* are pre-computed feature-vector
+        magnitudes passed in by ``_cluster_events`` to avoid redundant
+        sqrt calculations in the O(n²) loop.
+        """
         cfg = self.config
 
         # Temporal similarity: closer in time → higher
@@ -180,8 +191,6 @@ class AnomalyClusterer:
             common_keys = set(a.features) & set(b.features)
             if common_keys:
                 dot = sum(a.features[k] * b.features[k] for k in common_keys)
-                mag_a = math.sqrt(sum(v ** 2 for v in a.features.values()))
-                mag_b = math.sqrt(sum(v ** 2 for v in b.features.values()))
                 feat_sim = dot / (mag_a * mag_b) if mag_a > 0 and mag_b > 0 else 0.0
                 # Blend feature similarity into category weight
                 cat_sim = 0.5 * cat_sim + 0.5 * feat_sim
@@ -193,13 +202,32 @@ class AnomalyClusterer:
         )
 
     def _cluster_events(self) -> List[List[int]]:
-        """Single-linkage agglomerative clustering on events."""
+        """Single-linkage agglomerative clustering on events.
+
+        Optimisations over the naive O(n²) approach:
+        1. Events sorted by timestamp — skip pairs outside the time
+           window without computing full similarity.
+        2. Feature-vector magnitudes pre-computed once (O(n)) and
+           passed to ``_similarity`` to avoid per-pair sqrt.
+        """
         n = len(self.events)
         if n == 0:
             return []
 
-        # Assign each event to its own cluster
+        # Pre-compute feature-vector magnitudes once — O(n)
+        feat_mags: List[float] = [
+            math.sqrt(sum(v * v for v in ev.features.values()))
+            if ev.features
+            else 0.0
+            for ev in self.events
+        ]
+
+        # Sort indices by timestamp so we can break early on dt
+        order = sorted(range(n), key=lambda k: self.events[k].timestamp)
+
+        # Union-Find
         parent = list(range(n))
+        rank = [0] * n
 
         def find(x: int) -> int:
             while parent[x] != x:
@@ -209,13 +237,39 @@ class AnomalyClusterer:
 
         def union(x: int, y: int) -> None:
             px, py = find(x), find(y)
-            if px != py:
-                parent[px] = py
+            if px == py:
+                return
+            if rank[px] < rank[py]:
+                px, py = py, px
+            parent[py] = px
+            if rank[px] == rank[py]:
+                rank[px] += 1
 
-        # Merge events exceeding similarity threshold
-        for i in range(n):
-            for j in range(i + 1, n):
-                if self._similarity(self.events[i], self.events[j]) >= self.config.similarity_threshold:
+        tw = self.config.time_window_s
+        threshold = self.config.similarity_threshold
+
+        for idx_i in range(n):
+            i = order[idx_i]
+            ti = self.events[i].timestamp
+            for idx_j in range(idx_i + 1, n):
+                j = order[idx_j]
+                # Because events are sorted by timestamp, once the gap
+                # exceeds the time window the temporal component is 0.
+                # The maximum non-temporal similarity is
+                #   category_weight * 1.0 + severity_weight * 1.0
+                # If that alone can't reach the threshold we can break.
+                if self.events[j].timestamp - ti > tw:
+                    max_possible = (
+                        self.config.category_weight + self.config.severity_weight
+                    )
+                    if max_possible < threshold:
+                        break  # no later event can match either
+                if self._similarity(
+                    self.events[i],
+                    self.events[j],
+                    feat_mags[i],
+                    feat_mags[j],
+                ) >= threshold:
                     union(i, j)
 
         # Group by root
