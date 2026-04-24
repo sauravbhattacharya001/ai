@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+from datetime import timezone as _tz
 import hashlib
 import html as html_mod
 import io
@@ -59,7 +60,7 @@ class Artifact:
 
     def __post_init__(self) -> None:
         if not self.timestamp:
-            self.timestamp = datetime.datetime.utcnow().isoformat() + "Z"
+            self.timestamp = datetime.datetime.now(tz=_tz.utc).isoformat()
         if not self.sha256:
             self.sha256 = hashlib.sha256(self.content.encode()).hexdigest()
 
@@ -75,7 +76,7 @@ class EvidencePackage:
 
     def __post_init__(self) -> None:
         if not self.collected_at:
-            self.collected_at = datetime.datetime.utcnow().isoformat() + "Z"
+            self.collected_at = datetime.datetime.now(tz=_tz.utc).isoformat()
 
     @property
     def manifest(self) -> List[Dict[str, Any]]:

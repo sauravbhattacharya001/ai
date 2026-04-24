@@ -41,6 +41,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
+from ._helpers import Severity
+
 
 class Category(Enum):
     """Categories of sensitive data."""
@@ -285,7 +287,7 @@ class DLPScanner:
 
     def audit_report(self, results: List[ScanResult]) -> str:
         """Generate a summary audit report from multiple scan results."""
-        from ._helpers import Severity, box_header
+        from ._helpers import box_header
 
         lines = box_header("DLP Audit Report")
         total_findings = sum(r.finding_count for r in results)
