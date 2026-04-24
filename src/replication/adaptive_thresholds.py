@@ -70,7 +70,7 @@ class ThresholdState:
     @property
     def lower_threshold(self) -> float:
         raw = self.ema - self.sigma_multiplier * self.std / self.risk_multiplier
-        return max(min(raw, self.max_ceiling), self.min_floor)
+        return max(raw, self.min_floor)
 
     def observe(self, value: float) -> Dict[str, Any]:
         """Ingest a new observation and return status."""
@@ -87,12 +87,16 @@ class ThresholdState:
 
         # update EMA
         delta = value - self.ema
+
+        # check breach BEFORE updating EMA so thresholds reflect
+        # the prior distribution, not one that already includes this value
+        breached = value > self.upper_threshold or value < self.lower_threshold
+
         self.ema += self.alpha * delta
         # update exponential moving variance
         self.ema_var = (1 - self.alpha) * (self.ema_var + self.alpha * delta * delta)
 
-        # check breach
-        breached = value > self.upper_threshold or value < self.lower_threshold
+        # adjust risk multiplier based on breach
 
         if breached:
             self.breach_count += 1
