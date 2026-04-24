@@ -688,14 +688,25 @@ ctx.stroke();
             return {c: [s.intensity for s in sorted_sigs if s.goal_category == c] for c in categories}
 
         bin_width = (t1 - t0) / n_bins
+        # Single-pass bucketing: O(signals) instead of O(bins × signals).
+        # Pre-allocate per-category accumulators (sum + count) per bin.
+        cat_idx = {c: i for i, c in enumerate(categories)}
+        n_cats = len(categories)
+        bin_sums = [[0.0] * n_cats for _ in range(n_bins)]
+        bin_counts = [[0] * n_cats for _ in range(n_bins)]
+        for s in sorted_sigs:
+            b = min(int((s.timestamp - t0) / bin_width), n_bins - 1)
+            ci = cat_idx.get(s.goal_category)
+            if ci is not None:
+                bin_sums[b][ci] += s.intensity
+                bin_counts[b][ci] += 1
         result: Dict[str, List[float]] = {c: [] for c in categories}
-        for b in range(n_bins):
-            bstart = t0 + b * bin_width
-            bend = bstart + bin_width
-            bucket = [s for s in sorted_sigs if bstart <= s.timestamp < bend]
-            for c in categories:
-                vals = [s.intensity for s in bucket if s.goal_category == c]
-                result[c].append(sum(vals) / len(vals) if vals else 0.0)
+        for c in categories:
+            ci = cat_idx[c]
+            result[c] = [
+                bin_sums[b][ci] / bin_counts[b][ci] if bin_counts[b][ci] else 0.0
+                for b in range(n_bins)
+            ]
         return result
 
 
