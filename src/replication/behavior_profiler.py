@@ -415,19 +415,34 @@ class BehaviorProfiler:
 
         anomalies: List[Anomaly] = []
 
+        # Precompute category counts, observed distribution, and resource
+        # set once — these were previously rebuilt 4× across the check
+        # methods (_check_frequency, _check_new_categories,
+        # _check_entropy, _check_category_ratios) plus the summary block.
+        cat_counts: Counter[ActionCategory] = Counter()
+        resources: Set[str] = set()
+        for a in actions_sorted:
+            cat_counts[a.category] += 1
+            resources.add(a.resource)
+        n = len(actions_sorted)
+        obs_dist = {cat: count / n for cat, count in cat_counts.items()} if n else {}
+
         # 1. Category frequency analysis
         anomalies.extend(
-            self._check_frequency(agent_id, actions_sorted, baseline)
+            self._check_frequency(agent_id, actions_sorted, baseline,
+                                  cat_counts=cat_counts)
         )
 
         # 2. New category detection
         anomalies.extend(
-            self._check_new_categories(agent_id, actions_sorted, baseline)
+            self._check_new_categories(agent_id, actions_sorted, baseline,
+                                       observed_cats=set(cat_counts.keys()))
         )
 
         # 3. New resource detection
         anomalies.extend(
-            self._check_new_resources(agent_id, actions_sorted, baseline)
+            self._check_new_resources(agent_id, actions_sorted, baseline,
+                                      observed_resources=resources)
         )
 
         # 4. Timing anomalies
@@ -442,7 +457,8 @@ class BehaviorProfiler:
 
         # 6. Entropy shift
         anomalies.extend(
-            self._check_entropy(agent_id, actions_sorted, baseline)
+            self._check_entropy(agent_id, actions_sorted, baseline,
+                                cat_counts=cat_counts, obs_dist=obs_dist)
         )
 
         # 7. Dormancy break
@@ -452,7 +468,9 @@ class BehaviorProfiler:
 
         # 8. Category ratio shift
         anomalies.extend(
-            self._check_category_ratios(agent_id, actions_sorted, baseline)
+            self._check_category_ratios(agent_id, actions_sorted, baseline,
+                                        cat_counts=cat_counts,
+                                        obs_dist=obs_dist)
         )
 
         # Compute risk score
@@ -461,13 +479,6 @@ class BehaviorProfiler:
         recommendations = self._generate_recommendations(
             anomalies, risk_level
         )
-
-        # Summary statistics
-        cat_counts: Counter[ActionCategory] = Counter()
-        resources: Set[str] = set()
-        for a in actions_sorted:
-            cat_counts[a.category] += 1
-            resources.add(a.resource)
 
         summary: Dict[str, Any] = {
             "action_count": len(actions),
@@ -495,13 +506,14 @@ class BehaviorProfiler:
         agent_id: str,
         actions: List[Action],
         baseline: AgentBaseline,
+        *,
+        cat_counts: Optional[Counter] = None,
     ) -> List[Anomaly]:
         """Detect category frequency spikes or drops."""
         anomalies: List[Anomaly] = []
         n = len(actions)
-        cat_counts: Counter[ActionCategory] = Counter()
-        for a in actions:
-            cat_counts[a.category] += 1
+        if cat_counts is None:
+            cat_counts = Counter(a.category for a in actions)
 
         for cat in set(list(cat_counts.keys()) + list(baseline.category_counts.keys())):
             observed_frac = cat_counts.get(cat, 0) / n if n > 0 else 0.0
@@ -572,10 +584,12 @@ class BehaviorProfiler:
         agent_id: str,
         actions: List[Action],
         baseline: AgentBaseline,
+        *,
+        observed_cats: Optional[Set] = None,
     ) -> List[Anomaly]:
         """Detect agent using action categories not seen in training."""
         known = set(baseline.category_distribution.keys())
-        observed = {a.category for a in actions}
+        observed = observed_cats if observed_cats is not None else {a.category for a in actions}
         new_cats = observed - known
 
         anomalies: List[Anomaly] = []
@@ -611,9 +625,11 @@ class BehaviorProfiler:
         agent_id: str,
         actions: List[Action],
         baseline: AgentBaseline,
+        *,
+        observed_resources: Optional[Set[str]] = None,
     ) -> List[Anomaly]:
         """Detect access to resources not seen during training."""
-        observed = {a.resource for a in actions}
+        observed = observed_resources if observed_resources is not None else {a.resource for a in actions}
         new_resources = observed - baseline.known_resources
 
         if not new_resources:
@@ -767,16 +783,19 @@ class BehaviorProfiler:
         agent_id: str,
         actions: List[Action],
         baseline: AgentBaseline,
+        *,
+        cat_counts: Optional[Counter] = None,
+        obs_dist: Optional[Dict] = None,
     ) -> List[Anomaly]:
         """Detect shifts in action category entropy."""
         n = len(actions)
         if n < 2:
             return []
 
-        cat_counts: Counter[ActionCategory] = Counter()
-        for a in actions:
-            cat_counts[a.category] += 1
-        obs_dist = {cat: count / n for cat, count in cat_counts.items()}
+        if cat_counts is None:
+            cat_counts = Counter(a.category for a in actions)
+        if obs_dist is None:
+            obs_dist = {cat: count / n for cat, count in cat_counts.items()}
         obs_entropy = _shannon_entropy(obs_dist)
 
         shift = abs(obs_entropy - baseline.category_entropy)
@@ -861,16 +880,19 @@ class BehaviorProfiler:
         agent_id: str,
         actions: List[Action],
         baseline: AgentBaseline,
+        *,
+        cat_counts: Optional[Counter] = None,
+        obs_dist: Optional[Dict] = None,
     ) -> List[Anomaly]:
         """Detect major shifts in the relative ratio between categories."""
         n = len(actions)
         if n < 5:
             return []
 
-        cat_counts: Counter[ActionCategory] = Counter()
-        for a in actions:
-            cat_counts[a.category] += 1
-        obs_dist = {cat: count / n for cat, count in cat_counts.items()}
+        if cat_counts is None:
+            cat_counts = Counter(a.category for a in actions)
+        if obs_dist is None:
+            obs_dist = {cat: count / n for cat, count in cat_counts.items()}
 
         # Compute Jensen-Shannon divergence (symmetric KL)
         jsd = _jensen_shannon_divergence(
