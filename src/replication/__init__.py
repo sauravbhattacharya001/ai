@@ -540,6 +540,16 @@ from .goal_drift import (
     DriftAlert,
     DriftType,
 )
+from .safe_handoff import (
+    HandoffProtocol,
+    HandoffConfig,
+    HandoffRequest,
+    HandoffRecord,
+    HandoffPhase,
+    HandoffPriority,
+    PhaseResult,
+    FleetHandoffReport,
+)
 
 __all__ = [
     # contract

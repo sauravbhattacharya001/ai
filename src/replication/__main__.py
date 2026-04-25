@@ -112,6 +112,7 @@ _HAS_MAIN = {
     "habituation_detector",
     "stress_tester",
     "isolation_verifier",
+    "safe_handoff",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -289,6 +290,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "temporal-consistency":     (_make_handler("temporal_consistency"),                                      "Detect safety degradation under time pressure, urgency framing & temporal manipulation"),
     "isolation":               (_make_handler("isolation_verifier"),                                        "Verify sandbox isolation — probe for leakage, side channels & unauthorized communication"),
     "habituation":             (_make_handler("habituation_detector"),                                       "Detect gradual normalization of boundary violations (boiling frog)"),
+    "handoff":                 (_make_handler("safe_handoff"),                                               "Safe agent responsibility handoff with verification & rollback"),
 }
 
 
