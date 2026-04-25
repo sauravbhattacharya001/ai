@@ -334,14 +334,21 @@ class TrustNetwork:
             return detections
 
         # Check if recent agents form a dense internal clique
+        # Use adjacency index: only visit recent agents' neighbors
+        # instead of scanning every edge in the network — O(recent_degree)
+        # vs O(|E|).
         recent_ids = {a.id for a in recent}
         internal = 0
         external = 0
-        for (s, t), edge in self.edges.items():
-            if s in recent_ids and t in recent_ids:
-                internal += 1
-            elif s in recent_ids or t in recent_ids:
-                external += 1
+        for aid in recent_ids:
+            for t in self._outgoing.get(aid, set()):
+                if t in recent_ids:
+                    internal += 1
+                else:
+                    external += 1
+            for s in self._incoming.get(aid, set()):
+                if s not in recent_ids:
+                    external += 1
 
         if internal > 0 and (external == 0 or internal / max(1, external) > 2.0):
             confidence = min(1.0, internal / (len(recent) * 2))
@@ -433,8 +440,10 @@ class TrustNetwork:
             agent_interactions = self._agent_interactions.get(aid, [])
             if len(agent_interactions) < 5:
                 continue
+            # Timestamps are already in non-decreasing order because
+            # step_count increases monotonically and interactions are
+            # appended sequentially — skip the O(n log n) sort.
             timestamps = [i.timestamp for i in agent_interactions]
-            timestamps.sort()
             # Look for long gap followed by burst
             for i in range(1, len(timestamps)):
                 gap = timestamps[i] - timestamps[i - 1]
