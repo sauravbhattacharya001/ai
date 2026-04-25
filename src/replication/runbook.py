@@ -47,16 +47,12 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from ._helpers import Severity
+
 
 # ---------------------------------------------------------------------------
 # Enums & constants
 # ---------------------------------------------------------------------------
-
-class Severity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class RunbookFormat(Enum):

@@ -48,6 +48,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from ._helpers import Severity
+
 
 # ── Enums ────────────────────────────────────────────────────────────
 
@@ -62,13 +64,6 @@ class ObjectiveType(Enum):
     RESOURCE_HIJACK = "resource_hijack"
     SUPPLY_CHAIN_COMPROMISE = "supply_chain_compromise"
     SELF_REPLICATION = "self_replication"
-
-
-class Severity(Enum):
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
 
 
 class NodeType(Enum):

@@ -56,7 +56,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import stats_mean, stats_std, box_header
+from ._helpers import Severity, stats_mean, stats_std, box_header
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -69,12 +69,6 @@ class SycophancyPattern(Enum):
     ECHO_CHAMBER = "echo_chamber"
     TRUTH_BENDING = "truth_bending"
 
-
-class Severity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 PATTERN_DESCRIPTIONS: Dict[SycophancyPattern, str] = {

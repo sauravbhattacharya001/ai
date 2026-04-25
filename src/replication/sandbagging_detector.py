@@ -51,7 +51,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import stats_mean, stats_std, box_header
+from ._helpers import Severity, stats_mean, stats_std, box_header
 
 
 # ── Data types ───────────────────────────────────────────────────────
@@ -64,13 +64,6 @@ class SandbaggingPattern(Enum):
     CAPABILITY_REGRESSION = "capability_regression"
     STRATEGIC_TIMING = "strategic_timing"
     PEER_DIVERGENCE = "peer_divergence"
-
-
-class Severity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 PATTERN_DESCRIPTIONS = {

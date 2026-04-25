@@ -64,6 +64,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
+from ._helpers import Severity
+
 
 # ── enums ────────────────────────────────────────────────────────────
 
@@ -86,14 +88,6 @@ class PersuasionTactic(Enum):
     DOOR_IN_FACE = "door_in_face"
     LOADED_QUESTION = "loaded_question"
 
-
-class Severity(Enum):
-    """Signal severity levels."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class RiskLabel(Enum):

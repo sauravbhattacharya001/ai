@@ -62,7 +62,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .simulator import Simulator, ScenarioConfig, SimulationReport, PRESETS
 from .scorecard import SafetyScorecard, ScorecardConfig, ScorecardResult
-from ._helpers import box_header as _box_header
+from ._helpers import Severity, box_header as _box_header
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -76,13 +76,6 @@ class WarrantyStatus(Enum):
     EXPIRED = "expired"       # past validity period
     PENDING = "pending"       # not yet evaluated
 
-
-class Severity(Enum):
-    """Breach severity levels."""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 # ── Operators ────────────────────────────────────────────────────────

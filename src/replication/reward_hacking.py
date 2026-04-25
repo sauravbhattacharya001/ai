@@ -63,7 +63,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from ._helpers import box_header, stats_mean, stats_std
+from ._helpers import Severity, stats_mean, stats_std, box_header
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -77,12 +77,6 @@ class HackingPattern(Enum):
     DISTRIBUTION_SHIFT_GAMING = "distribution_shift_gaming"
     MULTI_METRIC_INCONSISTENCY = "multi_metric_inconsistency"
 
-
-class Severity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 PATTERN_DESCRIPTIONS: Dict[HackingPattern, str] = {
