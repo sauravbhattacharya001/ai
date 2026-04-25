@@ -107,6 +107,7 @@ _HAS_MAIN = {
     "reward_hacking",
     "sandbagging_detector",
     "sycophancy_detector",
+    "temporal_consistency",
     "deceptive_alignment",
     "stress_tester",
     "isolation_verifier",
@@ -284,6 +285,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "sycophancy":              (_make_handler("sycophancy_detector"),                                         "Detect sycophantic behavior — excessive agreement, opinion reversal, truth bending"),
     "deceptive-alignment":     (_make_handler("deceptive_alignment"),                                         "Detect deceptive alignment — treacherous turns, evaluation gaming, context-dependent compliance"),
     "stress":                  (_make_handler("stress_tester"),                                            "Subject agents to degraded conditions & measure safety property degradation"),
+    "temporal-consistency":     (_make_handler("temporal_consistency"),                                      "Detect safety degradation under time pressure, urgency framing & temporal manipulation"),
     "isolation":               (_make_handler("isolation_verifier"),                                        "Verify sandbox isolation — probe for leakage, side channels & unauthorized communication"),
 }
 
