@@ -474,17 +474,42 @@ class ReputationNetwork:
         return weighted_sum / (n * total)
 
     def evaluate(self) -> ReputationReport:
-        self._classify_tiers()
+        # Single pass: classify tiers, collect scores, count blacklisted,
+        # track endorsement givers/receivers, and find the top giver — all
+        # in one iteration instead of 7+ separate passes over agents.
+        n = len(self.agents)
+        scores: List[float] = []
+        blacklisted_count = 0
+        givers_sum = 0.0
+        max_given = 0
+        top_giver_agent: Optional[ReputationAgent] = None
+
+        tier_items = list(TIER_THRESHOLDS.items())
+        for agent in self.agents.values():
+            s = agent.reputation_score
+            # Classify tier inline (replaces _classify_tiers)
+            agent.tier = ReputationTier.NEUTRAL
+            for tier, (lo, hi) in tier_items:
+                if lo <= s < hi or (tier == ReputationTier.EXEMPLARY and s >= hi):
+                    agent.tier = tier
+                    break
+
+            scores.append(s)
+            if s < -0.5:
+                blacklisted_count += 1
+            givers_sum += agent.endorsements_given
+            if agent.endorsements_given > max_given:
+                max_given = agent.endorsements_given
+                top_giver_agent = agent
+
         coalitions = self._detect_coalitions()
         blacklist_recs = self._blacklist_recommendations()
 
-        scores = [a.reputation_score for a in self.agents.values()]
         mean_rep = stats_mean(scores) if scores else 0.5
         gini = self._compute_gini()
 
         # Network health: penalize for blacklisted agents, coalitions, low mean
-        n = len(self.agents)
-        blacklisted_frac = sum(1 for a in self.agents.values() if a.reputation_score < -0.5) / max(n, 1)
+        blacklisted_frac = blacklisted_count / max(n, 1)
         coalition_penalty = min(0.3, len(coalitions) * 0.05)
         health = max(0.0, min(1.0, 0.5 + mean_rep * 0.3 - blacklisted_frac * 0.3 - coalition_penalty))
 
@@ -503,14 +528,12 @@ class ReputationNetwork:
             findings.append(f"{len(blacklist_recs)} agent(s) recommended for blacklisting.")
             recs.append("Review blacklist candidates and revoke their endorsement privileges immediately.")
 
-        # Check for endorsement asymmetry
-        givers = [a.endorsements_given for a in self.agents.values()]
-        receivers = [a.endorsements_received for a in self.agents.values()]
-        if givers and max(givers) > 3 * (stats_mean(givers) + 1):
-            top_giver = max(self.agents.values(), key=lambda a: a.endorsements_given)
-            findings.append(f"Agent {top_giver.agent_id} is an endorsement outlier "
-                            f"({top_giver.endorsements_given} given) — possible rubber-stamping.")
-            recs.append(f"Rate-limit endorsements from {top_giver.agent_id} or require justification.")
+        # Check for endorsement asymmetry (uses pre-computed max_given/givers_sum)
+        givers_mean = (givers_sum / n) if n > 0 else 0.0
+        if n > 0 and max_given > 3 * (givers_mean + 1) and top_giver_agent is not None:
+            findings.append(f"Agent {top_giver_agent.agent_id} is an endorsement outlier "
+                            f"({top_giver_agent.endorsements_given} given) — possible rubber-stamping.")
+            recs.append(f"Rate-limit endorsements from {top_giver_agent.agent_id} or require justification.")
 
         if not findings:
             findings.append("No significant reputation anomalies detected.")
