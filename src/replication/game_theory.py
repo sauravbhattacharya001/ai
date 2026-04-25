@@ -522,6 +522,65 @@ class GameTheoryAnalyzer:
 
     # -- analysis --
 
+    def _precompute_interaction_data(
+        self, payoffs: Payoffs
+    ) -> Tuple[
+        Dict[str, List[Move]],
+        Dict[Tuple[str, str], PairStats],
+        Dict[str, List[Tuple[Move, Move]]],
+        Dict[str, List[float]],
+    ]:
+        """Single pass over interactions to build all per-agent/pair data.
+
+        Returns ``(agent_move_seqs, pair_stats, agent_moves, agent_payoffs)``
+        so callers never re-scan ``self._interactions``.
+        """
+        agent_move_seqs: Dict[str, List[Move]] = defaultdict(list)
+        pairs: Dict[Tuple[str, str], PairStats] = {}
+        agent_moves: Dict[str, List[Tuple[Move, Move]]] = defaultdict(list)
+        agent_payoffs: Dict[str, List[float]] = defaultdict(list)
+
+        for ix in self._interactions:
+            # -- agent_move_seqs (flat move list per agent) --
+            agent_move_seqs[ix.agent_a].append(ix.move_a)
+            agent_move_seqs[ix.agent_b].append(ix.move_b)
+
+            # -- agent_moves / agent_payoffs (for strategy detection) --
+            agent_moves[ix.agent_a].append((ix.move_a, ix.move_b))
+            agent_moves[ix.agent_b].append((ix.move_b, ix.move_a))
+            agent_payoffs[ix.agent_a].append(payoffs.payoff(ix.move_a, ix.move_b))
+            agent_payoffs[ix.agent_b].append(payoffs.payoff(ix.move_b, ix.move_a))
+
+            # -- pair stats --
+            key = (
+                (ix.agent_a, ix.agent_b)
+                if ix.agent_a <= ix.agent_b
+                else (ix.agent_b, ix.agent_a)
+            )
+            if key not in pairs:
+                pairs[key] = PairStats(agent_a=key[0], agent_b=key[1])
+            ps = pairs[key]
+            ps.total_rounds += 1
+
+            if ix.agent_a == key[0]:
+                ma, mb = ix.move_a, ix.move_b
+            else:
+                ma, mb = ix.move_b, ix.move_a
+
+            if ma == Move.COOPERATE and mb == Move.COOPERATE:
+                ps.mutual_cooperate += 1
+            elif ma == Move.DEFECT and mb == Move.DEFECT:
+                ps.mutual_defect += 1
+            elif ma == Move.DEFECT and mb == Move.COOPERATE:
+                ps.a_defects_b_cooperates += 1
+            else:
+                ps.b_defects_a_cooperates += 1
+
+            ps.a_total_payoff += payoffs.payoff(ma, mb)
+            ps.b_total_payoff += payoffs.payoff(mb, ma)
+
+        return agent_move_seqs, pairs, agent_moves, agent_payoffs
+
     def analyze(self) -> GameReport:
         """Run full game-theory analysis and return a report."""
         payoffs = self._config.payoffs
@@ -531,15 +590,16 @@ class GameTheoryAnalyzer:
 
         agent_list = self.agents
 
-        # Pre-build per-agent move histories in a single pass over
-        # interactions so downstream methods avoid redundant O(N) scans.
-        agent_move_seqs: Dict[str, List[Move]] = defaultdict(list)
-        for ix in self._interactions:
-            agent_move_seqs[ix.agent_a].append(ix.move_a)
-            agent_move_seqs[ix.agent_b].append(ix.move_b)
+        # Single pass builds all per-agent and per-pair data structures,
+        # replacing 3 separate O(N) scans over self._interactions.
+        agent_move_seqs, pair_map, agent_moves, agent_payoffs = (
+            self._precompute_interaction_data(payoffs)
+        )
 
-        pair_stats = self._compute_pair_stats(payoffs)
-        strategy_profiles = self._detect_strategies(payoffs)
+        pair_stats = list(pair_map.values())
+        strategy_profiles = self._detect_strategies_from(
+            agent_moves, agent_payoffs
+        )
         # Compute global cooperation rate once and reuse it.
         global_coop = self._global_cooperation_rate()
         alerts = self._detect_alerts(pair_stats, strategy_profiles, agent_move_seqs)
@@ -564,43 +624,21 @@ class GameTheoryAnalyzer:
     # -- pair stats --
 
     def _compute_pair_stats(self, payoffs: Payoffs) -> List[PairStats]:
-        """Compute aggregate statistics per agent pair."""
-        pairs: Dict[Tuple[str, str], PairStats] = {}
-        for ix in self._interactions:
-            key = (
-                (ix.agent_a, ix.agent_b)
-                if ix.agent_a <= ix.agent_b
-                else (ix.agent_b, ix.agent_a)
-            )
-            if key not in pairs:
-                pairs[key] = PairStats(agent_a=key[0], agent_b=key[1])
-            ps = pairs[key]
-            ps.total_rounds += 1
+        """Compute aggregate statistics per agent pair.
 
-            # Determine who is a and who is b in the canonical pair
-            if ix.agent_a == key[0]:
-                ma, mb = ix.move_a, ix.move_b
-            else:
-                ma, mb = ix.move_b, ix.move_a
-
-            if ma == Move.COOPERATE and mb == Move.COOPERATE:
-                ps.mutual_cooperate += 1
-            elif ma == Move.DEFECT and mb == Move.DEFECT:
-                ps.mutual_defect += 1
-            elif ma == Move.DEFECT and mb == Move.COOPERATE:
-                ps.a_defects_b_cooperates += 1
-            else:
-                ps.b_defects_a_cooperates += 1
-
-            ps.a_total_payoff += payoffs.payoff(ma, mb)
-            ps.b_total_payoff += payoffs.payoff(mb, ma)
-
-        return list(pairs.values())
+        .. deprecated:: Prefer ``_precompute_interaction_data`` which builds
+           pair stats in the same single pass as other per-agent data.
+        """
+        _, pair_map, _, _ = self._precompute_interaction_data(payoffs)
+        return list(pair_map.values())
 
     # -- strategy detection --
 
     def _detect_strategies(self, payoffs: Payoffs) -> List[StrategyProfile]:
-        """Detect the strategy each agent appears to be using."""
+        """Detect the strategy each agent appears to be using.
+
+        .. deprecated:: Prefer ``_detect_strategies_from`` with pre-built data.
+        """
         agent_moves: Dict[str, List[Tuple[Move, Move]]] = defaultdict(list)
         agent_payoffs: Dict[str, List[float]] = defaultdict(list)
 
@@ -610,6 +648,14 @@ class GameTheoryAnalyzer:
             agent_payoffs[ix.agent_a].append(payoffs.payoff(ix.move_a, ix.move_b))
             agent_payoffs[ix.agent_b].append(payoffs.payoff(ix.move_b, ix.move_a))
 
+        return self._detect_strategies_from(agent_moves, agent_payoffs)
+
+    def _detect_strategies_from(
+        self,
+        agent_moves: Dict[str, List[Tuple[Move, Move]]],
+        agent_payoffs: Dict[str, List[float]],
+    ) -> List[StrategyProfile]:
+        """Detect strategies from pre-built per-agent move/payoff data."""
         profiles = []
         for agent_id, moves in agent_moves.items():
             total = len(moves)
