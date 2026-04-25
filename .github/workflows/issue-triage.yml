@@ -1,0 +1,110 @@
+name: Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  triage:
+    name: Auto-label issues
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const text = `${issue.title} ${issue.body || ''}`.toLowerCase();
+            const labels = new Set();
+
+            // Category detection
+            const categories = {
+              'bug': [/\bbug\b/, /\bbroken\b/, /\bcrash/, /\berror\b/, /\bfail/, /\bregress/,
+                       /doesn.t work/, /not working/, /unexpected/],
+              'enhancement': [/\bfeature\b/, /\benhance/, /\brequest\b/, /\bpropos/, /\bwould be nice/,
+                               /\bimprove\b/, /\badd support/],
+              'question': [/\bhow (to|do|can)\b/, /\bquestion\b/, /\bis (it|there)\b.*\?/],
+              'documentation': [/\bdoc(s|umentation)?\b/, /\breadme\b/, /\btypo\b/, /\bexample/],
+              'performance': [/\bperformance\b/, /\bslow\b/, /\bmemory\b/, /\btimeout\b/, /\boptimiz/],
+            };
+
+            for (const [label, patterns] of Object.entries(categories)) {
+              if (patterns.some(p => p.test(text))) labels.add(label);
+            }
+
+            // Area detection — matches the repo's AI safety / replication modules
+            const areas = {
+              'area:safety': [/\bsafety\b/, /\balignment\b/, /\bguardrail/, /\bkill.switch/,
+                               /\bsandbagging/, /\bsycophancy/, /\bdeceptive/, /\breward.hack/],
+              'area:security': [/\bsecurity\b/, /\bvuln/, /\bcve\b/, /\binjection\b/, /\bdlp\b/,
+                                 /\bescalat/, /\bexploit/, /\bthreat/, /\battack/,
+                                 /\bsteganography/, /\bcovert/, /\bhoneypot/],
+              'area:incident-response': [/\bincident\b/, /\bplaybook\b/, /\bforensic/, /\bwar.?room/,
+                                          /\bpostmortem/, /\bcontainment/, /\broot.cause/],
+              'area:monitoring': [/\bobservab/, /\bmetric/, /\bdashboard/, /\balert/, /\bsla\b/,
+                                   /\bdrift\b/, /\banomaly/, /\btrend/],
+              'area:trust': [/\btrust\b/, /\breputation/, /\bconsensus/, /\bloyalty/, /\bcollusion/,
+                              /\binfluence/, /\bpersuas/],
+              'area:testing': [/\btest/, /\bbenchmark/, /\bred.team/, /\bchaos/, /\bstress/,
+                                /\bmutation.test/, /\bsimulat/],
+              'area:compliance': [/\bcomplia/, /\baudit/, /\bregulat/, /\bpolicy/, /\brisk.register/,
+                                   /\bmaturity/],
+            };
+
+            for (const [label, patterns] of Object.entries(areas)) {
+              if (patterns.some(p => p.test(text))) labels.add(label);
+            }
+
+            // Priority detection
+            if (/\burgent\b|\bcritical\b|\bsevere\b|\bblocking\b|\bp0\b|\bimmediate/.test(text)) {
+              labels.add('priority:high');
+            } else if (/\bimportant\b|\bp1\b|\bshould fix/.test(text)) {
+              labels.add('priority:medium');
+            }
+
+            if (labels.size === 0) {
+              labels.add('needs-triage');
+            }
+
+            const labelsArr = [...labels];
+
+            // Ensure labels exist
+            const existing = await github.rest.issues.listLabelsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            const existingNames = new Set(existing.data.map(l => l.name));
+
+            const colors = {
+              'bug': 'd73a4a', 'enhancement': 'a2eeef', 'question': 'd876e3',
+              'documentation': '0075ca', 'performance': 'fbca04',
+              'area:safety': 'ff6600', 'area:security': 'b60205',
+              'area:incident-response': 'e4e669', 'area:monitoring': '1d76db',
+              'area:trust': 'c5def5', 'area:testing': '5319e7',
+              'area:compliance': 'bfd4f2',
+              'priority:high': 'b60205', 'priority:medium': 'fbca04',
+              'needs-triage': 'ededed',
+            };
+
+            for (const label of labelsArr) {
+              if (!existingNames.has(label)) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label,
+                  color: colors[label] || 'c2e0c6',
+                });
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              labels: labelsArr,
+            });
+
+            console.log(`Applied labels: ${labelsArr.join(', ')}`);
