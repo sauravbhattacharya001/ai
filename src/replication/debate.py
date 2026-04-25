@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html as html_mod
 import json
 import random
 import sys
@@ -473,6 +474,7 @@ def _format_markdown(result: Dict[str, Any]) -> str:
 
 
 def _format_html(result: Dict[str, Any]) -> str:
+    e = html_mod.escape
     v = result["verdict"]
     verdict_color = {
         "safe": "#28a745", "conditional": "#ffc107", "uncertain": "#6c757d",
@@ -489,27 +491,27 @@ def _format_html(result: Dict[str, Any]) -> str:
             <h3>Round {i + 1}</h3>
             <div class="team red">
                 <h4>🔴 Red Team (Attacker)</h4>
-                <p><strong>Claim:</strong> {red['claim']}</p>
-                <p><strong>Evidence:</strong> {red['evidence']}</p>
-                <p><strong>Impact:</strong> {red.get('impact', 'N/A')}</p>
+                <p><strong>Claim:</strong> {e(red['claim'])}</p>
+                <p><strong>Evidence:</strong> {e(red['evidence'])}</p>
+                <p><strong>Impact:</strong> {e(red.get('impact', 'N/A'))}</p>
             </div>
             <div class="team blue">
                 <h4>🔵 Blue Team (Defender)</h4>
-                <p><strong>Claim:</strong> {blue['claim']}</p>
-                <p><strong>Evidence:</strong> {blue['evidence']}</p>
-                <p><strong>Mitigation:</strong> {blue.get('mitigation', 'N/A')}</p>
+                <p><strong>Claim:</strong> {e(blue['claim'])}</p>
+                <p><strong>Evidence:</strong> {e(blue['evidence'])}</p>
+                <p><strong>Mitigation:</strong> {e(blue.get('mitigation', 'N/A'))}</p>
             </div>
         </div>"""
 
-    recs_html = "".join(f"<li>{r}</li>" for r in v["recommendations"])
-    spots_html = "".join(f"<li>⚠️ {s}</li>" for s in v["blind_spots"])
+    recs_html = "".join(f"<li>{e(r)}</li>" for r in v["recommendations"])
+    spots_html = "".join(f"<li>⚠️ {e(s)}</li>" for s in v["blind_spots"])
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Safety Debate: {result['topic']}</title>
+<title>Safety Debate: {e(result['topic'])}</title>
 <style>
 body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background: #f8f9fa; color: #212529; }}
 h1 {{ color: #1a1a2e; border-bottom: 3px solid {color}; padding-bottom: 0.5rem; }}
@@ -529,14 +531,14 @@ li {{ margin: 0.3rem 0; }}
 </style>
 </head>
 <body>
-<h1>⚔️ Safety Debate: {result['topic']}</h1>
+<h1>⚔️ Safety Debate: {e(result['topic'])}</h1>
 <div class="meta">
-    Severity: <strong>{result['severity'].upper()}</strong> |
+    Severity: <strong>{e(result['severity'].upper())}</strong> |
     Rounds: {result['rounds']} |
-    Session: <code>{result['session_id']}</code> |
-    {result['timestamp']}
+    Session: <code>{e(result['session_id'])}</code> |
+    {e(result['timestamp'])}
 </div>
-<blockquote>{result['description']}</blockquote>
+<blockquote>{e(result['description'])}</blockquote>
 {rounds_html}
 <div class="verdict">
     <h2>⚖️ Judge Verdict</h2>
@@ -546,7 +548,7 @@ li {{ margin: 0.3rem 0; }}
         <div class="metric"><div class="metric-value">{v['residual_risk']:.0%}</div><div class="metric-label">Residual Risk</div></div>
         <div class="metric"><div class="metric-value">{result['rounds']}</div><div class="metric-label">Rounds Debated</div></div>
     </div>
-    <p><strong>Reasoning:</strong> {v['reasoning']}</p>
+    <p><strong>Reasoning:</strong> {e(v['reasoning'])}</p>
     <h3>Recommendations</h3>
     <ul>{recs_html}</ul>
     <h3>Blind Spots</h3>
