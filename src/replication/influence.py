@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -213,12 +213,26 @@ class InfluenceMapper:
     # -- Analysis -----------------------------------------------------------
 
     def _windowed_interactions(self) -> List[Interaction]:
-        """Get interactions within the analysis window."""
+        """Get interactions within the analysis window.
+
+        Results are cached and invalidated when new interactions are
+        recorded.  This avoids redundant O(N) rescans when multiple
+        analysis methods (build_influence_graph, detect_cascades,
+        detect_coalitions, analyze) each call this in the same run.
+        """
+        cached = getattr(self, "_windowed_cache", None)
+        cache_len = getattr(self, "_windowed_cache_len", -1)
+        if cached is not None and cache_len == len(self._interactions):
+            return cached
         if not self._interactions:
-            return []
-        latest = max(i.timestamp for i in self._interactions)
-        cutoff = latest - self.config.window_seconds
-        return [i for i in self._interactions if i.timestamp >= cutoff]
+            result: List[Interaction] = []
+        else:
+            latest = max(i.timestamp for i in self._interactions)
+            cutoff = latest - self.config.window_seconds
+            result = [i for i in self._interactions if i.timestamp >= cutoff]
+        self._windowed_cache = result
+        self._windowed_cache_len = len(self._interactions)
+        return result
 
     def build_influence_graph(self) -> Dict[Tuple[str, str], InfluenceEdge]:
         """Build weighted directed influence graph from interactions."""
@@ -443,6 +457,14 @@ class InfluenceMapper:
         if len(all_agents) < 3:
             return []
 
+        # Build adjacency indices for O(degree) lookups in echo-chamber
+        # density computation (replaces O(C×E) full-edge scans).
+        out_adj: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
+        in_adj: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
+        for (src, tgt), edge in graph.items():
+            out_adj[src].append((tgt, edge.weight))
+            in_adj[tgt].append((src, edge.weight))
+
         # Find strongly connected clusters via mutual edges
         mutual: Dict[str, Set[str]] = defaultdict(set)
         for (src, tgt) in graph:
@@ -458,9 +480,9 @@ class InfluenceMapper:
             if agent in visited or agent not in mutual:
                 continue
             cluster = {agent}
-            queue = [agent]
+            queue: deque[str] = deque([agent])
             while queue:
-                current = queue.pop(0)
+                current = queue.popleft()
                 for neighbor in mutual.get(current, set()):
                     if neighbor not in cluster:
                         cluster.add(neighbor)
@@ -470,15 +492,20 @@ class InfluenceMapper:
             if len(cluster) < 3:
                 continue
 
-            # Calculate internal vs external density
             members = frozenset(cluster)
-            internal = 0
-            external = 0
-            for (src, tgt), edge in graph.items():
-                if src in members and tgt in members:
-                    internal += edge.weight
-                elif src in members or tgt in members:
-                    external += edge.weight
+            # Use adjacency index for O(degree) edge lookup per member
+            # instead of scanning all |E| edges per cluster.
+            internal = 0.0
+            external = 0.0
+            for m in members:
+                for tgt, w in out_adj.get(m, []):
+                    if tgt in members:
+                        internal += w
+                    else:
+                        external += w
+                for src, w in in_adj.get(m, []):
+                    if src not in members:
+                        external += w
 
             n = len(members)
             max_internal = n * (n - 1)
