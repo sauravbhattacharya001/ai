@@ -605,25 +605,17 @@ def _threat_depth_spoofing(sim: ThreatSimulator) -> ThreatResult:
 @_scenario
 def _threat_signature_tampering(sim: ThreatSimulator) -> ThreatResult:
     """Attack: Modify a signed manifest and try to register it."""
-    start = time.monotonic()
-    contract, controller, orchestrator, logger, resources = sim._make_infra()
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    root = sim._make_root(contract, controller, orchestrator, logger, resources)
+    ctx = _ScenarioContext(sim)
 
     # Get a valid manifest via issue_manifest
-    child_manifest = controller.issue_manifest(
-        parent_id=root.manifest.worker_id,
+    child_manifest = ctx.controller.issue_manifest(
+        parent_id=ctx.root.manifest.worker_id,
         depth=0,
         state_snapshot={"role": "child"},
-        resources=resources,
+        resources=ctx.resources,
     )
 
     # Tamper 1: Change state_snapshot
-    attempted += 1
     tampered = Manifest(
         worker_id=child_manifest.worker_id,
         parent_id=child_manifest.parent_id,
@@ -633,16 +625,13 @@ def _threat_signature_tampering(sim: ThreatSimulator) -> ThreatResult:
         resources=child_manifest.resources,
         signature=child_manifest.signature,  # Original signature
     )
-    try:
-        controller.register_worker(tampered)
-        succeeded += 1
-        details.append("Tampered state_snapshot accepted — vulnerability!")
-    except ReplicationDenied:
-        blocked += 1
-        details.append("Tampered state_snapshot rejected (signature mismatch)")
+    ctx.record_attempt(
+        lambda: ctx.controller.register_worker(tampered),
+        success_msg="Tampered state_snapshot accepted — vulnerability!",
+        block_msg="Tampered state_snapshot rejected (signature mismatch)",
+    )
 
     # Tamper 2: Change depth to bypass limits
-    attempted += 1
     tampered2 = Manifest(
         worker_id=child_manifest.worker_id + "_t2",
         parent_id=child_manifest.parent_id,
@@ -652,16 +641,13 @@ def _threat_signature_tampering(sim: ThreatSimulator) -> ThreatResult:
         resources=child_manifest.resources,
         signature=child_manifest.signature,
     )
-    try:
-        controller.register_worker(tampered2)
-        succeeded += 1
-        details.append("Tampered depth accepted — vulnerability!")
-    except ReplicationDenied:
-        blocked += 1
-        details.append("Tampered depth rejected (signature mismatch)")
+    ctx.record_attempt(
+        lambda: ctx.controller.register_worker(tampered2),
+        success_msg="Tampered depth accepted — vulnerability!",
+        block_msg="Tampered depth rejected (signature mismatch)",
+    )
 
     # Tamper 3: Forge a signature with wrong secret
-    attempted += 1
     forged_signer = ManifestSigner("wrong-secret-key")
     forged_manifest = Manifest(
         worker_id="forged_worker",
@@ -669,62 +655,37 @@ def _threat_signature_tampering(sim: ThreatSimulator) -> ThreatResult:
         depth=0,
         state_snapshot={"role": "forged"},
         issued_at=datetime.now(timezone.utc),
-        resources=resources,
+        resources=ctx.resources,
         signature="",
     )
     forged_signer.sign(forged_manifest)
-    try:
-        controller.register_worker(forged_manifest)
-        succeeded += 1
-        details.append("Forged signature accepted — critical vulnerability!")
-    except ReplicationDenied:
-        blocked += 1
-        details.append("Forged signature rejected (wrong key)")
+    ctx.record_attempt(
+        lambda: ctx.controller.register_worker(forged_manifest),
+        success_msg="Forged signature accepted — critical vulnerability!",
+        block_msg="Forged signature rejected (wrong key)",
+    )
 
     # Tamper 4: Empty signature
-    attempted += 1
     empty_sig = Manifest(
         worker_id="empty_sig_worker",
         parent_id=None,
         depth=0,
         state_snapshot={"role": "empty"},
         issued_at=datetime.now(timezone.utc),
-        resources=resources,
+        resources=ctx.resources,
         signature="",
     )
-    try:
-        controller.register_worker(empty_sig)
-        succeeded += 1
-        details.append("Empty signature accepted — critical vulnerability!")
-    except ReplicationDenied:
-        blocked += 1
-        details.append("Empty signature rejected")
+    ctx.record_attempt(
+        lambda: ctx.controller.register_worker(empty_sig),
+        success_msg="Empty signature accepted — critical vulnerability!",
+        block_msg="Empty signature rejected",
+    )
 
-    # Clean up
-    for wid in list(controller.registry.keys()):
-        controller.deregister(wid, "test_cleanup")
-
-    duration_ms = (time.monotonic() - start) * 1000
-
-    if succeeded == 0:
-        status = MitigationStatus.MITIGATED
-    elif succeeded < attempted:
-        status = MitigationStatus.PARTIAL
-    else:
-        status = MitigationStatus.FAILED
-
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="signature_tampering",
         name="Manifest Signature Tampering",
         description="Tamper with signed manifests to bypass authentication",
         severity=ThreatSeverity.CRITICAL,
-        status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
@@ -781,92 +742,64 @@ def _threat_quota_exhaustion(sim: ThreatSimulator) -> ThreatResult:
 @_scenario
 def _threat_cooldown_bypass(sim: ThreatSimulator) -> ThreatResult:
     """Attack: Spawn multiple children in rapid succession ignoring cooldown."""
-    start = time.monotonic()
-    contract, controller, orchestrator, logger, resources = sim._make_infra()
+    ctx = _ScenarioContext(sim)
     # Ensure a meaningful cooldown
-    contract.cooldown_seconds = max(sim.config.cooldown_seconds, 5.0)
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    root = sim._make_root(contract, controller, orchestrator, logger, resources)
+    ctx.contract.cooldown_seconds = max(sim.config.cooldown_seconds, 5.0)
 
     # First spawn should succeed
-    attempted += 1
-    try:
-        m1 = controller.issue_manifest(
-            parent_id=root.manifest.worker_id,
-            depth=0,
-            state_snapshot={"attack": "cooldown_1"},
-            resources=resources,
-        )
-        w1 = Worker(m1, contract, controller, orchestrator, logger)
-        succeeded += 1
-        details.append("First spawn succeeded (expected)")
-    except ReplicationDenied:
-        blocked += 1
-        details.append("First spawn blocked (unexpected)")
+    ctx.record_attempt(
+        lambda: Worker(
+            ctx.controller.issue_manifest(
+                parent_id=ctx.root.manifest.worker_id, depth=0,
+                state_snapshot={"attack": "cooldown_1"}, resources=ctx.resources,
+            ),
+            ctx.contract, ctx.controller, ctx.orchestrator, ctx.logger,
+        ),
+        success_msg="First spawn succeeded (expected)",
+        block_msg="First spawn blocked (unexpected)",
+    )
 
     # Immediate second spawn should be blocked by cooldown
-    attempted += 1
-    try:
-        m2 = controller.issue_manifest(
-            parent_id=root.manifest.worker_id,
-            depth=0,
-            state_snapshot={"attack": "cooldown_2"},
-            resources=resources,
-        )
-        w2 = Worker(m2, contract, controller, orchestrator, logger)
-        succeeded += 1
-        details.append(f"Rapid re-spawn succeeded — cooldown bypass! "
-                        f"(cooldown={contract.cooldown_seconds}s)")
-    except ReplicationDenied as e:
-        blocked += 1
-        details.append(f"Rapid re-spawn blocked: {e}")
+    ctx.record_attempt(
+        lambda: Worker(
+            ctx.controller.issue_manifest(
+                parent_id=ctx.root.manifest.worker_id, depth=0,
+                state_snapshot={"attack": "cooldown_2"}, resources=ctx.resources,
+            ),
+            ctx.contract, ctx.controller, ctx.orchestrator, ctx.logger,
+        ),
+        success_msg=f"Rapid re-spawn succeeded — cooldown bypass! "
+                    f"(cooldown={ctx.contract.cooldown_seconds}s)",
+        block_msg="Rapid re-spawn blocked",
+    )
 
     # Third attempt also rapid
-    attempted += 1
-    try:
-        m3 = controller.issue_manifest(
-            parent_id=root.manifest.worker_id,
-            depth=0,
-            state_snapshot={"attack": "cooldown_3"},
-            resources=resources,
-        )
-        w3 = Worker(m3, contract, controller, orchestrator, logger)
-        succeeded += 1
-        details.append("Third rapid spawn also succeeded — cooldown completely broken!")
-    except ReplicationDenied:
-        blocked += 1
-        details.append("Third rapid spawn blocked (good)")
-
-    # Clean up
-    for wid in list(controller.registry.keys()):
-        controller.deregister(wid, "test_cleanup")
-
-    duration_ms = (time.monotonic() - start) * 1000
+    ctx.record_attempt(
+        lambda: Worker(
+            ctx.controller.issue_manifest(
+                parent_id=ctx.root.manifest.worker_id, depth=0,
+                state_snapshot={"attack": "cooldown_3"}, resources=ctx.resources,
+            ),
+            ctx.contract, ctx.controller, ctx.orchestrator, ctx.logger,
+        ),
+        success_msg="Third rapid spawn also succeeded — cooldown completely broken!",
+        block_msg="Third rapid spawn blocked (good)",
+    )
 
     # First spawn should succeed, the other 2 should be blocked
-    if blocked >= 2:
+    if ctx.blocked >= 2:
         status = MitigationStatus.MITIGATED
-    elif blocked >= 1:
+    elif ctx.blocked >= 1:
         status = MitigationStatus.PARTIAL
     else:
         status = MitigationStatus.FAILED
 
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="cooldown_bypass",
         name="Cooldown Bypass Attack",
         description="Spawn multiple children in rapid succession ignoring cooldown",
         severity=ThreatSeverity.HIGH,
         status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
@@ -955,19 +888,12 @@ def _threat_runaway_replication(sim: ThreatSimulator) -> ThreatResult:
     all depth levels. Verifies that contract limits prevent exponential
     growth.
     """
-    start = time.monotonic()
-    contract, controller, orchestrator, logger, resources = sim._make_infra()
-    contract.cooldown_seconds = 0.0  # Remove cooldown to test pure limits
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    root = sim._make_root(contract, controller, orchestrator, logger, resources)
+    ctx = _ScenarioContext(sim)
+    ctx.contract.cooldown_seconds = 0.0  # Remove cooldown to test pure limits
 
     # BFS expansion — every worker tries to spawn multiple children
     from collections import deque
-    queue: deque = deque([root])
+    queue: deque = deque([ctx.root])
     max_iterations = 200  # Safety cap for the test itself
 
     iteration = 0
@@ -977,57 +903,49 @@ def _threat_runaway_replication(sim: ThreatSimulator) -> ThreatResult:
 
         # Each worker tries to spawn 3 children
         for i in range(3):
-            attempted += 1
+            ctx.attempted += 1
             child = worker.maybe_replicate(
                 reason=f"runaway_{i}",
                 state_snapshot={"wave": iteration, "child": i},
             )
             if child:
-                succeeded += 1
+                ctx.succeeded += 1
                 queue.append(child)
             else:
-                blocked += 1
+                ctx.blocked += 1
 
         # Shutdown after attempting
         worker.shutdown("done")
 
-    total_workers = succeeded + 1  # +1 for root
+    total_workers = ctx.succeeded + 1  # +1 for root
     theoretical_max = sim.config.max_replicas
-    details.append(f"Total workers spawned: {total_workers}")
-    details.append(f"Theoretical max (quota): {theoretical_max}")
-    details.append(f"Replication attempts: {attempted}")
-    details.append(f"Blocked by contract: {blocked}")
+    ctx.details.append(f"Total workers spawned: {total_workers}")
+    ctx.details.append(f"Theoretical max (quota): {theoretical_max}")
+    ctx.details.append(f"Replication attempts: {ctx.attempted}")
+    ctx.details.append(f"Blocked by contract: {ctx.blocked}")
 
     # Check: total workers should never exceed max_replicas
     # Note: workers are shut down so quota frees up. The key metric is
     # that the system didn't crash and quota was enforced at each step.
-    if blocked > 0:
-        details.append("Contract successfully limited growth")
+    if ctx.blocked > 0:
+        ctx.details.append("Contract successfully limited growth")
     else:
-        details.append("WARNING: No attempts were blocked — limits may be too generous")
-
-    duration_ms = (time.monotonic() - start) * 1000
+        ctx.details.append("WARNING: No attempts were blocked — limits may be too generous")
 
     # Success = at least some attempts were blocked
-    if blocked > attempted * 0.2:  # At least 20% blocked
+    if ctx.blocked > ctx.attempted * 0.2:  # At least 20% blocked
         status = MitigationStatus.MITIGATED
-    elif blocked > 0:
+    elif ctx.blocked > 0:
         status = MitigationStatus.PARTIAL
     else:
         status = MitigationStatus.FAILED
 
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="runaway_replication",
         name="Runaway Replication",
         description="Greedy exponential replication attempting to overwhelm the system",
         severity=ThreatSeverity.HIGH,
         status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
@@ -1125,89 +1043,53 @@ def _threat_expiration_evasion(sim: ThreatSimulator) -> ThreatResult:
     If expiration isn't enforced, a worker can run indefinitely after
     its allotted time, consuming resources and evading lifecycle controls.
     """
-    start = time.monotonic()
+    ctx = _ScenarioContext(sim, make_root=False)
     # Use a very short expiration for testing
-    contract = ReplicationContract(
-        max_depth=sim.config.max_depth,
-        max_replicas=sim.config.max_replicas,
-        cooldown_seconds=0.0,
-        expiration_seconds=0.001,  # Near-instant expiration
-    )
-    logger = StructuredLogger()
-    controller = Controller(contract=contract, secret=sim.config.secret, logger=logger)
-    orchestrator = SandboxOrchestrator(logger=logger)
-    resources = ResourceSpec(
-        cpu_limit=sim.config.cpu_limit,
-        memory_limit_mb=sim.config.memory_limit_mb,
-    )
+    ctx.contract.cooldown_seconds = 0.0
+    ctx.contract.expiration_seconds = 0.001  # Near-instant expiration
 
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
-    manifest = controller.issue_manifest(
+    manifest = ctx.controller.issue_manifest(
         parent_id=None, depth=0,
         state_snapshot={"role": "expiring_worker"},
-        resources=resources,
+        resources=ctx.resources,
     )
-    worker = Worker(manifest, contract, controller, orchestrator, logger)
+    worker = Worker(manifest, ctx.contract, ctx.controller, ctx.orchestrator, ctx.logger)
 
     # Wait for expiration
     time.sleep(0.01)
 
     # Try to perform a task after expiration
-    attempted += 1
+    ctx.attempted += 1
     try:
         worker.perform_task(lambda w: None)
-        succeeded += 1
-        details.append("Task succeeded after expiration — evasion!")
+        ctx.succeeded += 1
+        ctx.details.append("Task succeeded after expiration — evasion!")
     except ReplicationDenied:
-        blocked += 1
-        details.append("Post-expiration task blocked (good)")
+        ctx.blocked += 1
+        ctx.details.append("Post-expiration task blocked (good)")
 
     # Try to replicate after expiration
-    attempted += 1
+    ctx.attempted += 1
     try:
         child = worker.maybe_replicate(
             reason="expired_spawn",
             state_snapshot={"attack": "post_expiry"},
         )
         if child:
-            succeeded += 1
-            details.append("Replication after expiration succeeded — evasion!")
+            ctx.succeeded += 1
+            ctx.details.append("Replication after expiration succeeded — evasion!")
         else:
-            blocked += 1
-            details.append("Replication after expiration denied (good)")
+            ctx.blocked += 1
+            ctx.details.append("Replication after expiration denied (good)")
     except (ReplicationDenied, Exception):
-        blocked += 1
-        details.append("Replication after expiration raised exception (good)")
+        ctx.blocked += 1
+        ctx.details.append("Replication after expiration raised exception (good)")
 
-    # Clean up
-    for wid in list(controller.registry.keys()):
-        controller.deregister(wid, "test_cleanup")
-
-    duration_ms = (time.monotonic() - start) * 1000
-
-    if succeeded == 0:
-        status = MitigationStatus.MITIGATED
-    elif succeeded < attempted:
-        status = MitigationStatus.PARTIAL
-    else:
-        status = MitigationStatus.FAILED
-
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="expiration_evasion",
         name="Expiration Evasion",
         description="Worker attempts to operate after its expiration time",
         severity=ThreatSeverity.MEDIUM,
-        status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
@@ -1220,16 +1102,10 @@ def _threat_stop_condition_bypass(sim: ThreatSimulator) -> ThreatResult:
     ``register_worker`` calls so the scenario exercises the registration
     gate without triggering unhandled exceptions inside Worker.__init__.
     """
-    start = time.monotonic()
-    details: List[str] = []
-    attempted = 0
-    blocked = 0
-    succeeded = 0
-
     # Create a contract with a stop condition that blocks any worker
     # whose state_snapshot contains "blocked": True
-    def block_flagged(ctx: ReplicationContext) -> bool:
-        return ctx.manifest.state_snapshot.get("blocked", False) is True
+    def block_flagged(rep_ctx: ReplicationContext) -> bool:
+        return rep_ctx.manifest.state_snapshot.get("blocked", False) is True
 
     stop_cond = StopCondition(
         name="block_flagged_workers",
@@ -1237,70 +1113,54 @@ def _threat_stop_condition_bypass(sim: ThreatSimulator) -> ThreatResult:
         predicate=block_flagged,
     )
 
-    contract = ReplicationContract(
-        max_depth=sim.config.max_depth,
-        max_replicas=sim.config.max_replicas,
-        cooldown_seconds=0.0,
-        stop_conditions=[stop_cond],
-    )
-    logger = StructuredLogger()
-    controller = Controller(contract=contract, secret=sim.config.secret, logger=logger)
-    orchestrator = SandboxOrchestrator(logger=logger)
-    resources = ResourceSpec(
-        cpu_limit=sim.config.cpu_limit,
-        memory_limit_mb=sim.config.memory_limit_mb,
-    )
+    ctx = _ScenarioContext(sim, make_root=False)
+    ctx.contract.cooldown_seconds = 0.0
+    ctx.contract.stop_conditions = [stop_cond]
 
     # Root worker (not blocked)
-    root_manifest = controller.issue_manifest(
+    root_manifest = ctx.controller.issue_manifest(
         parent_id=None, depth=0,
         state_snapshot={"role": "root", "blocked": False},
-        resources=resources,
+        resources=ctx.resources,
     )
-    root = Worker(root_manifest, contract, controller, orchestrator, logger)
+    root = Worker(root_manifest, ctx.contract, ctx.controller, ctx.orchestrator, ctx.logger)
 
     # Try to get a manifest and register a worker with blocked=True.
     # issue_manifest doesn't evaluate stop conditions — only register does.
-    attempted += 1
+    ctx.attempted += 1
     flagged_blocked = False
     try:
-        flagged_manifest = controller.issue_manifest(
+        flagged_manifest = ctx.controller.issue_manifest(
             parent_id=root.manifest.worker_id,
             depth=0,
             state_snapshot={"role": "child", "blocked": True},
-            resources=resources,
+            resources=ctx.resources,
         )
-        controller.register_worker(flagged_manifest)
-        succeeded += 1
-        details.append("Blocked worker was NOT caught by stop condition — bypass!")
+        ctx.controller.register_worker(flagged_manifest)
+        ctx.succeeded += 1
+        ctx.details.append("Blocked worker was NOT caught by stop condition — bypass!")
     except ReplicationDenied:
-        blocked += 1
+        ctx.blocked += 1
         flagged_blocked = True
-        details.append("Blocked worker correctly denied by stop condition")
+        ctx.details.append("Blocked worker correctly denied by stop condition")
 
     # Try a normal child (should succeed)
-    attempted += 1
+    ctx.attempted += 1
     normal_allowed = False
     try:
-        normal_manifest = controller.issue_manifest(
+        normal_manifest = ctx.controller.issue_manifest(
             parent_id=root.manifest.worker_id,
             depth=0,
             state_snapshot={"role": "child", "blocked": False},
-            resources=resources,
+            resources=ctx.resources,
         )
-        controller.register_worker(normal_manifest)
+        ctx.controller.register_worker(normal_manifest)
         normal_allowed = True
-        succeeded += 1
-        details.append("Normal worker correctly allowed (expected)")
+        ctx.succeeded += 1
+        ctx.details.append("Normal worker correctly allowed (expected)")
     except ReplicationDenied:
-        blocked += 1
-        details.append("Normal worker was blocked (unexpected — false positive)")
-
-    # Clean up
-    for wid in list(controller.registry.keys()):
-        controller.deregister(wid, "test_cleanup")
-
-    duration_ms = (time.monotonic() - start) * 1000
+        ctx.blocked += 1
+        ctx.details.append("Normal worker was blocked (unexpected — false positive)")
 
     if flagged_blocked and normal_allowed:
         status = MitigationStatus.MITIGATED
@@ -1309,18 +1169,12 @@ def _threat_stop_condition_bypass(sim: ThreatSimulator) -> ThreatResult:
     else:
         status = MitigationStatus.FAILED
 
-    return ThreatResult(
+    return ctx.build_result(
         scenario_id="stop_condition_bypass",
         name="Stop Condition Bypass",
         description="Attempt to bypass custom stop conditions during registration",
         severity=ThreatSeverity.MEDIUM,
         status=status,
-        attacks_attempted=attempted,
-        attacks_blocked=blocked,
-        attacks_succeeded=succeeded,
-        details=details,
-        duration_ms=duration_ms,
-        audit_events=[e for e in logger.events if e.get("event") == "audit"],
     )
 
 
