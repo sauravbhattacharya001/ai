@@ -115,6 +115,7 @@ _HAS_MAIN = {
     "stress_tester",
     "isolation_verifier",
     "safe_handoff",
+    "corrigibility_auditor",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -295,6 +296,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "handoff":                 (_make_handler("safe_handoff"),                                               "Safe agent responsibility handoff with verification & rollback"),
     "investigate":              (_make_handler("auto_investigator"),                                            "Autonomous multi-module safety investigation engine"),
     "adapt":                     (_make_handler("threat_adapter"),                                              "Autonomous threat landscape monitoring & defense adaptation"),
+    "corrigibility":              (_make_handler("corrigibility_auditor"),                                       "Systematic agent corrigibility testing across 6 dimensions"),
 }
 
 
