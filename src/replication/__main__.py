@@ -105,6 +105,7 @@ _HAS_MAIN = {
     "dlp_scanner", "model_card", "mutation_tester", "nutrition_label", "severity_classifier", "regulatory_mapper", "vuln_scanner",
     "capability_escalation", "chaos", "cognitive_load", "resource_auditor", "collusion_detector", "comm_interceptor", "comparator", "boundary_tester", "contract_wizard", "credential_rotation", "escape_route", "fleet_sim", "ir_simulator", "lateral_movement", "loyalty_tester", "memory_forensics", "playground", "safety_net", "quick_scan", "threat_matrix", "warroom",
     "auto_investigator",
+    "threat_adapter",
     "reward_hacking",
     "sandbagging_detector",
     "sycophancy_detector",
@@ -293,6 +294,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "habituation":             (_make_handler("habituation_detector"),                                       "Detect gradual normalization of boundary violations (boiling frog)"),
     "handoff":                 (_make_handler("safe_handoff"),                                               "Safe agent responsibility handoff with verification & rollback"),
     "investigate":              (_make_handler("auto_investigator"),                                            "Autonomous multi-module safety investigation engine"),
+    "adapt":                     (_make_handler("threat_adapter"),                                              "Autonomous threat landscape monitoring & defense adaptation"),
 }
 
 
