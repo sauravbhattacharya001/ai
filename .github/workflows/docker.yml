@@ -4,8 +4,22 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths:
+      - "Dockerfile"
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "requirements*.txt"
+      - ".github/workflows/docker.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "Dockerfile"
+      - "src/**"
+      - "pyproject.toml"
+      - "requirements*.txt"
+  schedule:
+    - cron: "15 4 * * 1"  # Weekly Monday 4:15 UTC — scan for new CVEs
   workflow_dispatch:
 
 permissions:
@@ -82,4 +96,67 @@ jobs:
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF report
+        if: github.event_name != 'pull_request' && always()
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+
+      - name: Upload SARIF to GitHub Security
+        if: github.event_name != 'pull_request' && always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: container-scanning
+
+  # Scheduled vulnerability scan on latest published image
+  scan:
+    name: Scheduled Vulnerability Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR (read)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull latest image
+        run: docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Scan for new CVEs
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: sarif
+          output: trivy-scheduled.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: true
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-scheduled.sarif
+          category: container-scanning-scheduled
+
+      - name: Fail on critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: table
+          exit-code: 1
+          severity: CRITICAL
           ignore-unfixed: true

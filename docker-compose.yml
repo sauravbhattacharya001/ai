@@ -1,0 +1,36 @@
+# docker-compose.yml — Local development and testing
+#
+# Usage:
+#   docker compose up          # Run the sandbox
+#   docker compose run test    # Run tests in container
+#   docker compose build       # Rebuild after code changes
+
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    image: ai-replication-sandbox:local
+    container_name: replication-sandbox
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+    environment:
+      PYTHONUNBUFFERED: "1"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+
+  test:
+    build:
+      context: .
+      target: builder
+    container_name: replication-test
+    working_dir: /app
+    command: python -m pytest tests/ -v --tb=short
+    profiles: ["test"]
