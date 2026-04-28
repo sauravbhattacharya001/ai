@@ -217,7 +217,7 @@ class SituationalAwareness:
             return 1  # GUARDED
         if overall >= 55 and red_count <= 1:
             return 2  # ELEVATED
-        if overall >= 35 or red_count <= 2:
+        if overall >= 35 and red_count <= 2:
             return 3  # HIGH
         return 4  # CRITICAL
 
