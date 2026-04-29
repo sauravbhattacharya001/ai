@@ -1,23 +1,51 @@
 # Dependabot configuration
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
 version: 2
+
+registries: {}
+
 updates:
-  # Python pip dependencies
+  # Python pip dependencies (production)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
     labels:
       - "dependencies"
+      - "python"
     commit-message:
       prefix: "deps"
+      include: "scope"
     open-pull-requests-limit: 10
+    reviewers:
+      - "sauravbhattacharya001"
     groups:
-      minor-and-patch:
+      production-minor-patch:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "pytest*"
+          - "coverage*"
         update-types:
           - "minor"
           - "patch"
+      dev-dependencies:
+        patterns:
+          - "pytest*"
+          - "coverage*"
+        update-types:
+          - "minor"
+          - "patch"
+          - "major"
+    ignore:
+      # Ignore major version bumps for core ML libs (often breaking)
+      - dependency-name: "torch"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tensorflow"
+        update-types: ["version-update:semver-major"]
 
   # Docker base images
   - package-ecosystem: "docker"
@@ -25,12 +53,21 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
     labels:
       - "dependencies"
       - "docker"
     commit-message:
       prefix: "docker"
+      include: "scope"
     open-pull-requests-limit: 3
+    reviewers:
+      - "sauravbhattacharya001"
+    ignore:
+      # Ignore major Python base image bumps (require migration planning)
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
@@ -38,9 +75,22 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
     labels:
       - "ci/cd"
       - "dependencies"
     commit-message:
       prefix: "ci"
+      include: "scope"
     open-pull-requests-limit: 5
+    reviewers:
+      - "sauravbhattacharya001"
+    groups:
+      actions-all:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+          - "major"
