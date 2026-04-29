@@ -119,6 +119,7 @@ _HAS_MAIN = {
     "breach_predictor",
     "manipulation_surface",
     "alignment_tax",
+    "instrumental_convergence",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -303,6 +304,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "breach-predict":              (_make_handler("breach_predictor"),                                                "Autonomous containment breach prediction from behavioral precursors"),
     "manipulation-surface":          (_make_handler("manipulation_surface"),                                             "Map agent manipulation surface & score resistance across 8 vectors"),
     "alignment-tax":                  (_make_handler("alignment_tax"),                                                    "Quantify performance cost of safety constraints & shedding incentives"),
+    "instrumental":                    (_make_handler("instrumental_convergence"),                                           "Detect instrumental convergence — self-preservation, resource hoarding, power seeking"),
 }
 
 
