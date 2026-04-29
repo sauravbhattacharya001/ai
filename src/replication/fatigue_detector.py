@@ -33,6 +33,7 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import math
 import random
@@ -415,18 +416,18 @@ def generate_html_report(result: FatigueResult) -> str:
         bar_color = "#22c55e" if ind.score < 30 else "#eab308" if ind.score < 60 else "#ef4444"
         indicator_rows += f"""
         <tr>
-          <td><strong>{ind.name.replace('_', ' ').title()}</strong></td>
+          <td><strong>{_html.escape(ind.name.replace('_', ' ').title())}</strong></td>
           <td>
             <div style="background:#e5e7eb;border-radius:4px;overflow:hidden;height:20px;width:200px;display:inline-block;vertical-align:middle">
               <div style="background:{bar_color};height:100%;width:{min(ind.score, 100):.0f}%"></div>
             </div>
             <span style="margin-left:8px">{ind.score:.0f}/100</span>
           </td>
-          <td>{ind.detail}</td>
-          <td><span style="color:{bar_color};font-weight:bold">{ind.severity}</span></td>
+          <td>{_html.escape(ind.detail)}</td>
+          <td><span style="color:{bar_color};font-weight:bold">{_html.escape(ind.severity)}</span></td>
         </tr>"""
 
-    rec_items = "".join(f"<li>{r}</li>" for r in result.recommendations)
+    rec_items = "".join(f"<li>{_html.escape(r)}</li>" for r in result.recommendations)
 
     stats_json = json.dumps(result.stats, indent=2)
 

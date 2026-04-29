@@ -40,6 +40,7 @@ Programmatic::
 
 from __future__ import annotations
 
+import html as _html
 import json
 import sys
 from dataclasses import dataclass, field
@@ -348,11 +349,11 @@ class SafetyDiffResult:
             s = "+" if c.delta >= 0 else ""
             bsc = f"{c.before_score:.1f}" if c.before_score is not None else "—"
             asc = f"{c.after_score:.1f}" if c.after_score is not None else "—"
-            bg = c.before_grade or "—"
-            ag = c.after_grade or "—"
+            bg = _html.escape(c.before_grade) if c.before_grade else "—"
+            ag = _html.escape(c.after_grade) if c.after_grade else "—"
             dim_rows += (
                 f'<tr style="background:{row_color}">'
-                f'<td>{c.arrow} {c.name}</td>'
+                f'<td>{c.arrow} {_html.escape(c.name)}</td>'
                 f'<td style="text-align:center">{bsc}</td>'
                 f'<td style="text-align:center">{asc}</td>'
                 f'<td style="text-align:center">{s}{c.delta:.1f}</td>'
@@ -365,12 +366,12 @@ class SafetyDiffResult:
             icons = {ChangeKind.NEW: "🚨", ChangeKind.RESOLVED: "✅",
                      ChangeKind.REGRESSION: "⚠️", ChangeKind.IMPROVEMENT: "✅"}
             icon = icons.get(c.kind, "")
-            bv = c.before_verdict or "—"
-            av = c.after_verdict or "—"
+            bv = _html.escape(c.before_verdict) if c.before_verdict else "—"
+            av = _html.escape(c.after_verdict) if c.after_verdict else "—"
             comp_rows += (
-                f'<tr><td>{icon} {c.check_id}</td><td>{c.framework}</td>'
-                f'<td>{c.description}</td><td>{bv} → {av}</td>'
-                f'<td>{c.kind.value}</td></tr>'
+                f'<tr><td>{icon} {_html.escape(c.check_id)}</td><td>{_html.escape(c.framework)}</td>'
+                f'<td>{_html.escape(c.description)}</td><td>{bv} → {av}</td>'
+                f'<td>{_html.escape(c.kind.value)}</td></tr>'
             )
 
         risk_rows = ""
@@ -378,11 +379,11 @@ class SafetyDiffResult:
             icons = {ChangeKind.NEW: "🆕", ChangeKind.RESOLVED: "✅",
                      ChangeKind.REGRESSION: "⬆️", ChangeKind.IMPROVEMENT: "⬇️"}
             icon = icons.get(r.kind, "")
-            bs = r.before_severity or "—"
-            ars = r.after_severity or "—"
+            bs = _html.escape(r.before_severity) if r.before_severity else "—"
+            ars = _html.escape(r.after_severity) if r.after_severity else "—"
             risk_rows += (
-                f'<tr><td>{icon} {r.risk_id}</td><td>{r.title}</td>'
-                f'<td>{bs} → {ars}</td><td>{r.kind.value}</td></tr>'
+                f'<tr><td>{icon} {_html.escape(r.risk_id)}</td><td>{_html.escape(r.title)}</td>'
+                f'<td>{bs} → {ars}</td><td>{_html.escape(r.kind.value)}</td></tr>'
             )
 
         return f"""<!DOCTYPE html>

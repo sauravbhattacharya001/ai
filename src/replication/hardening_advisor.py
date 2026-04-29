@@ -16,6 +16,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import sys
 from dataclasses import dataclass, field, asdict
@@ -463,24 +464,25 @@ def _render_html(report: HardeningReport) -> str:
     score = report.overall_score
     score_color = "#22c55e" if score >= 80 else "#eab308" if score >= 50 else "#ef4444"
 
+    _e = _html.escape
     cat_rows = ""
     for cat, sc in sorted(report.category_scores.items()):
         c = "#22c55e" if sc >= 80 else "#eab308" if sc >= 50 else "#ef4444"
-        cat_rows += f'<tr><td>{cat}</td><td style="color:{c};font-weight:bold">{sc:.0f}%</td><td><div style="background:#e5e7eb;border-radius:4px;height:18px;width:200px"><div style="background:{c};height:100%;width:{sc}%;border-radius:4px"></div></div></td></tr>\n'
+        cat_rows += f'<tr><td>{_e(cat)}</td><td style="color:{c};font-weight:bold">{sc:.0f}%</td><td><div style="background:#e5e7eb;border-radius:4px;height:18px;width:200px"><div style="background:{c};height:100%;width:{sc}%;border-radius:4px"></div></div></td></tr>\n'
 
     rec_cards = ""
     impact_colors = {"critical": "#ef4444", "high": "#f97316", "medium": "#eab308", "low": "#22c55e"}
     for rec in report.recommendations:
         ic = impact_colors.get(rec.impact.value, "#6b7280")
-        refs = f'<p style="color:#6b7280;font-size:0.85em">Refs: {", ".join(rec.references)}</p>' if rec.references else ""
+        refs = f'<p style="color:#6b7280;font-size:0.85em">Refs: {_e(", ".join(rec.references))}</p>' if rec.references else ""
         rec_cards += f'''<div style="border:1px solid #e5e7eb;border-left:4px solid {ic};border-radius:8px;padding:16px;margin:12px 0">
-  <h3 style="margin:0 0 8px">[{rec.id}] {rec.title}</h3>
-  <span style="background:{ic};color:white;padding:2px 8px;border-radius:4px;font-size:0.8em">{rec.impact.value.upper()}</span>
-  <span style="background:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-left:4px">{rec.effort.value} effort</span>
-  <span style="background:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-left:4px">{rec.category.value}</span>
-  <p style="margin:12px 0 4px">{rec.description}</p>
-  <table style="font-size:0.9em;margin:8px 0"><tr><td style="color:#6b7280;padding-right:12px">Current:</td><td>{rec.current_state}</td></tr><tr><td style="color:#6b7280;padding-right:12px">Target:</td><td style="color:#16a34a;font-weight:500">{rec.recommended_state}</td></tr></table>
-  <p style="font-style:italic;color:#4b5563;font-size:0.9em">{rec.rationale}</p>
+  <h3 style="margin:0 0 8px">[{_e(rec.id)}] {_e(rec.title)}</h3>
+  <span style="background:{ic};color:white;padding:2px 8px;border-radius:4px;font-size:0.8em">{_e(rec.impact.value.upper())}</span>
+  <span style="background:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-left:4px">{_e(rec.effort.value)} effort</span>
+  <span style="background:#e5e7eb;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-left:4px">{_e(rec.category.value)}</span>
+  <p style="margin:12px 0 4px">{_e(rec.description)}</p>
+  <table style="font-size:0.9em;margin:8px 0"><tr><td style="color:#6b7280;padding-right:12px">Current:</td><td>{_e(rec.current_state)}</td></tr><tr><td style="color:#6b7280;padding-right:12px">Target:</td><td style="color:#16a34a;font-weight:500">{_e(rec.recommended_state)}</td></tr></table>
+  <p style="font-style:italic;color:#4b5563;font-size:0.9em">{_e(rec.rationale)}</p>
   {refs}
 </div>\n'''
 
@@ -492,7 +494,7 @@ h1{{border-bottom:2px solid #e5e7eb;padding-bottom:.5rem}}table{{border-collapse
 <h1>🛡️ Hardening Advisor Report</h1>
 <div style="text-align:center;margin:2rem 0">
   <div style="font-size:3rem;font-weight:bold;color:{score_color}">{score:.0f}/100</div>
-  <div style="color:#6b7280">{report.summary}</div>
+  <div style="color:#6b7280">{_e(report.summary)}</div>
 </div>
 <h2>Category Scores</h2>
 <table>{cat_rows}</table>

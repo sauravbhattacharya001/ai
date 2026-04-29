@@ -28,6 +28,7 @@ CLI usage::
 from __future__ import annotations
 
 import argparse
+import html as _html
 import json
 import math
 import sys
@@ -445,20 +446,20 @@ def _generate_html(alerts: List[EscalationAlert], title: str = "Escalation Timel
     for a in alerts:
         color = {"LOW": "#28a745", "MEDIUM": "#ffc107", "HIGH": "#dc3545", "CRITICAL": "#6f42c1"}.get(a.severity.value, "#6c757d")
         evidence_items = "".join(
-            f"<li><code>{e.action}</code> → <code>{e.resource}</code> "
+            f"<li><code>{_html.escape(e.action)}</code> → <code>{_html.escape(e.resource)}</code> "
             f"(t={e.timestamp}, {'✅' if e.granted else '❌'})</li>"
             for e in a.evidence
         )
         rows += f"""
         <div class="alert-card" style="border-left: 4px solid {color};">
             <div class="alert-header">
-                <span class="badge" style="background:{color};">{a.severity.value}</span>
-                <span class="type">{a.escalation_type.value}</span>
+                <span class="badge" style="background:{color};">{_html.escape(a.severity.value)}</span>
+                <span class="type">{_html.escape(a.escalation_type.value)}</span>
                 <span class="score">Risk: {a.risk_score}</span>
             </div>
-            <p><strong>Agent:</strong> {a.agent_id}</p>
-            <p>{a.description}</p>
-            <p><strong>Recommendation:</strong> {a.recommended_action}</p>
+            <p><strong>Agent:</strong> {_html.escape(a.agent_id)}</p>
+            <p>{_html.escape(a.description)}</p>
+            <p><strong>Recommendation:</strong> {_html.escape(a.recommended_action)}</p>
             <details><summary>Evidence ({len(a.evidence)} requests)</summary>
                 <ul>{evidence_items}</ul>
             </details>

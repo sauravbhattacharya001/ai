@@ -276,9 +276,9 @@ class AlertRouter:
 
     def _dispatch(self, channel: Channel, event: Dict[str, Any], severity: str) -> None:
         """Actually send the alert to a channel."""
-        msg = event.get("message", "")
-        cat = event.get("category", "unknown")
-        src = event.get("source", "")
+        msg = event.get("message", "").replace("\n", " ").replace("\r", " ")
+        cat = event.get("category", "unknown").replace("\n", " ").replace("\r", " ")
+        src = event.get("source", "").replace("\n", " ").replace("\r", " ")
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         if channel.kind == "console":
