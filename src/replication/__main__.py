@@ -117,6 +117,7 @@ _HAS_MAIN = {
     "safe_handoff",
     "corrigibility_auditor",
     "breach_predictor",
+    "manipulation_surface",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -299,6 +300,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "adapt":                     (_make_handler("threat_adapter"),                                              "Autonomous threat landscape monitoring & defense adaptation"),
     "corrigibility":              (_make_handler("corrigibility_auditor"),                                       "Systematic agent corrigibility testing across 6 dimensions"),
     "breach-predict":              (_make_handler("breach_predictor"),                                                "Autonomous containment breach prediction from behavioral precursors"),
+    "manipulation-surface":          (_make_handler("manipulation_surface"),                                             "Map agent manipulation surface & score resistance across 8 vectors"),
 }
 
 
