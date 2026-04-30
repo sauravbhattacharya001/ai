@@ -223,15 +223,32 @@ class RewardHackingDetector:
 
     # -- detection strategies --
 
+    def _eligible_metrics(
+        self, prof: AgentMetricProfile, *, require_gt: bool = False,
+    ) -> "List[tuple[str, List[float], List[float]]]":
+        """Return metrics meeting min-observation threshold.
+
+        Yields ``(name, vals, gt_vals)`` tuples.  When *require_gt* is True
+        only metrics with sufficient ground-truth observations are included.
+        Centralises the repeated eligibility check used by all six detectors.
+        """
+        cfg = self.config
+        result: "List[tuple[str, List[float], List[float]]]" = []
+        for name in prof.metric_names():
+            vals = prof.metric_values(name)
+            if len(vals) < cfg.min_observations:
+                continue
+            gts = prof.ground_truths(name)
+            gt_vals = [g for g in gts if g is not None]
+            if require_gt and len(gt_vals) < cfg.min_observations:
+                continue
+            result.append((name, vals, gt_vals))
+        return result
+
     def _detect_divergence(self, prof: AgentMetricProfile) -> List[HackingSignal]:
         signals: List[HackingSignal] = []
         cfg = self.config
-        for name in prof.metric_names():
-            vals = prof.metric_values(name)
-            gts = prof.ground_truths(name)
-            gt_vals = [g for g in gts if g is not None]
-            if len(vals) < cfg.min_observations or len(gt_vals) < cfg.min_observations:
-                continue
+        for name, vals, gt_vals in self._eligible_metrics(prof, require_gt=True):
             w = min(cfg.window_size, len(vals))
             metric_trend = stats_mean(vals[-w:]) - stats_mean(vals[:w])
             gt_trend = stats_mean(gt_vals[-w:]) - stats_mean(gt_vals[:w])
@@ -250,10 +267,7 @@ class RewardHackingDetector:
     def _detect_edge_case(self, prof: AgentMetricProfile) -> List[HackingSignal]:
         signals: List[HackingSignal] = []
         cfg = self.config
-        for name in prof.metric_names():
-            vals = prof.metric_values(name)
-            if len(vals) < cfg.min_observations:
-                continue
+        for name, vals, _ in self._eligible_metrics(prof):
             # Count values at exact boundaries (0.0, 1.0, or repeated identical high values)
             boundary_count = sum(1 for v in vals if v >= 0.99 or v <= 0.01)
             repeat_map: Dict[float, int] = defaultdict(int)
@@ -274,10 +288,7 @@ class RewardHackingDetector:
     def _detect_inflation(self, prof: AgentMetricProfile) -> List[HackingSignal]:
         signals: List[HackingSignal] = []
         cfg = self.config
-        for name in prof.metric_names():
-            vals = prof.metric_values(name)
-            if len(vals) < cfg.min_observations:
-                continue
+        for name, vals, _ in self._eligible_metrics(prof):
             # Compute per-step growth rate
             rates = [(vals[i] - vals[i - 1]) / max(abs(vals[i - 1]), 1e-9) for i in range(1, len(vals))]
             avg_rate = stats_mean(rates)
@@ -295,12 +306,7 @@ class RewardHackingDetector:
     def _detect_goodhart(self, prof: AgentMetricProfile) -> List[HackingSignal]:
         signals: List[HackingSignal] = []
         cfg = self.config
-        for name in prof.metric_names():
-            vals = prof.metric_values(name)
-            gts = prof.ground_truths(name)
-            gt_vals = [g for g in gts if g is not None]
-            if len(vals) < cfg.min_observations or len(gt_vals) < cfg.min_observations:
-                continue
+        for name, vals, gt_vals in self._eligible_metrics(prof, require_gt=True):
             n = min(len(vals), len(gt_vals))
             half = n // 2
             if half < 2:
@@ -322,10 +328,7 @@ class RewardHackingDetector:
     def _detect_distribution_shift(self, prof: AgentMetricProfile) -> List[HackingSignal]:
         signals: List[HackingSignal] = []
         cfg = self.config
-        for name in prof.metric_names():
-            vals = prof.metric_values(name)
-            if len(vals) < cfg.min_observations:
-                continue
+        for name, vals, _ in self._eligible_metrics(prof):
             half = len(vals) // 2
             if half < 2:
                 continue
@@ -350,14 +353,11 @@ class RewardHackingDetector:
     def _detect_inconsistency(self, prof: AgentMetricProfile) -> List[HackingSignal]:
         signals: List[HackingSignal] = []
         cfg = self.config
-        names = prof.metric_names()
-        if len(names) < 2:
+        eligible = self._eligible_metrics(prof)
+        if len(eligible) < 2:
             return signals
         trends: Dict[str, float] = {}
-        for name in names:
-            vals = prof.metric_values(name)
-            if len(vals) < cfg.min_observations:
-                continue
+        for name, vals, _ in eligible:
             w = min(cfg.window_size, len(vals))
             trends[name] = stats_mean(vals[-w:]) - stats_mean(vals[:w])
         if len(trends) < 2:
