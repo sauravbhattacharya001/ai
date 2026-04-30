@@ -79,6 +79,7 @@ nav:
       - Threat Model & Limitations: concepts/threat-model.md
   - Tutorials:
       - Building Custom Safety Policies: tutorials/custom-safety-policies.md
+      - Incident Simulation & Tabletop Exercises: tutorials/incident-simulation.md
   - API Reference:
       - Overview: api/index.md
       - Core:
