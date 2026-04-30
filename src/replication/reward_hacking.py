@@ -63,7 +63,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from ._helpers import Severity, stats_mean, stats_std, box_header
+from ._helpers import Severity, stats_mean, stats_std, box_header, pearson_correlation
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -381,15 +381,7 @@ class RewardHackingDetector:
     @staticmethod
     def _pearson(xs: List[float], ys: List[float]) -> float:
         n = min(len(xs), len(ys))
-        if n < 2:
-            return 0.0
-        mx, my = stats_mean(xs[:n]), stats_mean(ys[:n])
-        num = sum((xs[i] - mx) * (ys[i] - my) for i in range(n))
-        dx = math.sqrt(sum((xs[i] - mx) ** 2 for i in range(n)))
-        dy = math.sqrt(sum((ys[i] - my) ** 2 for i in range(n)))
-        if dx < 1e-12 or dy < 1e-12:
-            return 0.0
-        return num / (dx * dy)
+        return pearson_correlation(xs[:n], ys[:n])
 
     def _build_summary(self, profiles: Dict[str, AgentMetricProfile], signals: List[HackingSignal]) -> Dict[str, Any]:
         by_pattern: Dict[str, int] = defaultdict(int)

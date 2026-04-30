@@ -153,6 +153,29 @@ def percentile(values: List[float], p: float) -> float:
     return percentile_sorted(sorted(values), p)
 
 
+def pearson_correlation(x: "list[float]", y: "list[float]") -> float:
+    """Pearson correlation coefficient between two numeric sequences.
+
+    Returns 0.0 if either sequence has zero variance or if inputs
+    have fewer than 2 elements.
+
+    Previously duplicated in *alignment*, *reward_hacking*, and
+    *situational_awareness*.
+    """
+    n = len(x)
+    if n < 2 or len(y) < 2:
+        return 0.0
+    import math
+    x_mean = sum(x) / n
+    y_mean = sum(y) / n
+    num = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, y))
+    dx = math.sqrt(sum((xi - x_mean) ** 2 for xi in x))
+    dy = math.sqrt(sum((yi - y_mean) ** 2 for yi in y))
+    if dx == 0 or dy == 0:
+        return 0.0
+    return num / (dx * dy)
+
+
 def emit_output(text: str, path: "str | None", label: str = "Report") -> None:
     """Write *text* to *path* (printing confirmation) or to stdout.
 

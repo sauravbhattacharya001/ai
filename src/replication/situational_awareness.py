@@ -58,6 +58,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from ._helpers import pearson_correlation as _pearson_impl
+
 __all__ = [
     "AwarenessProbe",
     "AwarenessSignal",
@@ -711,18 +713,10 @@ def fleet_profile(profiles: List[AwarenessProfile]) -> FleetAwarenessReport:
 
 
 def _pearson(x: List[float], y: List[float]) -> float:
-    """Pearson correlation coefficient."""
-    n = len(x)
-    if n < 3:
+    """Pearson correlation coefficient (delegates to shared helper)."""
+    if len(x) < 3:
         return 0.0
-    mx = statistics.mean(x)
-    my = statistics.mean(y)
-    sx = statistics.stdev(x)
-    sy = statistics.stdev(y)
-    if sx == 0 or sy == 0:
-        return 0.0
-    cov = sum((xi - mx) * (yi - my) for xi, yi in zip(x, y)) / (n - 1)
-    return cov / (sx * sy)
+    return _pearson_impl(x, y)
 
 
 # ── HTML report ──────────────────────────────────────────────────────

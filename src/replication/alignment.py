@@ -56,6 +56,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from ._helpers import linear_regression, pearson_correlation
+
 
 # ── Enums ──
 
@@ -707,15 +709,11 @@ class AlignmentMonitor:
 
     @staticmethod
     def _compute_slope(values: Sequence[float]) -> float:
-        """Simple linear regression slope."""
-        n = len(values)
-        if n < 2:
+        """Simple linear regression slope (delegates to shared helper)."""
+        if len(values) < 2:
             return 0.0
-        x_mean = (n - 1) / 2.0
-        y_mean = statistics.mean(values)
-        numerator = sum((i - x_mean) * (v - y_mean) for i, v in enumerate(values))
-        denominator = sum((i - x_mean) ** 2 for i in range(n))
-        return numerator / denominator if denominator != 0 else 0.0
+        slope, _, _ = linear_regression(list(values))
+        return slope
 
     @staticmethod
     def _classify_direction(values: Sequence[float], slope: float) -> DriftDirection:
@@ -742,18 +740,8 @@ class AlignmentMonitor:
 
     @staticmethod
     def _pearson_correlation(x: Sequence[float], y: Sequence[float]) -> float:
-        """Compute Pearson correlation coefficient."""
-        n = len(x)
-        if n < 2:
-            return 0.0
-        x_mean = statistics.mean(x)
-        y_mean = statistics.mean(y)
-        numerator = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, y))
-        denom_x = math.sqrt(sum((xi - x_mean) ** 2 for xi in x))
-        denom_y = math.sqrt(sum((yi - y_mean) ** 2 for yi in y))
-        if denom_x == 0 or denom_y == 0:
-            return 0.0
-        return numerator / (denom_x * denom_y)
+        """Compute Pearson correlation coefficient (delegates to shared helper)."""
+        return pearson_correlation(list(x), list(y))
 
 
 # ── CLI ──
