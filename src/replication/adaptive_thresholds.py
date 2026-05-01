@@ -36,6 +36,8 @@ import sys
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, List, Optional, Tuple
 
+from ._helpers import linear_regression as _linear_regression
+
 
 # ── core data structures ─────────────────────────────────────────────
 
@@ -129,14 +131,9 @@ class ThresholdState:
         if len(vals) < 5:
             return None
         n = len(vals)
-        x_mean = (n - 1) / 2.0
-        y_mean = sum(vals) / n
-        num = sum((i - x_mean) * (v - y_mean) for i, v in enumerate(vals))
-        den = sum((i - x_mean) ** 2 for i in range(n))
-        if abs(den) < 1e-12:
+        slope, intercept, _r2 = _linear_regression(vals)
+        if slope == 0.0 and intercept == (vals[0] if vals else 0.0):
             return None
-        slope = num / den
-        intercept = y_mean - slope * x_mean
 
         # project forward
         projected = [intercept + slope * (n - 1 + step) for step in range(1, horizon + 1)]

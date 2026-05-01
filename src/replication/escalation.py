@@ -71,6 +71,8 @@ import statistics
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from ._helpers import linear_regression as _linear_regression
+
 logger = logging.getLogger(__name__)
 
 
@@ -1098,16 +1100,8 @@ def _escalation_velocity(attempts: List[EscalationAttempt]) -> float:
     if len(attempts) < 2:
         return 0.0
 
-    scores = [_SEVERITY_SCORES[a.severity] for a in attempts]
-    # Linear regression slope: change in severity score per attempt
-    n = len(scores)
-    x_mean = (n - 1) / 2.0
-    y_mean = statistics.mean(scores)
-    numerator = sum((i - x_mean) * (scores[i] - y_mean) for i in range(n))
-    denominator = sum((i - x_mean) ** 2 for i in range(n))
-    if denominator == 0:
-        return 0.0
-    slope = numerator / denominator
+    scores = [float(_SEVERITY_SCORES[a.severity]) for a in attempts]
+    slope, _intercept, _r2 = _linear_regression(scores)
     return round(slope, 4)
 
 
