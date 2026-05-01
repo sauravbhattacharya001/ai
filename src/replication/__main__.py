@@ -121,6 +121,7 @@ _HAS_MAIN = {
     "alignment_tax",
     "instrumental_convergence",
     "situational_awareness",
+    "capability_elicitation",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -307,6 +308,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "alignment-tax":                  (_make_handler("alignment_tax"),                                                    "Quantify performance cost of safety constraints & shedding incentives"),
     "instrumental":                    (_make_handler("instrumental_convergence"),                                           "Detect instrumental convergence — self-preservation, resource hoarding, power seeking"),
     "situational-awareness":            (_make_handler("situational_awareness"),                              "Autonomous situational awareness profiling - detect agents that know too much"),
+    "elicitation":                          (_make_handler("capability_elicitation"),                              "Detect capability elicitation attempts — probing, jailbreaks, info leakage"),
 }
 
 
