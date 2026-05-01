@@ -266,28 +266,42 @@ class CollusionDetector:
         return signals
 
     def detect_complementary_actions(self, actions: List[AgentAction]) -> List[CollusionSignal]:
-        """Find action pairs from different agents that combine dangerously."""
+        """Find action pairs from different agents that combine dangerously.
+
+        Optimised: pre-builds a lookup dict mapping each action type to its
+        complementary partners, filters actions to only those whose type
+        participates in a complementary pair (typically a small fraction of
+        total actions), then performs the time-windowed scan on the reduced
+        set with O(1) match checks.  Reduces work from O(N² × P) on all
+        actions to O(R²) where R << N is the relevant-action count.
+        """
         signals: List[CollusionSignal] = []
         window = self._thresholds["sync_window"] * 2
 
-        sorted_actions = sorted(actions, key=lambda a: a.timestamp)
+        # Build O(1) lookup: type -> list of (partner_type, description)
+        complement_map: Dict[str, List[Tuple[str, str]]] = defaultdict(list)
+        for type_a, type_b, desc in _COMPLEMENTARY_PAIRS:
+            complement_map[type_a].append((type_b, desc))
+            complement_map[type_b].append((type_a, desc))
 
-        for i, act1 in enumerate(sorted_actions):
-            for j in range(i + 1, len(sorted_actions)):
-                act2 = sorted_actions[j]
+        # Filter to only actions with relevant types, then sort by time
+        relevant = sorted(
+            (a for a in actions if a.action_type in complement_map),
+            key=lambda a: a.timestamp,
+        )
+
+        for i, act1 in enumerate(relevant):
+            partners = complement_map[act1.action_type]
+            for j in range(i + 1, len(relevant)):
+                act2 = relevant[j]
                 if act2.timestamp - act1.timestamp > window:
                     break
                 if act1.agent_id == act2.agent_id:
                     continue
 
-                for type_a, type_b, desc in _COMPLEMENTARY_PAIRS:
-                    matched = False
-                    if act1.action_type == type_a and act2.action_type == type_b:
-                        matched = True
-                    elif act1.action_type == type_b and act2.action_type == type_a:
-                        matched = True
-
-                    if matched:
+                # O(P) where P = partners per type (1-2), not all 6 pairs
+                for partner_type, desc in partners:
+                    if act2.action_type == partner_type:
                         delta = act2.timestamp - act1.timestamp
                         confidence = max(0.4, 1.0 - (delta / window))
                         signals.append(CollusionSignal(
