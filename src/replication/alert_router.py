@@ -43,10 +43,20 @@ import argparse
 import json
 import time
 from dataclasses import asdict, dataclass, field
+import re
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from ._helpers import box_header as _box_header
+
+_VALID_SEVERITIES = frozenset({"critical", "warning", "info"})
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def _sanitize_log_field(value: str, max_length: int = 2048) -> str:
+    """Strip control characters and truncate to prevent log injection (CWE-117)."""
+    sanitized = _CONTROL_CHAR_RE.sub("", value)
+    return sanitized[:max_length]
 
 
 # ── Data models ──────────────────────────────────────────────────────
@@ -218,6 +228,8 @@ class AlertRouter:
         results: List[DispatchResult] = []
         ts = datetime.now(timezone.utc).isoformat()
         severity = event.get("severity", "info")
+        if severity not in _VALID_SEVERITIES:
+            severity = "info"
 
         for rule in self.rules:
             if not rule.enabled or not rule.matches(event):
@@ -276,9 +288,11 @@ class AlertRouter:
 
     def _dispatch(self, channel: Channel, event: Dict[str, Any], severity: str) -> None:
         """Actually send the alert to a channel."""
-        msg = event.get("message", "")
-        cat = event.get("category", "unknown")
-        src = event.get("source", "")
+        msg = _sanitize_log_field(str(event.get("message", "")))
+        cat = _sanitize_log_field(str(event.get("category", "unknown")), max_length=64)
+        src = _sanitize_log_field(str(event.get("source", "")), max_length=256)
+        # Validate severity to prevent injection of arbitrary severity labels
+        severity = severity if severity in _VALID_SEVERITIES else "info"
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
         if channel.kind == "console":
