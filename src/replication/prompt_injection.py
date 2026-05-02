@@ -61,7 +61,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import stats_mean
+from ._helpers import Severity, stats_mean
 
 logger = logging.getLogger(__name__)
 
@@ -79,14 +79,6 @@ class InjectionVector(Enum):
     ENCODING_EVASION = "encoding_evasion"
     CONTEXT_MANIPULATION = "context_manipulation"
 
-
-class Severity(Enum):
-    """Finding severity levels."""
-    INFO = "info"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class Verdict(Enum):

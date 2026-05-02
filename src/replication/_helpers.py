@@ -13,13 +13,14 @@ from typing import Any, Dict, List, TYPE_CHECKING
 
 
 class Severity(Enum):
-    """Standard 4-level severity shared across replication modules.
+    """Standard 5-level severity shared across replication modules.
 
-    Previously duplicated in 29 files (canary, dlp_scanner,
-    evasion, goal_drift, etc.) with identical LOW/MEDIUM/HIGH/CRITICAL
-    values.  Centralised here to avoid drift.
+    Previously duplicated in 29+ files (canary, dlp_scanner,
+    evasion, goal_drift, prompt_injection, regression_detector, etc.)
+    with identical values.  Centralised here to avoid drift.
     """
 
+    INFO = "info"
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"

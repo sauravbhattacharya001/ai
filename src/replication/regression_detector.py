@@ -34,7 +34,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy, PRESETS
-from ._helpers import stats_mean, stats_std, box_header, extract_report_metrics, REPORT_METRIC_NAMES
+from ._helpers import Severity, stats_mean, stats_std, box_header, extract_report_metrics, REPORT_METRIC_NAMES
 
 
 # ── Enums ──
@@ -46,14 +46,6 @@ class Verdict(Enum):
     WARN = "warn"
     FAIL = "fail"
 
-
-class Severity(Enum):
-    """Finding severity level."""
-    INFO = "info"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 class Direction(Enum):

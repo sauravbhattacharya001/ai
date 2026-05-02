@@ -23,7 +23,7 @@ class TestEnums:
         }
 
     def test_severity_values(self):
-        assert set(s.value for s in Severity) == {"low", "medium", "high", "critical"}
+        assert set(s.value for s in Severity) == {"info", "low", "medium", "high", "critical"}
 
     def test_event_severity_mapping_complete(self):
         for event in DetectionEvent:

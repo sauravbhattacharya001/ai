@@ -186,7 +186,7 @@ def test_sorted_by_severity():
     playbooks = gen.generate()
     severity_order = list(Severity)
     indices = [severity_order.index(pb.severity) for pb in playbooks]
-    assert indices == sorted(indices), "Playbooks not sorted by severity"
+    assert indices == sorted(indices, reverse=True), "Playbooks not sorted by severity"
 
 
 def test_cli_list(capsys):

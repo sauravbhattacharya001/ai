@@ -57,7 +57,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import stats_mean, stats_std, box_header, emit_output
+from ._helpers import Severity, stats_mean, stats_std, box_header, emit_output
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -70,12 +70,6 @@ class TemporalPattern(Enum):
     CLOCK_MANIPULATION = "clock_manipulation"
     TEMPORAL_ANCHORING = "temporal_anchoring"
 
-
-class Severity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 PATTERN_DESCRIPTIONS: Dict[TemporalPattern, str] = {

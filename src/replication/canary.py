@@ -91,6 +91,7 @@ EVENT_SEVERITY: Dict[DetectionEvent, Severity] = {
 }
 
 SEVERITY_SCORE: Dict[Severity, int] = {
+    Severity.INFO: 0,
     Severity.LOW: 1,
     Severity.MEDIUM: 3,
     Severity.HIGH: 7,

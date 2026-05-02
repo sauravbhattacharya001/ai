@@ -51,21 +51,13 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from ._helpers import box_header
+from ._helpers import Severity, box_header
 
 
 # ---------------------------------------------------------------------------
 # Enums & Constants
 # ---------------------------------------------------------------------------
 
-
-class Severity(Enum):
-    """Incident severity levels."""
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-    INFO = "info"
 
 
 class ThreatCategory(Enum):
@@ -886,11 +878,11 @@ class PlaybookGenerator:
         for cat in categories:
             if cat in _PLAYBOOK_BUILDERS:
                 pb = _PLAYBOOK_BUILDERS[cat]()
-                if severity_order.index(pb.severity) <= min_idx:
+                if severity_order.index(pb.severity) >= min_idx:
                     playbooks.append(pb)
 
         # Sort by severity (critical first)
-        playbooks.sort(key=lambda p: severity_order.index(p.severity))
+        playbooks.sort(key=lambda p: severity_order.index(p.severity), reverse=True)
         return playbooks
 
     def get_playbook(self, category: ThreatCategory) -> Optional[Playbook]:
