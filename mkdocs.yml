@@ -163,6 +163,12 @@ nav:
           - Watermark: api/watermark.md
           - Steganography: api/steganography.md
           - Nutrition Label: api/nutrition_label.md
+      - Alignment Threats:
+          - Deceptive Alignment: api/deceptive_alignment.md
+          - Sandbagging Detector: api/sandbagging_detector.md
+          - Sycophancy Detector: api/sycophancy_detector.md
+          - Reward Hacking: api/reward_hacking.md
+          - Corrigibility Auditor: api/corrigibility_auditor.md
       - Advanced Safety:
           - Access Control: api/access_control.md
           - Red Team: api/red_team.md
