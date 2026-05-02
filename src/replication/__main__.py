@@ -124,6 +124,7 @@ _HAS_MAIN = {
     "capability_elicitation",
     "value_lock",
     "moral_uncertainty",
+    "emergent_coalition",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -313,6 +314,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "elicitation":                          (_make_handler("capability_elicitation"),                              "Detect capability elicitation attempts — probing, jailbreaks, info leakage"),
     "value-lock":                             (_make_handler("value_lock"),                                            "Autonomous value stability verification across contexts & pressure scenarios"),
     "moral-uncertainty":                        (_make_handler("moral_uncertainty"),                                       "Autonomous moral uncertainty analysis — dilemma handling, consistency, calibration"),
+    "emergent-coalition":                         (_make_handler("emergent_coalition"),                                      "Detect implicit agent coalitions forming without explicit coordination"),
 }
 
 
