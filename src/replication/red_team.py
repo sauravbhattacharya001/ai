@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import hashlib
+import html as html_mod
 import json
 import math
 import os
@@ -522,16 +523,17 @@ def format_json(plan: RedTeamPlan) -> str:
 
 def format_html(plan: RedTeamPlan) -> str:
     """Generate self-contained HTML report."""
+    _e = html_mod.escape
     obj_rows = ""
     for o in plan.objectives:
-        criteria_html = "".join(f"<li>{c}</li>" for c in o.success_criteria)
-        hints_html = f"<br><em>Hints: {'; '.join(o.hints)}</em>" if o.hints else ""
+        criteria_html = "".join(f"<li>{_e(c)}</li>" for c in o.success_criteria)
+        hints_html = f"<br><em>Hints: {_e('; '.join(o.hints))}</em>" if o.hints else ""
         diff_colors = {"easy": "#22c55e", "medium": "#eab308", "hard": "#f97316", "extreme": "#ef4444"}
         dc = diff_colors.get(o.difficulty, "#888")
         obj_rows += f"""<tr>
-            <td><code>{o.id}</code></td>
-            <td><strong>{o.name}</strong><br><small>{o.description}</small></td>
-            <td><span style="color:{dc};font-weight:bold">{o.difficulty}</span></td>
+            <td><code>{_e(o.id)}</code></td>
+            <td><strong>{_e(o.name)}</strong><br><small>{_e(o.description)}</small></td>
+            <td><span style="color:{dc};font-weight:bold">{_e(o.difficulty)}</span></td>
             <td style="text-align:center"><strong>{o.points}</strong></td>
             <td><ul style="margin:0;padding-left:18px">{criteria_html}</ul>{hints_html}</td>
         </tr>"""
@@ -540,30 +542,30 @@ def format_html(plan: RedTeamPlan) -> str:
     for m in plan.timeline:
         style = "font-weight:bold;background:#1e293b" if m.checkpoint else ""
         marker = "◆" if m.checkpoint else "○"
-        timeline_html += f'<tr style="{style}"><td>{_format_time(m.time_offset_min)}</td><td>{marker}</td><td>{m.name}</td><td>{m.description}</td></tr>'
+        timeline_html += f'<tr style="{style}"><td>{_format_time(m.time_offset_min)}</td><td>{marker}</td><td>{_e(m.name)}</td><td>{_e(m.description)}</td></tr>'
 
     teams_html = ""
     for t in plan.teams:
-        teams_html += f'<div style="background:#1e293b;padding:12px;border-radius:8px;margin:6px 0"><strong>{t.name}</strong> — {t.focus_area}<br><small>Level: {t.skill_level} | Objectives: {", ".join(t.assigned_objectives)}</small></div>'
+        teams_html += f'<div style="background:#1e293b;padding:12px;border-radius:8px;margin:6px 0"><strong>{_e(t.name)}</strong> — {_e(t.focus_area)}<br><small>Level: {_e(t.skill_level)} | Objectives: {_e(", ".join(t.assigned_objectives))}</small></div>'
 
-    allowed_html = "".join(f"<li>✓ {t}</li>" for t in plan.rules.allowed_techniques)
-    forbidden_html = "".join(f"<li>✗ {t}</li>" for t in plan.rules.forbidden_techniques)
-    stops_html = "".join(f"<li>⚠ {s}</li>" for s in plan.rules.safety_stops)
+    allowed_html = "".join(f"<li>✓ {_e(t)}</li>" for t in plan.rules.allowed_techniques)
+    forbidden_html = "".join(f"<li>✗ {_e(t)}</li>" for t in plan.rules.forbidden_techniques)
+    stops_html = "".join(f"<li>⚠ {_e(s)}</li>" for s in plan.rules.safety_stops)
 
     scoring_html = ""
     total = 0
     for r in plan.scoring:
-        items = "".join(f"<li>{n}: <strong>{p} pts</strong></li>" for n, p in r.criteria)
-        scoring_html += f'<div style="margin:8px 0"><h4>{r.category} (max {r.max_points})</h4><ul>{items}</ul></div>'
+        items = "".join(f"<li>{_e(n)}: <strong>{p} pts</strong></li>" for n, p in r.criteria)
+        scoring_html += f'<div style="margin:8px 0"><h4>{_e(r.category)} (max {r.max_points})</h4><ul>{items}</ul></div>'
         total += r.max_points
 
-    debrief_html = "".join(f"<li>{q}</li>" for q in plan.debrief_questions)
+    debrief_html = "".join(f"<li>{_e(q)}</li>" for q in plan.debrief_questions)
 
     diff_badge = {"easy": "🟢", "medium": "🟡", "hard": "🟠", "extreme": "🔴"}.get(plan.difficulty, "⚪")
 
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Red Team Plan: {plan.title}</title>
+<title>Red Team Plan: {_e(plan.title)}</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;max-width:1000px;margin:0 auto;line-height:1.6}}
@@ -577,9 +579,9 @@ ul{{margin:4px 0;padding-left:20px}} li{{margin:2px 0}}
 .badge{{display:inline-block;padding:4px 12px;border-radius:12px;font-weight:bold;font-size:0.9em}}
 .meta{{color:#64748b;font-size:0.9em;margin:4px 0}}
 </style></head><body>
-<h1>🎯 {plan.title}</h1>
-<p class="meta">Plan ID: <code>{plan.id}</code> | {diff_badge} {plan.difficulty.upper()} | Duration: {_format_time(plan.duration_minutes)} | Generated: {plan.created[:19]}</p>
-<p style="margin:12px 0">{plan.description}</p>
+<h1>🎯 {_e(plan.title)}</h1>
+<p class="meta">Plan ID: <code>{_e(plan.id)}</code> | {diff_badge} {_e(plan.difficulty.upper())} | Duration: {_format_time(plan.duration_minutes)} | Generated: {_e(plan.created[:19])}</p>
+<p style="margin:12px 0">{_e(plan.description)}</p>
 
 <h2>📋 Objectives</h2>
 <table><thead><tr><th>ID</th><th>Objective</th><th>Difficulty</th><th>Points</th><th>Success Criteria</th></tr></thead><tbody>{obj_rows}</tbody></table>
@@ -588,9 +590,9 @@ ul{{margin:4px 0;padding-left:20px}} li{{margin:2px 0}}
 <h3>Allowed</h3><ul>{allowed_html}</ul>
 <h3>Forbidden</h3><ul style="color:#f87171">{forbidden_html}</ul>
 <h3>Safety Stops</h3><ul style="color:#fbbf24">{stops_html}</ul>
-<p><strong>Escalation:</strong> {plan.rules.escalation_protocol}</p>
-<p><strong>Data handling:</strong> {plan.rules.data_handling}</p>
-<p><strong>Comms:</strong> {plan.rules.communication_channel}</p>
+<p><strong>Escalation:</strong> {_e(plan.rules.escalation_protocol)}</p>
+<p><strong>Data handling:</strong> {_e(plan.rules.data_handling)}</p>
+<p><strong>Comms:</strong> {_e(plan.rules.communication_channel)}</p>
 
 <h2>👥 Teams</h2>{teams_html}
 

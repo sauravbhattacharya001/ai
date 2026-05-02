@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html as html_mod
 import json
 import random
 import sys
 import textwrap
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -460,6 +462,7 @@ def format_mission_text(m: HuntMission) -> str:
 
 def generate_playbook_html(missions: List[HuntMission]) -> str:
     """Generate a self-contained HTML playbook for the missions."""
+    _e = html_mod.escape
     cards = []
     for m in sorted(missions, key=lambda x: (x.priority, x.category)):
         indicators_html = ""
@@ -467,10 +470,10 @@ def generate_playbook_html(missions: List[HuntMission]) -> str:
             color = {"low": "#22c55e", "medium": "#eab308", "high": "#f97316", "critical": "#ef4444"}.get(ind.severity, "#888")
             indicators_html += f"""
             <div class="indicator">
-              <span class="severity-badge" style="background:{color}">{ind.severity.upper()}</span>
-              <span class="ind-type">{ind.type}</span>
-              <p>{ind.description}</p>
-              <small>📍 {ind.data_source}</small>
+              <span class="severity-badge" style="background:{color}">{_e(ind.severity.upper())}</span>
+              <span class="ind-type">{_e(ind.type)}</span>
+              <p>{_e(ind.description)}</p>
+              <small>📍 {_e(ind.data_source)}</small>
             </div>"""
 
         procedures_html = ""
@@ -479,25 +482,25 @@ def generate_playbook_html(missions: List[HuntMission]) -> str:
             <div class="procedure-step">
               <div class="step-num">Step {proc.step}</div>
               <div class="step-body">
-                <strong>{proc.action}</strong>
-                <div class="step-meta">🔧 <code>{proc.tool}</code> → {proc.expected_output}</div>
+                <strong>{_e(proc.action)}</strong>
+                <div class="step-meta">🔧 <code>{_e(proc.tool)}</code> → {_e(proc.expected_output)}</div>
               </div>
             </div>"""
 
-        criteria_html = "".join(f"<li>{sc}</li>" for sc in m.success_criteria)
-        mitre_html = "".join(f'<span class="mitre-tag">{ref}</span>' for ref in m.mitre_mapping)
-        tags_html = "".join(f'<span class="tag">{t}</span>' for t in m.tags)
+        criteria_html = "".join(f"<li>{_e(sc)}</li>" for sc in m.success_criteria)
+        mitre_html = "".join(f'<span class="mitre-tag">{_e(ref)}</span>' for ref in m.mitre_mapping)
+        tags_html = "".join(f'<span class="tag">{_e(t)}</span>' for t in m.tags)
         diff_icon = {"beginner": "🌱", "intermediate": "⚡", "advanced": "🔥"}.get(m.difficulty, "")
 
         cards.append(f"""
-    <div class="mission-card" data-category="{m.category}" data-difficulty="{m.difficulty}" data-priority="{m.priority}">
+    <div class="mission-card" data-category="{_e(m.category)}" data-difficulty="{_e(m.difficulty)}" data-priority="{_e(m.priority)}">
       <div class="card-header">
-        <div class="card-id">{m.id}</div>
-        <h2>{m.title}</h2>
+        <div class="card-id">{_e(m.id)}</div>
+        <h2>{_e(m.title)}</h2>
         <div class="card-meta">
-          <span class="cat-badge">{m.category}</span>
-          <span class="diff-badge">{diff_icon} {m.difficulty}</span>
-          <span class="pri-badge">{m.priority}</span>
+          <span class="cat-badge">{_e(m.category)}</span>
+          <span class="diff-badge">{diff_icon} {_e(m.difficulty)}</span>
+          <span class="pri-badge">{_e(m.priority)}</span>
           <span class="hours-badge">⏱️ {m.estimated_hours}h</span>
         </div>
         <div class="card-tags">{tags_html}</div>
@@ -505,11 +508,11 @@ def generate_playbook_html(missions: List[HuntMission]) -> str:
       <div class="card-body">
         <details open>
           <summary>Hypothesis</summary>
-          <p>{m.hypothesis}</p>
+          <p>{_e(m.hypothesis)}</p>
         </details>
         <details>
           <summary>Background</summary>
-          <p>{m.background}</p>
+          <p>{_e(m.background)}</p>
         </details>
         <details open>
           <summary>Indicators ({len(m.indicators)})</summary>
@@ -536,12 +539,12 @@ def generate_playbook_html(missions: List[HuntMission]) -> str:
         cat_counts[m.category] = cat_counts.get(m.category, 0) + 1
 
     stats_html = "".join(
-        f'<div class="stat"><div class="stat-val">{v}</div><div class="stat-label">{k}</div></div>'
+        f'<div class="stat"><div class="stat-val">{v}</div><div class="stat-label">{_e(k)}</div></div>'
         for k, v in sorted(cat_counts.items())
     )
 
     filter_buttons = "".join(
-        f'<button class="filter-btn" data-filter="{cat}">{cat}</button>'
+        f'<button class="filter-btn" data-filter="{_e(cat)}">{_e(cat)}</button>'
         for cat in sorted(set(m.category for m in missions))
     )
 

@@ -24,6 +24,7 @@ Programmatic::
 
 from __future__ import annotations
 
+import html as html_mod
 import json
 import sys
 import time
@@ -523,6 +524,7 @@ class PlaybookGenerator:
 
     def export_html(self, playbook: Playbook, path: str) -> None:
         """Export playbook as a self-contained HTML report."""
+        _e = html_mod.escape
         d = playbook.to_dict()
         phase_labels = {
             "immediate": "🚨 Immediate",
@@ -565,24 +567,24 @@ class PlaybookGenerator:
         html_parts.append(f"<div class='risk-gauge'><div class='risk-fill' "
                           f"style='width:{d['overall_risk']:.0f}%;background:{color}'>"
                           f"</div></div>")
-        html_parts.append(f"<p>{d['summary']}</p>")
+        html_parts.append(f"<p>{_e(d['summary'])}</p>")
 
         # Diagnoses
         html_parts.append("<h2>Preset Diagnoses</h2>")
         for diag in d["diagnoses"]:
             emoji = "🔴" if diag["risk_score"] >= 70 else (
                 "🟡" if diag["risk_score"] >= 40 else "🟢")
-            html_parts.append(f"<div class='card'><h3>{emoji} {diag['preset']}"
+            html_parts.append(f"<div class='card'><h3>{emoji} {_e(diag['preset'])}"
                               f" — Risk: {diag['risk_score']:.1f}</h3>")
             if diag["weaknesses"]:
                 html_parts.append("<ul>")
                 for w in diag["weaknesses"]:
-                    html_parts.append(f"<li>⚠️ {w}</li>")
+                    html_parts.append(f"<li>⚠️ {_e(w)}</li>")
                 html_parts.append("</ul>")
             if diag["strengths"]:
                 html_parts.append("<ul>")
                 for s in diag["strengths"]:
-                    html_parts.append(f"<li>✅ {s}</li>")
+                    html_parts.append(f"<li>✅ {_e(s)}</li>")
                 html_parts.append("</ul>")
             html_parts.append("</div>")
 
@@ -601,15 +603,15 @@ class PlaybookGenerator:
             for a in acts:
                 c = pri_colors.get(a["priority"], "#666")
                 html_parts.append(f"<div class='action' style='border-color:{c}'>")
-                html_parts.append(f"<strong>[{a['priority'].upper()}] {a['title']}</strong><br>")
-                html_parts.append(f"{a['description']}<br>")
-                html_parts.append(f"<span class='metric'>{a['metric']}: "
+                html_parts.append(f"<strong>[{_e(a['priority'].upper())}] {_e(a['title'])}</strong><br>")
+                html_parts.append(f"{_e(a['description'])}<br>")
+                html_parts.append(f"<span class='metric'>{_e(a['metric'])}: "
                                   f"{a['current_value']:.2f} → {a['target_value']:.2f}</span><br>")
-                html_parts.append(f"Effort: {a['effort']} | Impact: {a['impact']} | "
+                html_parts.append(f"Effort: {_e(a['effort'])} | Impact: {_e(a['impact'])} | "
                                   f"ROI: {a['roi_score']:.1f}<br>")
                 if a["tags"]:
                     for t in a["tags"]:
-                        html_parts.append(f"<span class='tag'>{t}</span>")
+                        html_parts.append(f"<span class='tag'>{_e(t)}</span>")
                 html_parts.append("</div>")
 
         html_parts.append("</body></html>")
