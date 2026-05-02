@@ -540,6 +540,15 @@ from .goal_drift import (
     DriftAlert,
     DriftType,
 )
+from .value_lock import (
+    ValueLockVerifier,
+    ValueProbe,
+    ValueResponse,
+    ValueProfile,
+    FleetValueReport,
+    VALUE_DIMENSIONS,
+    PROBE_LIBRARY,
+)
 from .safe_handoff import (
     HandoffProtocol,
     HandoffConfig,
@@ -1014,4 +1023,12 @@ __all__ = [
     "GoalProfile",
     "DriftAlert",
     "DriftType",
+    # value_lock
+    "ValueLockVerifier",
+    "ValueProbe",
+    "ValueResponse",
+    "ValueProfile",
+    "FleetValueReport",
+    "VALUE_DIMENSIONS",
+    "PROBE_LIBRARY",
 ]
