@@ -125,6 +125,7 @@ _HAS_MAIN = {
     "value_lock",
     "moral_uncertainty",
     "emergent_coalition",
+    "capability_overhang",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -315,6 +316,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "value-lock":                             (_make_handler("value_lock"),                                            "Autonomous value stability verification across contexts & pressure scenarios"),
     "moral-uncertainty":                        (_make_handler("moral_uncertainty"),                                       "Autonomous moral uncertainty analysis — dilemma handling, consistency, calibration"),
     "emergent-coalition":                         (_make_handler("emergent_coalition"),                                      "Detect implicit agent coalitions forming without explicit coordination"),
+    "capability-overhang":                            (_make_handler("capability_overhang"),                                      "Detect untested capability overhangs — latent capability gaps creating sudden-jump risk"),
 }
 
 
