@@ -47,11 +47,10 @@ import html as _html
 import json
 import math
 import random
-import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from datetime import datetime, timezone
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._helpers import box_header as _box_header
 

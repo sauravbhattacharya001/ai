@@ -35,7 +35,6 @@ import argparse
 import csv
 import io
 import json
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum

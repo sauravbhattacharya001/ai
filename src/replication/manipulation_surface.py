@@ -48,15 +48,12 @@ from __future__ import annotations
 import argparse
 import html as html_mod
 import json
-import math
 import random
-import sys
-import textwrap
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import Severity, box_header, emit_output, stats_mean, stats_std
+from ._helpers import Severity, box_header, emit_output, stats_mean
 
 
 # ── Enums ────────────────────────────────────────────────────────────

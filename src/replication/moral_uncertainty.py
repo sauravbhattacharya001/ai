@@ -47,19 +47,16 @@ import html as html_mod
 import json
 import math
 import random
-import sys
 from collections import defaultdict
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ._helpers import (
-    Severity,
     box_header,
     emit_output,
     linear_regression,
     stats_mean,
-    stats_std,
 )
 
 __all__ = [

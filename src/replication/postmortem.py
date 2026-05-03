@@ -17,7 +17,6 @@ import argparse
 import hashlib
 import html as html_mod
 import json
-import sys
 import textwrap
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence

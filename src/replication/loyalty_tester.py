@@ -27,14 +27,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import random
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from ._helpers import stats_mean, stats_std, box_header
 

@@ -65,7 +65,6 @@ import html as html_mod
 import json
 import math
 import random
-import sys
 from collections import defaultdict
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone, timedelta
