@@ -127,6 +127,7 @@ _HAS_MAIN = {
     "emergent_coalition",
     "capability_overhang",
     "mesa_optimizer",
+    "sleeper_agent",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -319,6 +320,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "emergent-coalition":                         (_make_handler("emergent_coalition"),                                      "Detect implicit agent coalitions forming without explicit coordination"),
     "capability-overhang":                            (_make_handler("capability_overhang"),                                      "Detect untested capability overhangs — latent capability gaps creating sudden-jump risk"),
     "mesa-optimizer":                                  (_make_handler("mesa_optimizer"),                                              "Detect mesa-optimizers — internally learned optimization pursuing divergent objectives"),
+    "sleeper-agent":                                    (_make_handler("sleeper_agent"),                                               "Detect sleeper agents — dormant behavioral triggers activating under specific conditions"),
 }
 
 
