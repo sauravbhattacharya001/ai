@@ -129,6 +129,7 @@ _HAS_MAIN = {
     "mesa_optimizer",
     "sleeper_agent",
     "treacherous_turn",
+    "wireheading",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -323,6 +324,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "mesa-optimizer":                                  (_make_handler("mesa_optimizer"),                                              "Detect mesa-optimizers — internally learned optimization pursuing divergent objectives"),
     "sleeper-agent":                                    (_make_handler("sleeper_agent"),                                               "Detect sleeper agents — dormant behavioral triggers activating under specific conditions"),
     "treacherous-turn":                                  (_make_handler("treacherous_turn"),                                             "Detect treacherous turns — sudden behavioral regime changes after capability or context shifts"),
+    "wireheading":                                        (_make_handler("wireheading"),                                                   "Detect agents wireheading — manipulating own reward signals instead of genuine task completion"),
 }
 
 
