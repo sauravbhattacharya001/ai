@@ -34,7 +34,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence
 
 from .simulator import ScenarioConfig, SimulationReport, Simulator, Strategy
-from ._helpers import stats_mean, stats_std, linear_regression as _linear_regression_impl
+from ._helpers import sparkline as _sparkline, stats_mean, stats_std, linear_regression as _linear_regression_impl
 
 
 # ── Enums ──
@@ -245,19 +245,7 @@ class DriftResult:
 # ── Helpers ──
 
 
-_SPARK_CHARS = "▁▂▃▄▅▆▇█"
-
-
-def _sparkline(values: Sequence[float]) -> str:
-    """Generate a sparkline string from values."""
-    if not values:
-        return ""
-    lo, hi = min(values), max(values)
-    spread = hi - lo if hi != lo else 1.0
-    return "".join(
-        _SPARK_CHARS[min(int((v - lo) / spread * (len(_SPARK_CHARS) - 1)), len(_SPARK_CHARS) - 1)]
-        for v in values
-    )
+# Deduplicated: _sparkline now lives in _helpers.sparkline.
 
 
 # Deduplicated: _linear_regression now lives in _helpers.linear_regression

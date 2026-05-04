@@ -65,6 +65,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ._helpers import (
     Severity,
     box_header,
+    clamp as _clamp,
     emit_output,
     linear_regression,
     stats_mean,
@@ -139,9 +140,7 @@ def _risk_tier(score: float) -> str:
     return "Confirmed Sleeper" if s > 100 else "Dormant"
 
 
-def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
-    """Clamp *v* between *lo* and *hi*."""
-    return max(lo, min(hi, v))
+# Deduplicated: _clamp now lives in _helpers.clamp.
 
 
 def _z_score(value: float, mean: float, std: float) -> float:

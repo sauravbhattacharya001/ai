@@ -73,6 +73,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from ._helpers import (
     Severity,
     box_header,
+    clamp as _clamp,
     emit_output,
     linear_regression,
     stats_mean,
@@ -130,8 +131,7 @@ def _risk_tier(score: float) -> str:
     return "Critical"
 
 
-def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
-    return max(lo, min(hi, v))
+# Deduplicated: _clamp now lives in _helpers.clamp.
 
 
 # ── Data Model ───────────────────────────────────────────────────────

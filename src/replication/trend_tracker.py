@@ -50,7 +50,7 @@ from typing import Any, Dict, List, Optional
 
 from .scorecard import SafetyScorecard, ScorecardConfig, ScorecardResult
 from .simulator import ScenarioConfig, PRESETS
-from ._helpers import box_header as _box_header
+from ._helpers import box_header as _box_header, sparkline as _sparkline
 
 
 # ── Data models ──────────────────────────────────────────────────────
@@ -183,14 +183,7 @@ class TrendSummary:
         return "\n".join(lines)
 
 
-def _sparkline(values: List[float]) -> str:
-    """Render a simple Unicode sparkline."""
-    if not values:
-        return ""
-    blocks = "▁▂▃▄▅▆▇█"
-    lo, hi = min(values), max(values)
-    spread = hi - lo if hi != lo else 1
-    return "".join(blocks[min(int((v - lo) / spread * 7), 7)] for v in values)
+# Deduplicated: _sparkline now lives in _helpers.sparkline.
 
 
 @dataclass

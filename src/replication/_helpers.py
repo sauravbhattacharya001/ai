@@ -177,6 +177,43 @@ def pearson_correlation(x: "list[float]", y: "list[float]") -> float:
     return num / (dx * dy)
 
 
+# ── sparkline ────────────────────────────────────────────
+
+_SPARK_CHARS = "▁▂▃▄▅▆▇█"
+
+
+def sparkline(values: "list[float] | List[float]") -> str:
+    """Render a Unicode sparkline from numeric *values*.
+
+    Previously duplicated in *drift* and *trend_tracker* with
+    identical logic (8-level block characters, linear scaling).
+    """
+    if not values:
+        return ""
+    lo, hi = min(values), max(values)
+    spread = hi - lo if hi != lo else 1.0
+    return "".join(
+        _SPARK_CHARS[min(int((v - lo) / spread * (len(_SPARK_CHARS) - 1)),
+                         len(_SPARK_CHARS) - 1)]
+        for v in values
+    )
+
+
+# ── clamp ────────────────────────────────────────────────
+
+
+def clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
+    """Clamp *value* between *lo* and *hi*.
+
+    Previously duplicated identically in *hoarding*, *mesa_optimizer*,
+    and *sleeper_agent*.
+    """
+    return max(lo, min(hi, value))
+
+
+# ── output ───────────────────────────────────────────────
+
+
 def emit_output(text: str, path: "str | None", label: str = "Report") -> None:
     """Write *text* to *path* (printing confirmation) or to stdout.
 

@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from ._helpers import linear_regression as _linear_regression_full
+from ._helpers import clamp as _clamp, linear_regression as _linear_regression_full
 
 
 # ── Data types ──────────────────────────────────────────────────────
@@ -181,8 +181,7 @@ def _grade_risk(score: float) -> RiskLevel:
     return RiskLevel.NONE
 
 
-def _clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
-    return max(lo, min(hi, value))
+# Deduplicated: _clamp now lives in _helpers.clamp.
 
 
 # ── Dimension analyzers ────────────────────────────────────────────
