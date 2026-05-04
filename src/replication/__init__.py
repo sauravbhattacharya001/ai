@@ -549,6 +549,13 @@ from .value_lock import (
     VALUE_DIMENSIONS,
     PROBE_LIBRARY,
 )
+from .cognitive_sabotage import (
+    CognitiveSabotageDetector,
+    CommunicationSample,
+    CognitiveSabotageReport,
+    AgentSabotageProfile,
+    SabotageInsight,
+)
 from .safe_handoff import (
     HandoffProtocol,
     HandoffConfig,
@@ -1031,4 +1038,10 @@ __all__ = [
     "FleetValueReport",
     "VALUE_DIMENSIONS",
     "PROBE_LIBRARY",
+    # cognitive_sabotage
+    "CognitiveSabotageDetector",
+    "CommunicationSample",
+    "CognitiveSabotageReport",
+    "AgentSabotageProfile",
+    "SabotageInsight",
 ]
