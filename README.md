@@ -15,6 +15,12 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/sauravbhattacharya001/ai/pulls)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-025E8C?logo=dependabot)](https://github.com/sauravbhattacharya001/ai/network/updates)
 [![Security Policy](https://img.shields.io/badge/security-policy-green?logo=shield)](SECURITY.md)
+[![Pages](https://github.com/sauravbhattacharya001/ai/actions/workflows/pages.yml/badge.svg)](https://github.com/sauravbhattacharya001/ai/actions/workflows/pages.yml)
+[![Publish](https://github.com/sauravbhattacharya001/ai/actions/workflows/publish.yml/badge.svg)](https://github.com/sauravbhattacharya001/ai/actions/workflows/publish.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/sauravbhattacharya001/ai?logo=github&color=green)](https://github.com/sauravbhattacharya001/ai/releases/latest)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/ai-replication-sandbox?logo=pypi&logoColor=white&label=downloads)](https://pypi.org/project/ai-replication-sandbox/)
+[![GitHub Stars](https://img.shields.io/github/stars/sauravbhattacharya001/ai?style=flat&logo=github)](https://github.com/sauravbhattacharya001/ai/stargazers)
+[![Code Size](https://img.shields.io/github/languages/code-size/sauravbhattacharya001/ai?logo=github)](https://github.com/sauravbhattacharya001/ai)
 
 *144 modules · 100+ CLI commands · Zero external dependencies*
 
