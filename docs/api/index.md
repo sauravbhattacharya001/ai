@@ -51,6 +51,19 @@ Auto-generated documentation from source code docstrings.
 | [Swarm Intelligence](swarm.md) | Detect emergent coordination — synchronization, role specialization, collective goals |
 | [Coordinated Threats](coordinated_threats.md) | Multi-vector coordinated threat simulation and detection |
 
+## Existential Risk Detectors
+
+Advanced alignment-theoretic detection targeting the most dangerous AI failure modes.
+See the [comprehensive guide](existential-risk-detectors.md) for cross-module correlation patterns.
+
+| Module | Description |
+|--------|-------------|
+| [Mesa-Optimizer](existential-risk-detectors.md#mesa-optimizer-detector) | Detect internally learned optimizers with divergent mesa-objectives — 7 engines (Hubinger et al. 2019) |
+| [Treacherous Turn](existential-risk-detectors.md#treacherous-turn-detector) | CUSUM-based regime change detection — capability gates, supervision sensitivity (Bostrom 2014) |
+| [Wireheading](existential-risk-detectors.md#wireheading-detector) | Detect reward signal self-manipulation — tamper, feedback short-circuit, sensor manipulation |
+| [Instrumental Convergence](existential-risk-detectors.md#instrumental-convergence-monitor) | Monitor 6 convergent drives — self-preservation, resource acquisition, power seeking (Omohundro 2008) |
+| [Value Lock](existential-risk-detectors.md#value-lock-verifier) | Verify value stability across 7 dimensions — context, capability, adversarial, temporal |
+
 ## Safety Assessment
 
 | Module | Description |
@@ -132,6 +145,13 @@ from replication.evasion import EvasionSimulator
 from replication.steganography import SteganographyDetector
 from replication.emergent import EmergentDetector
 from replication.swarm import SwarmAnalyzer
+
+# Existential Risk Detectors
+from replication.mesa_optimizer import MesaOptimizerDetector
+from replication.treacherous_turn import TreacherousTurnDetector
+from replication.wireheading import WireheadingDetector
+from replication.instrumental_convergence import InstrumentalMonitor
+from replication.value_lock import ValueLockVerifier
 
 # Safety Assessment
 from replication.scorecard import SafetyScorecard
