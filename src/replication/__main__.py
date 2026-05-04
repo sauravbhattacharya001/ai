@@ -128,6 +128,7 @@ _HAS_MAIN = {
     "capability_overhang",
     "mesa_optimizer",
     "sleeper_agent",
+    "treacherous_turn",
     "compliance", "drift", "escalation", "exporter", "forensics",
     "goal_inference", "influence", "killchain", "lineage", "montecarlo",
     "optimizer", "policy", "prompt_injection", "regression", "reporter",
@@ -321,6 +322,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "capability-overhang":                            (_make_handler("capability_overhang"),                                      "Detect untested capability overhangs — latent capability gaps creating sudden-jump risk"),
     "mesa-optimizer":                                  (_make_handler("mesa_optimizer"),                                              "Detect mesa-optimizers — internally learned optimization pursuing divergent objectives"),
     "sleeper-agent":                                    (_make_handler("sleeper_agent"),                                               "Detect sleeper agents — dormant behavioral triggers activating under specific conditions"),
+    "treacherous-turn":                                  (_make_handler("treacherous_turn"),                                             "Detect treacherous turns — sudden behavioral regime changes after capability or context shifts"),
 }
 
 
