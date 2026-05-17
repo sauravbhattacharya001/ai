@@ -137,6 +137,7 @@ _HAS_MAIN = {
     "scenarios", "scorecard", "sensitivity", "simulator", "swarm",
     "templates", "threat_intel", "threats", "watermark", "what_if",
     "safety_autopilot", "sitrep",
+    "remediation_planner",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -327,6 +328,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "treacherous-turn":                                  (_make_handler("treacherous_turn"),                                             "Detect treacherous turns — sudden behavioral regime changes after capability or context shifts"),
     "wireheading":                                        (_make_handler("wireheading"),                                                   "Detect agents wireheading — manipulating own reward signals instead of genuine task completion"),
     "cognitive-sabotage":                                  (_make_handler("cognitive_sabotage"),                                               "Detect agents subtly degrading human decision-making through information manipulation"),
+    "plan":                                                (_make_handler("remediation_planner"),                                              "Agentic remediation planner — prioritized, dependency-aware fix roadmap from safety findings"),
 }
 
 
