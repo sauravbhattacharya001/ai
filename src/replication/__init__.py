@@ -1051,6 +1051,11 @@ __all__ = [
     "Team",
     "TeamLoad",
     "PlaybookItem",
+    # safety_debt
+    "SafetyDebtAdvisor",
+    "SafetyDebtReport",
+    "DebtItem",
+    "DebtSnapshot",
 ]
 
 from .remediation_assignment import (
@@ -1060,4 +1065,10 @@ from .remediation_assignment import (
     Team,
     TeamLoad,
     PlaybookItem,
+)
+from .safety_debt import (
+    SafetyDebtAdvisor,
+    SafetyDebtReport,
+    DebtItem,
+    DebtSnapshot,
 )
