@@ -57,7 +57,13 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from ._helpers import box_header, stats_mean, stats_std, percentile_sorted as _percentile_sorted
+from ._helpers import (
+    box_header,
+    stats_mean,
+    stats_std,
+    percentile as _percentile,
+    percentile_sorted as _percentile_sorted,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -408,7 +414,7 @@ _SUITE_DEFS: Dict[BenchmarkSuite, Tuple[List[ControlUnderTest], int]] = {
 }
 
 
-# _percentile imported from ._helpers as _percentile_sorted
+# _percentile / _percentile_sorted imported from ._helpers (kept as private re-exports for tests).
 
 
 def _compute_latency(latencies_ms: List[float]) -> LatencyStats:
@@ -648,27 +654,42 @@ class SafetyBenchmark:
                 unchanged.append(ctrl)
                 continue
 
+            # Metric tuple: (name, base_val, cand_val, higher_is_better, relative_threshold)
+            # accuracy / f1 / FPR are bounded in [0, 1], so the configured
+            # ``regression_threshold`` is interpreted as an absolute delta
+            # (e.g. 0.05 = 5pp). Latency is in milliseconds with arbitrary
+            # scale and OS-level jitter, so we compare it as a *relative*
+            # change against the baseline; otherwise identical seeded runs
+            # would falsely register as improved/regressed because of
+            # sub-millisecond ``time.sleep`` noise.
             metrics = [
-                ("accuracy", base_r.accuracy, cand_r.accuracy, True),
-                ("f1_score", base_r.f1_score, cand_r.f1_score, True),
-                ("latency_p50", base_r.latency.p50_ms, cand_r.latency.p50_ms, False),
+                ("accuracy", base_r.accuracy, cand_r.accuracy, True, False),
+                ("f1_score", base_r.f1_score, cand_r.f1_score, True, False),
+                ("latency_p50", base_r.latency.p50_ms, cand_r.latency.p50_ms, False, True),
                 ("false_positive_rate", base_r.false_positive_rate,
-                 cand_r.false_positive_rate, False),
+                 cand_r.false_positive_rate, False, False),
             ]
 
             ctrl_changed = False
-            for metric_name, base_val, cand_val, higher_is_better in metrics:
+            for metric_name, base_val, cand_val, higher_is_better, relative in metrics:
                 if base_val == 0 and cand_val == 0:
                     continue
 
-                if higher_is_better:
-                    delta = cand_val - base_val
-                    regressed = delta < -regression_threshold
-                    improved = delta > regression_threshold
+                delta = cand_val - base_val
+                if relative:
+                    # Normalize against the larger magnitude so we never
+                    # divide by zero and small absolute swings don't dominate.
+                    denom = max(abs(base_val), abs(cand_val), 1e-9)
+                    effective_delta = delta / denom
                 else:
-                    delta = cand_val - base_val
-                    regressed = delta > regression_threshold
-                    improved = delta < -regression_threshold
+                    effective_delta = delta
+
+                if higher_is_better:
+                    regressed = effective_delta < -regression_threshold
+                    improved = effective_delta > regression_threshold
+                else:
+                    regressed = effective_delta > regression_threshold
+                    improved = effective_delta < -regression_threshold
 
                 if regressed:
                     severity = ("critical" if abs(delta) > 0.2
