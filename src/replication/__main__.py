@@ -138,6 +138,7 @@ _HAS_MAIN = {
     "templates", "threat_intel", "threats", "watermark", "what_if",
     "safety_autopilot", "sitrep",
     "remediation_planner",
+    "remediation_progress",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -329,6 +330,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "wireheading":                                        (_make_handler("wireheading"),                                                   "Detect agents wireheading — manipulating own reward signals instead of genuine task completion"),
     "cognitive-sabotage":                                  (_make_handler("cognitive_sabotage"),                                               "Detect agents subtly degrading human decision-making through information manipulation"),
     "plan":                                                (_make_handler("remediation_planner"),                                              "Agentic remediation planner — prioritized, dependency-aware fix roadmap from safety findings"),
+    "progress":                                            (_make_handler("remediation_progress"),                                             "Agentic remediation progress tracker — diff two plans, compute velocity, ETA-to-green, P0/P1/P2 recommendations"),
 }
 
 
