@@ -1044,4 +1044,20 @@ __all__ = [
     "CognitiveSabotageReport",
     "AgentSabotageProfile",
     "SabotageInsight",
+    # remediation_assignment
+    "RemediationAssignmentAdvisor",
+    "AssignmentReport",
+    "Assignment",
+    "Team",
+    "TeamLoad",
+    "PlaybookItem",
 ]
+
+from .remediation_assignment import (
+    RemediationAssignmentAdvisor,
+    AssignmentReport,
+    Assignment,
+    Team,
+    TeamLoad,
+    PlaybookItem,
+)

@@ -139,6 +139,7 @@ _HAS_MAIN = {
     "safety_autopilot", "sitrep",
     "remediation_planner",
     "remediation_progress",
+    "remediation_assignment",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -218,6 +219,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "dep-graph":        (_make_handler("dependency_graph"),  "Resource dependency & cascade analysis"),
     "canary":           (_make_handler("canary"),            "Canary token planting & exfiltration detection"),
     "info":             (_cmd_info,                          "Show version and available commands"),
+    "assign":           (_make_handler("remediation_assignment"), "Assign remediation actions to teams with workload balancing"),
     "trust-propagation": (_make_handler("trust_propagation"), "Trust network propagation & Sybil detection"),
     "threat-correlate":  (_make_handler("threat_correlator"), "Cross-module threat signal correlation"),
     "risk-profile":      (_make_handler("risk_profiler"),    "Unified agent risk profiling & fleet dossiers"),
