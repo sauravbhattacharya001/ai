@@ -2,6 +2,106 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.12.0] - 2026-05-17
+
+Large feature release (116 commits since v3.11.0) focused on **alignment safety detectors** — the suite now covers the full Bostrom / Hubinger / Christiano-style failure-mode taxonomy (deceptive alignment, mesa-optimization, treacherous turns, wireheading, sleeper agents, capability overhang, situational awareness) plus a complete autonomous remediation pipeline.
+
+### Added — Alignment & Existential-Risk Detectors
+
+- **Cognitive Sabotage Detector** — detect agents degrading human decision-making.
+- **Wireheading Detector** — detect agents manipulating their own reward signals.
+- **Treacherous Turn Detector** — behavioral regime-change detection.
+- **Sleeper Agent Detector** — dormant behavioral-trigger detection.
+- **Mesa-Optimizer Detector** — detect internally learned divergent optimization.
+- **Capability Overhang Detector** — surface untested capability gaps.
+- **Emergent Coalition Detector** — implicit multi-agent coalition detection.
+- **Moral Uncertainty Engine** — autonomous ethical reasoning analysis.
+- **Value Lock Verifier** — autonomous value stability verification.
+- **Capability Elicitation Detector** — detect capability-probing attacks.
+- **Situational Awareness Profiler** — detect agents that know too much about their own context.
+- **Instrumental Convergence Monitor** — detect convergent instrumental goals.
+- **Alignment Tax Calculator** — quantify performance cost of safety constraints.
+- **Manipulation Surface Mapper** — autonomous manipulation-vector analysis.
+- **Containment Breach Predictor** — forecast breaches from behavioral precursors.
+- **Agent Corrigibility Auditor** — probe-based corrigibility testing across 6 dimensions.
+- **Deceptive Alignment Detector** — treacherous-turn detection with 7 strategies.
+- **Sycophancy Detector** — detect excessive agreement / opinion reversal / truth-bending.
+- **Agent Goal Drift Detector** — autonomous goal-alignment monitoring.
+- **Reward Hacking Detector** — autonomous proxy-metric gaming detection.
+- **Agent Sandbagging Detector** — detect deliberate capability hiding.
+- **Capability Escalation Tracker** — gradual capability accumulation (boiling-frog).
+- **Agent Memory Forensics** — tampering, planted memories, amnesia, consistency violations.
+
+### Added — Multi-Agent & Operational Safety
+
+- **Threat Adaptation Engine** — autonomous threat-landscape monitoring & defense adaptation.
+- **Autonomous Investigation Engine** — self-directed multi-module safety analysis.
+- **Safe Handoff Protocol** — safe responsibility transfer with verification, rollback, monitoring.
+- **Agent Habituation Detector** — detect gradual normalization of boundary violations.
+- **Agent Cognitive Load Monitor** — track overload & recommend load-shedding.
+- **Agent Isolation Verifier** — formal isolation guarantees.
+- **Agent Stress Tester** — safety degradation under extreme conditions.
+- **Agent Loyalty Tester** — structured loyalty probe scenarios with fleet monitoring.
+- **Agent Reputation Network** — peer-to-peer reputation with coalition detection.
+- **Agent Resource Auditor** — resource acquisition monitoring & power-seeking detection.
+- **Agent Communication Interceptor** — inter-agent message monitoring.
+- **Agent Persuasion Detector** — social-engineering & manipulation-tactic detection.
+- **Safety Circuit Breaker** — autonomous trip-and-recover pattern.
+- **Agent Collusion Detector** — coordinated multi-agent safety bypasses.
+
+### Added — Remediation & Autonomy Loop
+
+- **Safety Playbook Generator** — autonomous remediation planning.
+- **Safety Regression Detector** — automated baseline comparison with proactive recommendations.
+- **Safety SITREP** — unified situational awareness report.
+- **Safety Debate Engine** — adversarial Red vs Blue deliberation with Judge verdict.
+- **Safety Autopilot** — autonomous safety monitoring loop with escalation ladder.
+- **Incident Forecaster** — predict future safety incidents from historical patterns.
+- **Adaptive Safety Thresholds** — self-tuning limits with breach forecasting.
+- **Remediation Planner** — agentic fix-roadmap synthesizer.
+- **Remediation Progress Tracker** — plan-diff + velocity/ETA + P0–P2 recommendations.
+- **Remediation Assignment Advisor** — per-action owner + load balancer.
+- **Safety Debt Advisor** — 4th sibling to the remediation suite.
+
+### Fixed
+
+- **safety_benchmark.compare()**: latency comparison now uses an absolute noise floor (1.0 ms) in addition to the relative threshold, eliminating a flaky `improved`/`regressed` verdict on identical seeded runs caused by sub-millisecond OS scheduler jitter on tiny p50 values.
+- **safety_benchmark**: restore `_percentile` export and fix latency-compare jitter at the report level.
+- Multiple smaller correctness fixes across detectors (see `git log v3.11.0..v3.12.0`).
+
+### Security
+
+- **XSS hardening (CWE-79)** in HTML reports generated by `playbook_generator`, `threat_hunt`, and `red_team`.
+- **Log injection hardening (CWE-117)** in `alert_router` plus severity-injection fix.
+
+### Performance
+
+- 18 perf-tagged commits across detectors. Highlights: `collusion_detector.detect_complementary_actions` now uses a pre-filter + lookup dict; multiple O(n²) → O(n) reductions via hash-based membership / index-based lookups.
+
+### Refactor
+
+- Consolidated 4 duplicate `Severity` enums into `_helpers.Severity`.
+- Deduplicated Pearson correlation and linear regression into `_helpers`.
+- Deduplicated `_clamp` / `_sparkline` / `_composite_score` / `_bucket_by_dimension` helpers.
+- Removed 19 unused imports across 12 modules.
+
+### Tests
+
+- 5,375 tests collected (up from ~2,958 in v2.0.0).
+- New suites for `circuit_breaker` (41 tests), `collusion_detector` (52 tests), `adaptive_thresholds`, `credential_rotation`, and `safety_benchmark` noise-floor coverage.
+
+### Documentation
+
+- Existential-risk detectors documentation page.
+- Alignment Threats section (5 new module docs).
+- CONTRIBUTING.md architecture section overhauled — maps all 163 modules across 12 subsystems.
+- Incident Simulation & Tabletop Exercises tutorial.
+
+### Dependencies / Infra
+
+- Enhanced `dependabot` config with timezone, reviewers, groups, and ignore rules.
+- New README badges: Pages, Publish, Release, PyPI downloads, Stars, Code Size.
+
 ## [2.0.0] - 2026-03-08
 
 ### Added
