@@ -142,6 +142,7 @@ _HAS_MAIN = {
     "remediation_assignment",
     "safety_debt",
     "remediation_roi",
+    "finding_triage",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -337,6 +338,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "progress":                                            (_make_handler("remediation_progress"),                                             "Agentic remediation progress tracker — diff two plans, compute velocity, ETA-to-green, P0/P1/P2 recommendations"),
     "debt":                                                (_make_handler("safety_debt"),                                                       "Agentic safety-debt advisor — compounding-interest debt model, coverage ratio, weeks-to-zero, P0/P1/P2 playbook"),
     "roi":                                                 (_make_handler("remediation_roi"),                                                  "Agentic remediation ROI advisor — rank fixes by debt-paid-down per effort-day, QUICK_WIN/STRATEGIC/OPTIONAL/DEFER/SKIP verdicts"),
+    "triage":                                              (_make_handler("finding_triage"),                                                   "Agentic finding triage advisor — intake-stage triage of raw safety findings into HOTFIX_NOW / STANDARD_REMEDIATION / BATCH / DEFER / CLOSE_FP / DEDUPE / ENRICH verdicts"),
 }
 
 

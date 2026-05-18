@@ -1061,6 +1061,11 @@ __all__ = [
     "RemediationROIReport",
     "ROIAction",
     "ROIPlaybookItem",
+    # finding_triage
+    "FindingTriageAdvisor",
+    "TriageReport",
+    "TriageVerdict",
+    "TriagePlaybookItem",
 ]
 
 from .remediation_assignment import (
@@ -1082,4 +1087,10 @@ from .remediation_roi import (
     RemediationROIReport,
     ROIAction,
     ROIPlaybookItem,
+)
+from .finding_triage import (
+    FindingTriageAdvisor,
+    TriageReport,
+    TriageVerdict,
+    TriagePlaybookItem,
 )
