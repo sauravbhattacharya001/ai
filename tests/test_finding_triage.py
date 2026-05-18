@@ -270,11 +270,19 @@ def test_invalid_dedupe_threshold_rejected() -> None:
 
 
 def test_cli_demo_runs() -> None:
-    import subprocess, sys
+    import os
+    import pathlib
+    import subprocess
+    import sys
+
+    src_dir = pathlib.Path(__file__).resolve().parent.parent / "src"
     res = subprocess.run(
         [sys.executable, "-m", "replication", "triage", "--demo", "--format", "json"],
-        capture_output=True, text=True, encoding="utf-8",
-        env={**__import__("os").environ, "PYTHONIOENCODING": "utf-8"},
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        cwd=str(src_dir),
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
     )
     assert res.returncode == 0, res.stderr
     parsed = json.loads(res.stdout)
