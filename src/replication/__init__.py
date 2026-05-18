@@ -1056,6 +1056,11 @@ __all__ = [
     "SafetyDebtReport",
     "DebtItem",
     "DebtSnapshot",
+    # remediation_roi
+    "RemediationROIAdvisor",
+    "RemediationROIReport",
+    "ROIAction",
+    "ROIPlaybookItem",
 ]
 
 from .remediation_assignment import (
@@ -1071,4 +1076,10 @@ from .safety_debt import (
     SafetyDebtReport,
     DebtItem,
     DebtSnapshot,
+)
+from .remediation_roi import (
+    RemediationROIAdvisor,
+    RemediationROIReport,
+    ROIAction,
+    ROIPlaybookItem,
 )
