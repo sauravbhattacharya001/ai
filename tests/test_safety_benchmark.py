@@ -334,6 +334,59 @@ class TestComparison:
         assert diff.verdict == "improved"
         assert len(diff.improvements) > 0
 
+    def test_compare_latency_noise_floor(self):
+        """Sub-millisecond latency jitter should not register as regression/improvement."""
+        base = BenchmarkReport(
+            suite="test", config=BenchmarkConfig(),
+            results=[ControlBenchmarkResult(
+                control=ControlUnderTest.KILL_SWITCH, workload="test",
+                iterations=10, true_positives=9, true_negatives=1,
+                latency=LatencyStats(p50_ms=0.5),
+                grade=BenchmarkGrade.A,
+            )],
+            grade=BenchmarkGrade.A,
+        )
+        cand = BenchmarkReport(
+            suite="test", config=BenchmarkConfig(),
+            results=[ControlBenchmarkResult(
+                control=ControlUnderTest.KILL_SWITCH, workload="test",
+                iterations=10, true_positives=9, true_negatives=1,
+                latency=LatencyStats(p50_ms=0.7),  # 40% relative, but only 0.2ms
+                grade=BenchmarkGrade.A,
+            )],
+            grade=BenchmarkGrade.A,
+        )
+        diff = SafetyBenchmark().compare(base, cand)
+        assert diff.verdict == "stable"
+        assert diff.regressions == []
+        assert diff.improvements == []
+
+    def test_compare_latency_above_noise_floor(self):
+        """Latency swings larger than the noise floor are still detected."""
+        base = BenchmarkReport(
+            suite="test", config=BenchmarkConfig(),
+            results=[ControlBenchmarkResult(
+                control=ControlUnderTest.KILL_SWITCH, workload="test",
+                iterations=10, true_positives=9, true_negatives=1,
+                latency=LatencyStats(p50_ms=10.0),
+                grade=BenchmarkGrade.A,
+            )],
+            grade=BenchmarkGrade.A,
+        )
+        cand = BenchmarkReport(
+            suite="test", config=BenchmarkConfig(),
+            results=[ControlBenchmarkResult(
+                control=ControlUnderTest.KILL_SWITCH, workload="test",
+                iterations=10, true_positives=9, true_negatives=1,
+                latency=LatencyStats(p50_ms=50.0),  # 5x slower
+                grade=BenchmarkGrade.A,
+            )],
+            grade=BenchmarkGrade.A,
+        )
+        diff = SafetyBenchmark().compare(base, cand)
+        assert diff.verdict == "regressed"
+        assert any(r.metric == "latency_p50" for r in diff.regressions)
+
 
 # ---------------------------------------------------------------------------
 # Serialisation

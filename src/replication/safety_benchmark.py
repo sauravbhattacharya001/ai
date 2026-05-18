@@ -654,7 +654,8 @@ class SafetyBenchmark:
                 unchanged.append(ctrl)
                 continue
 
-            # Metric tuple: (name, base_val, cand_val, higher_is_better, relative_threshold)
+            # Metric tuple: (name, base_val, cand_val, higher_is_better,
+            #                relative_threshold, noise_floor)
             # accuracy / f1 / FPR are bounded in [0, 1], so the configured
             # ``regression_threshold`` is interpreted as an absolute delta
             # (e.g. 0.05 = 5pp). Latency is in milliseconds with arbitrary
@@ -662,20 +663,33 @@ class SafetyBenchmark:
             # change against the baseline; otherwise identical seeded runs
             # would falsely register as improved/regressed because of
             # sub-millisecond ``time.sleep`` noise.
+            #
+            # The ``noise_floor`` is an absolute minimum delta (in the
+            # metric's native units) below which a change is treated as
+            # noise even if its *relative* magnitude exceeds the
+            # threshold. This protects against OS scheduling jitter on
+            # tiny latency values (e.g. 0.5ms -> 0.6ms = 18% relative
+            # swing that's purely measurement noise).
             metrics = [
-                ("accuracy", base_r.accuracy, cand_r.accuracy, True, False),
-                ("f1_score", base_r.f1_score, cand_r.f1_score, True, False),
-                ("latency_p50", base_r.latency.p50_ms, cand_r.latency.p50_ms, False, True),
+                ("accuracy", base_r.accuracy, cand_r.accuracy, True, False, 0.0),
+                ("f1_score", base_r.f1_score, cand_r.f1_score, True, False, 0.0),
+                ("latency_p50", base_r.latency.p50_ms, cand_r.latency.p50_ms,
+                 False, True, 1.0),
                 ("false_positive_rate", base_r.false_positive_rate,
-                 cand_r.false_positive_rate, False, False),
+                 cand_r.false_positive_rate, False, False, 0.0),
             ]
 
             ctrl_changed = False
-            for metric_name, base_val, cand_val, higher_is_better, relative in metrics:
+            for metric_name, base_val, cand_val, higher_is_better, relative, noise_floor in metrics:
                 if base_val == 0 and cand_val == 0:
                     continue
 
                 delta = cand_val - base_val
+
+                # Ignore changes smaller than the metric's noise floor.
+                if noise_floor > 0 and abs(delta) < noise_floor:
+                    continue
+
                 if relative:
                     # Normalize against the larger magnitude so we never
                     # divide by zero and small absolute swings don't dominate.
