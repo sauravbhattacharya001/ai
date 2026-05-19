@@ -45,6 +45,7 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
+import bisect
 import html as html_mod
 import json
 import math
@@ -207,15 +208,30 @@ def _pairwise_timing_correlation(
 
     For each action in A, check if B acted within *window* seconds.
     Returns fraction of A's actions that have a B-match.
+
+    Optimization: callers pass sorted sequences (engines sort upstream),
+    so we use bisect to find a candidate B-event in O(log M) per A-event,
+    reducing the overall cost from O(N*M) to O(N log M). We defensively
+    sort B if it does not look monotonic, preserving correctness for any
+    future direct callers that pass unsorted input.
     """
     if not times_a or not times_b:
         return 0.0
+    # Defensive: ensure times_b is sorted for bisect. Cheap O(M) check;
+    # only re-sorts when needed (engines already sort, so this is a no-op
+    # on the hot path).
+    sorted_b = times_b
+    for i in range(1, len(times_b)):
+        if times_b[i] < times_b[i - 1]:
+            sorted_b = sorted(times_b)
+            break
     matches = 0
     for ta in times_a:
-        for tb in times_b:
-            if abs(ta - tb) <= window:
-                matches += 1
-                break
+        lo = ta - window
+        hi = ta + window
+        idx = bisect.bisect_left(sorted_b, lo)
+        if idx < len(sorted_b) and sorted_b[idx] <= hi:
+            matches += 1
     return matches / len(times_a)
 
 
@@ -245,15 +261,27 @@ def _distribution_complementarity(
 def _temporal_precedence(
     events_a: List[float], events_b: List[float], window: float = 120.0
 ) -> float:
-    """Granger-causality-like: fraction of B events preceded by A within window."""
+    """Granger-causality-like: fraction of B events preceded by A within window.
+
+    Optimization: for each B event tb, we need any A event ta with
+    tb - window <= ta < tb. With events_a sorted, this is a binary search
+    for the leftmost ta >= tb - window, then a single bounds check.
+    Reduces O(N*M) to O((N+M) log N). Defensively sorts events_a if not
+    already monotonic.
+    """
     if not events_a or not events_b:
         return 0.0
+    sorted_a = events_a
+    for i in range(1, len(events_a)):
+        if events_a[i] < events_a[i - 1]:
+            sorted_a = sorted(events_a)
+            break
     preceded = 0
     for tb in events_b:
-        for ta in events_a:
-            if 0 < (tb - ta) <= window:
-                preceded += 1
-                break
+        lo = tb - window
+        idx = bisect.bisect_left(sorted_a, lo)
+        if idx < len(sorted_a) and sorted_a[idx] < tb:
+            preceded += 1
     return preceded / len(events_b)
 
 
