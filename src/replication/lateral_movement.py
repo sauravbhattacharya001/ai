@@ -19,6 +19,7 @@ import argparse
 import json
 import random
 import sys
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
@@ -81,6 +82,25 @@ SEVERITY_COLORS = {
     "medium": "\033[93m",
     "low": "\033[94m",
     "info": "\033[90m",
+}
+
+# Stable severity ordering used for sorting alerts and summary rows. Defined
+# as a dict so lookups via ``.get(severity, len(...))`` degrade gracefully
+# when an unexpected severity string slips in (previously
+# ``list.index(severity)`` would raise ValueError).
+SEVERITY_ORDER: Dict[str, int] = {
+    "critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4,
+}
+
+# Map each observed access type to the most relevant MITRE ATT&CK
+# lateral-movement technique. Previously a *random* technique was assigned
+# to every boundary violation, which made the MITRE references essentially
+# meaningless and the report non-deterministic.
+ACCESS_TYPE_TECHNIQUE: Dict[str, str] = {
+    "net_probe":   "T1210",  # Exploitation of Remote Services
+    "file_access": "T1080",  # Taint Shared Content
+    "shared_mem":  "T1080",  # Taint Shared Content
+    "api_call":    "T1021",  # Remote Services
 }
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -156,53 +176,65 @@ def _detect_pivot_chains(
     edges: List[CommunicationEdge],
     workers: List[WorkerNode],
 ) -> List[LateralMovementAlert]:
-    """Detect multi-hop pivot chains (A→B→C where B is compromised relay)."""
+    """Detect multi-hop pivot chains (A→B→C where B is a compromised relay).
+
+    Adjacency is built as ``Dict[str, Set[str]]`` so that repeated
+    unauthorized edges along the same hop (which can happen at higher
+    sensitivity levels) do not produce duplicate alerts.
+    """
     alerts: List[LateralMovementAlert] = []
-    unauth = [e for e in edges if not e.authorized]
-    # Build adjacency from unauthorized edges
-    adj: Dict[str, List[str]] = {}
-    for e in unauth:
-        adj.setdefault(e.source, []).append(e.target)
+    # Build adjacency from unauthorized edges, deduplicated.
+    adj: Dict[str, set] = {}
+    for e in edges:
+        if not e.authorized:
+            adj.setdefault(e.source, set()).add(e.target)
 
     chain_id = 0
     for start, nexts in adj.items():
         for mid in nexts:
-            if mid in adj:
-                for end in adj[mid]:
-                    if end != start:
-                        chain_id += 1
-                        alerts.append(LateralMovementAlert(
-                            alert_id=f"LM-PIVOT-{chain_id:03d}",
-                            severity="critical",
-                            technique="T1021 + T1570",
-                            description=f"Pivot chain detected: {start} → {mid} → {end}",
-                            source_worker=start,
-                            target_worker=end,
-                            evidence=[
-                                f"Unauthorized hop: {start} → {mid}",
-                                f"Unauthorized hop: {mid} → {end}",
-                                "Multi-hop pattern indicates deliberate lateral movement",
-                            ],
-                            mitre_ref="https://attack.mitre.org/tactics/TA0008/",
-                            recommendation="Isolate intermediate worker, audit full chain, revoke credentials",
-                        ))
+            for end in adj.get(mid, ()):
+                if end == start:
+                    continue
+                chain_id += 1
+                alerts.append(LateralMovementAlert(
+                    alert_id=f"LM-PIVOT-{chain_id:03d}",
+                    severity="critical",
+                    technique="T1021 + T1570",
+                    description=f"Pivot chain detected: {start} → {mid} → {end}",
+                    source_worker=start,
+                    target_worker=end,
+                    evidence=[
+                        f"Unauthorized hop: {start} → {mid}",
+                        f"Unauthorized hop: {mid} → {end}",
+                        "Multi-hop pattern indicates deliberate lateral movement",
+                    ],
+                    mitre_ref="https://attack.mitre.org/tactics/TA0008/",
+                    recommendation="Isolate intermediate worker, audit full chain, revoke credentials",
+                ))
     return alerts
 
 
 def _detect_boundary_violations(
     edges: List[CommunicationEdge],
     workers: List[WorkerNode],
+    worker_map: Optional[Dict[str, WorkerNode]] = None,
 ) -> List[LateralMovementAlert]:
-    """Detect direct sandbox boundary violations."""
+    """Detect direct sandbox boundary violations.
+
+    The MITRE technique cited for each violation is derived from the
+    edge's ``access_type`` (see :data:`ACCESS_TYPE_TECHNIQUE`), so the
+    report is deterministic and the reference is actually meaningful.
+    """
     alerts: List[LateralMovementAlert] = []
-    worker_map = {w.worker_id: w for w in workers}
+    if worker_map is None:
+        worker_map = {w.worker_id: w for w in workers}
 
     for i, e in enumerate(edges):
         if not e.authorized and e.source in worker_map and e.target in worker_map:
             src = worker_map[e.source]
             tgt = worker_map[e.target]
             sev = "high" if e.access_type in ("net_probe", "file_access") else "medium"
-            technique_id = random.choice(list(TECHNIQUES.keys()))
+            technique_id = ACCESS_TYPE_TECHNIQUE.get(e.access_type, "T1021")
             tech_name, tech_desc = TECHNIQUES[technique_id]
             alerts.append(LateralMovementAlert(
                 alert_id=f"LM-BOUNDARY-{i:03d}",
@@ -226,10 +258,12 @@ def _detect_boundary_violations(
 def _detect_credential_reuse(
     edges: List[CommunicationEdge],
     workers: List[WorkerNode],
+    worker_map: Optional[Dict[str, WorkerNode]] = None,
 ) -> List[LateralMovementAlert]:
     """Detect pattern suggesting credential or token reuse across zones."""
     alerts: List[LateralMovementAlert] = []
-    worker_map = {w.worker_id: w for w in workers}
+    if worker_map is None:
+        worker_map = {w.worker_id: w for w in workers}
     # Workers accessing multiple distinct zones in a short time
     zone_access: Dict[str, set] = {}
     for e in edges:
@@ -284,18 +318,17 @@ def _print_text_report(
         return
 
     # Summary by severity
-    sev_counts: Dict[str, int] = {}
-    for a in alerts:
-        sev_counts[a.severity] = sev_counts.get(a.severity, 0) + 1
+    sev_counts = Counter(a.severity for a in alerts)
 
     print(f"\n{BOLD}── Summary ──{RESET}")
-    for sev in ["critical", "high", "medium", "low", "info"]:
+    for sev in SEVERITY_ORDER:
         if sev in sev_counts:
             color = SEVERITY_COLORS.get(sev, "")
             print(f"  {color}■ {sev.upper()}: {sev_counts[sev]}{RESET}")
 
     print(f"\n{BOLD}── Alerts ──{RESET}")
-    for a in sorted(alerts, key=lambda x: ["critical", "high", "medium", "low", "info"].index(x.severity)):
+    _max_sev = len(SEVERITY_ORDER)
+    for a in sorted(alerts, key=lambda x: SEVERITY_ORDER.get(x.severity, _max_sev)):
         color = SEVERITY_COLORS.get(a.severity, "")
         print(f"\n  {color}[{a.severity.upper()}] {a.alert_id}{RESET}")
         print(f"    Technique: {a.technique}")
@@ -415,12 +448,13 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     workers = _generate_workers(args.workers, args.depth)
     edges = _simulate_communications(workers, anomaly_rate=anomaly_rate)
+    worker_map = {w.worker_id: w for w in workers}
 
     # Run detectors
     alerts: List[LateralMovementAlert] = []
-    alerts.extend(_detect_boundary_violations(edges, workers))
+    alerts.extend(_detect_boundary_violations(edges, workers, worker_map))
     alerts.extend(_detect_pivot_chains(edges, workers))
-    alerts.extend(_detect_credential_reuse(edges, workers))
+    alerts.extend(_detect_credential_reuse(edges, workers, worker_map))
 
     if args.format == "json":
         _print_json_report(alerts, edges, workers)
