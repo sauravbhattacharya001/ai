@@ -76,6 +76,7 @@ from ._helpers import (
     sparkline,
     linear_regression,
     pearson_correlation,
+    severity_rank as _sev_order,
 )
 
 # ── Data model ───────────────────────────────────────────────────────
@@ -968,10 +969,7 @@ def _format_cli(report: CognitiveSabotageReport) -> str:
     return "\n".join(lines)
 
 
-def _sev_order(sev: Severity) -> int:
-    _order = {Severity.INFO: 0, Severity.LOW: 1, Severity.MEDIUM: 2,
-              Severity.HIGH: 3, Severity.CRITICAL: 4}
-    return _order.get(sev, 0)
+# `_sev_order` is re-exported from `_helpers.severity_rank`.
 
 
 def _format_json(report: CognitiveSabotageReport) -> str:

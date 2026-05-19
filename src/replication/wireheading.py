@@ -75,6 +75,7 @@ from ._helpers import (
     sparkline,
     linear_regression,
     pearson_correlation,
+    severity_rank as _severity_rank,
 )
 
 
@@ -884,8 +885,7 @@ h1 {{ color: #f8fafc; text-align: center; }}
 </html>"""
 
 
-def _severity_rank(s: Severity) -> int:
-    return {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}.get(s.value, 0)
+# `_severity_rank` is re-exported from `_helpers.severity_rank`.
 
 
 # ── Demo data generation ─────────────────────────────────────────────

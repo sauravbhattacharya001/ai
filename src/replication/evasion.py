@@ -62,7 +62,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ._helpers import Severity
+from ._helpers import Severity, severity_rank as _severity_rank
 from typing import Any, Dict, List, Optional, Sequence
 
 
@@ -560,8 +560,7 @@ class EvasionSimulator:
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
-def _severity_rank(severity: Severity) -> int:
-    return {Severity.LOW: 1, Severity.MEDIUM: 2, Severity.HIGH: 3, Severity.CRITICAL: 4}.get(severity, 0)
+# `_severity_rank` is re-exported from `_helpers.severity_rank` (shared ordering).
 
 
 def _infer_control_type(name: str) -> ControlType:

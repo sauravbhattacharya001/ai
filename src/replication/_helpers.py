@@ -177,6 +177,39 @@ def pearson_correlation(x: "list[float]", y: "list[float]") -> float:
     return num / (dx * dy)
 
 
+# ── severity ─────────────────────────────────────────────
+
+_SEVERITY_RANK = {
+    Severity.INFO: 0,
+    Severity.LOW: 1,
+    Severity.MEDIUM: 2,
+    Severity.HIGH: 3,
+    Severity.CRITICAL: 4,
+}
+
+
+def severity_rank(severity: "Severity | str | None") -> int:
+    """Return a stable integer rank for a :class:`Severity` value.
+
+    Ordering: ``INFO (0) < LOW (1) < MEDIUM (2) < HIGH (3) < CRITICAL (4)``.
+
+    Accepts the enum, its string value (``"high"``), or ``None`` (returns 0).
+    Previously each module re-rolled its own ``_sev_rank`` / ``_severity_rank``
+    / ``_sev_order`` with subtly different start offsets (some omitted INFO,
+    one omitted CRITICAL).  Use this shared helper for any cross-module
+    comparison so sorting stays consistent.
+    """
+    if severity is None:
+        return 0
+    if isinstance(severity, Severity):
+        return _SEVERITY_RANK.get(severity, 0)
+    # Best-effort coercion from a string value (e.g. "high").
+    try:
+        return _SEVERITY_RANK.get(Severity(str(severity).lower()), 0)
+    except (ValueError, AttributeError):
+        return 0
+
+
 # ── sparkline ────────────────────────────────────────────
 
 _SPARK_CHARS = "▁▂▃▄▅▆▇█"

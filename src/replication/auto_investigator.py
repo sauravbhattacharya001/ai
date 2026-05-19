@@ -41,7 +41,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from ._helpers import Severity, box_header
+from ._helpers import Severity, box_header, severity_rank as _sev_rank
 
 # ── Incident Types ───────────────────────────────────────────────────
 
@@ -260,11 +260,7 @@ class InvestigationReport:
 
 # ── Severity helpers ─────────────────────────────────────────────────
 
-_SEV_ORDER = {Severity.LOW: 0, Severity.MEDIUM: 1, Severity.HIGH: 2, Severity.CRITICAL: 3}
-
-
-def _sev_rank(s: Severity) -> int:
-    return _SEV_ORDER.get(s, 0)
+# `_sev_rank` is re-exported from `_helpers.severity_rank` (uniform across modules).
 
 
 def _sev_from_str(s: str) -> Severity:
