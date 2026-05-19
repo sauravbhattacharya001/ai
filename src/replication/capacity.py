@@ -48,6 +48,7 @@ CLI::
 """
 
 from __future__ import annotations
+from ._helpers import emit_output
 
 import json
 from dataclasses import dataclass, field
@@ -722,13 +723,7 @@ def main() -> None:
             output = json.dumps(projection.to_dict(), indent=2)
         else:
             output = projection.summary()
-
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Output written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Output")
 
 
 if __name__ == "__main__":

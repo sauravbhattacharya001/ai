@@ -62,7 +62,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .simulator import Simulator, ScenarioConfig, SimulationReport, PRESETS
 from .scorecard import SafetyScorecard, ScorecardConfig, ScorecardResult
-from ._helpers import Severity, box_header as _box_header
+from ._helpers import Severity, box_header as _box_header, emit_output
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -726,13 +726,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         output = report.to_html()
     else:
         output = report.render(verbose=args.verbose)
-
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Output")
 
     # Exit code: non-zero if any breach
     if report.breached_count > 0:

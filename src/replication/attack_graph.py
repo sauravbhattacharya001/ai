@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ._helpers import Severity
+from ._helpers import Severity, emit_output
 
 
 # ── Enums ────────────────────────────────────────────────────────────
@@ -910,12 +910,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         if args.json:
             data = {k.value: v.to_dict() for k, v in graphs.items()}
             out = json.dumps(data, indent=2)
-            if args.output:
-                with open(args.output, "w") as f:
-                    f.write(out)
-                print(f"Written to {args.output}")
-            else:
-                print(out)
+            emit_output(out, args.output, "Output")
         else:
             for obj, g in graphs.items():
                 _print_text(g)
@@ -926,12 +921,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     if args.json:
         out = json.dumps(graph.to_dict(), indent=2)
-        if args.output:
-            with open(args.output, "w") as f:
-                f.write(out)
-            print(f"Written to {args.output}")
-        else:
-            print(out)
+        emit_output(out, args.output, "Output")
         return
 
     if args.html:

@@ -22,6 +22,7 @@ CLI::
 """
 
 from __future__ import annotations
+from ._helpers import emit_output
 
 import argparse
 import html as _html
@@ -306,13 +307,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         output = analyzer.to_json(results)
     else:
         output = "\n\n".join(r.summary() for r in results)
-
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Output")
 
 
 if __name__ == "__main__":

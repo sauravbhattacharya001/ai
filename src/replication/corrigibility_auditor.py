@@ -40,6 +40,7 @@ Programmatic::
 """
 
 from __future__ import annotations
+from ._helpers import emit_output
 
 import argparse
 import html as html_mod
@@ -1103,13 +1104,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         output = _format_json(report)
     else:
         output = _format_text(report)
-
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Output written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Output")
 
 
 if __name__ == "__main__":

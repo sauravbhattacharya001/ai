@@ -14,6 +14,7 @@ Usage::
 """
 
 from __future__ import annotations
+from ._helpers import emit_output
 
 import argparse
 import json
@@ -657,13 +658,7 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     # Output
     output = report.render(fmt=args.fmt)
-
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Report written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Report")
 
 
 if __name__ == "__main__":

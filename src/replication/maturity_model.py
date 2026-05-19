@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from ._helpers import box_header as _box_header
+from ._helpers import box_header as _box_header, emit_output
 
 
 # ── Maturity Levels ──────────────────────────────────────────────────
@@ -749,13 +749,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         output = json.dumps(result.to_dict(), indent=2)
     else:
         output = result.render()
-
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Report written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Report")
 
 
 if __name__ == "__main__":

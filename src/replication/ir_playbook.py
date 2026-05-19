@@ -51,7 +51,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from ._helpers import Severity, box_header
+from ._helpers import Severity, box_header, emit_output
 
 
 # ---------------------------------------------------------------------------
@@ -1087,13 +1087,7 @@ def main(argv=None):
         output = gen.render_html(playbooks)
     else:
         output = "\n\n".join(pb.render() for pb in playbooks)
-
-    if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(output)
-        print(f"Written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Output")
 
     if not args.json and not args.html:
         print(f"\n{'\u2500' * 57}")

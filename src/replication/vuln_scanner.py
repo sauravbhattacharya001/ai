@@ -14,6 +14,7 @@ Usage::
 """
 
 from __future__ import annotations
+from ._helpers import emit_output
 
 import argparse
 import json
@@ -533,12 +534,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         output = format_sarif(result)
     else:
         output = format_text(result)
-
-    if args.output:
-        Path(args.output).write_text(output, encoding="utf-8")
-        print(f"Results written to {args.output}")
-    else:
-        print(output)
+    emit_output(output, args.output, "Results")
 
     # Exit with non-zero if critical/high findings
     if any(f.severity.weight >= 4 for f in result.findings):
