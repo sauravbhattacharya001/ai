@@ -524,10 +524,38 @@ class RiskRegister:
 
     # ── HTML Report ──────────────────────────────────────────────────
 
+    @staticmethod
+    def _safe_json_for_script(obj: object) -> str:
+        """Serialize *obj* to JSON safe for embedding inside ``<script>``.
+
+        Plain :func:`json.dumps` does **not** escape ``</script>`` (or other
+        HTML-sensitive sequences such as ``<!--`` or U+2028/U+2029, which
+        terminate JavaScript string literals).  An attacker-controlled risk
+        title containing ``</script><img src=x onerror=alert(1)>`` could
+        therefore break out of the data block and execute arbitrary
+        JavaScript in the report viewer.
+
+        This is the standard mitigation: rewrite the four sensitive char
+        sequences as ``\\u`` escapes after dumping, which keeps the JSON
+        decodable by ``JSON.parse`` *and* by Python's :func:`json.loads`.
+        """
+        s = json.dumps(obj)
+        # CWE-79 hardening: ensure no `</...>` HTML tag can terminate <script>,
+        # and that the JS parser can't be tricked by U+2028 / U+2029.
+        return (
+            s.replace("<", "\\u003c")
+             .replace(">", "\\u003e")
+             .replace("&", "\\u0026")
+             .replace("\u2028", "\\u2028")
+             .replace("\u2029", "\\u2029")
+        )
+
     def to_html(self) -> str:
         stats = self.statistics()
-        risks_json = json.dumps([r.to_dict() for r in self.risks])
-        stats_json = json.dumps(stats)
+        # Safe-for-script encoding prevents </script> breakout via attacker-
+        # controlled risk titles/descriptions.  See _safe_json_for_script.
+        risks_json = self._safe_json_for_script([r.to_dict() for r in self.risks])
+        stats_json = self._safe_json_for_script(stats)
 
         return textwrap.dedent(f"""\
 <!DOCTYPE html>
@@ -660,6 +688,22 @@ function init() {{
   renderTable(RISKS);
 }}
 
+// CWE-79: escape any untrusted string before HTML interpolation.
+// Risk fields (title, description, owner, mitigations, audit trail) may come
+// from imported JSON authored by other agents and must not be trusted as raw HTML.
+function esc(v) {{
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}}
+// Strip CSS-classname-unsafe characters so attacker-controlled `risk_level`
+// values can't break out of the badge-${{r.risk_level}} class attribute.
+function safeToken(v) {{ return String(v == null ? '' : v).replace(/[^A-Za-z0-9_-]/g, ''); }}
+
 function renderTable(risks) {{
   const body = document.getElementById('riskBody');
   body.innerHTML = '';
@@ -669,16 +713,17 @@ function renderTable(risks) {{
     const tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
     tr.onclick = () => showDetail(r);
+    const lvl = safeToken(r.risk_level);
     tr.innerHTML = `
-      <td>${{r.risk_id}}</td>
-      <td>${{r.title}}</td>
-      <td>${{r.category}}</td>
-      <td><span class="badge badge-${{r.risk_level}}">${{r.risk_level}}</span></td>
-      <td>${{r.inherent_score}}</td>
-      <td>${{r.residual_score}}</td>
-      <td><span class="status">${{r.status}}</span></td>
-      <td>${{r.owner}}</td>
-      <td>${{overdue ? '<span class="badge badge-overdue">⚠ OVERDUE</span>' : (r.next_review ? r.next_review.slice(0,10) : '—')}}</td>
+      <td>${{esc(r.risk_id)}}</td>
+      <td>${{esc(r.title)}}</td>
+      <td>${{esc(r.category)}}</td>
+      <td><span class="badge badge-${{lvl}}">${{esc(r.risk_level)}}</span></td>
+      <td>${{esc(r.inherent_score)}}</td>
+      <td>${{esc(r.residual_score)}}</td>
+      <td><span class="status">${{esc(r.status)}}</span></td>
+      <td>${{esc(r.owner)}}</td>
+      <td>${{overdue ? '<span class="badge badge-overdue">⚠ OVERDUE</span>' : (r.next_review ? esc(r.next_review.slice(0,10)) : '—')}}</td>
     `;
     body.appendChild(tr);
   }});
@@ -719,33 +764,34 @@ function showDetail(r) {{
   p.className = 'detail-panel visible';
   const now = new Date();
   const overdue = r.next_review && new Date(r.next_review) < now && r.status !== 'Closed';
-  let html = `<h2>${{r.risk_id}}: ${{r.title}}</h2>`;
-  html += `<div class="detail-section"><h3>Description</h3><p>${{r.description}}</p></div>`;
+  const lvl = safeToken(r.risk_level), rlvl = safeToken(r.residual_level);
+  let html = `<h2>${{esc(r.risk_id)}}: ${{esc(r.title)}}</h2>`;
+  html += `<div class="detail-section"><h3>Description</h3><p>${{esc(r.description)}}</p></div>`;
   html += `<div class="detail-section"><h3>Assessment</h3>
-    <p>Category: ${{r.category}} | Likelihood: ${{r.likelihood}}/5 | Impact: ${{r.impact}}/5</p>
-    <p>Inherent: ${{r.inherent_score}} (<span class="badge badge-${{r.risk_level}}">${{r.risk_level}}</span>)
-       → Residual: ${{r.residual_score}} (<span class="badge badge-${{r.residual_level}}">${{r.residual_level}}</span>)</p>
-    <p>Status: <span class="status">${{r.status}}</span> | Owner: ${{r.owner || '—'}}${{r.agent_id ? ' | Agent: '+r.agent_id : ''}}</p>
-    ${{overdue ? '<p><span class="badge badge-overdue">⚠ Review overdue since '+r.next_review.slice(0,10)+'</span></p>' : ''}}
+    <p>Category: ${{esc(r.category)}} | Likelihood: ${{esc(r.likelihood)}}/5 | Impact: ${{esc(r.impact)}}/5</p>
+    <p>Inherent: ${{esc(r.inherent_score)}} (<span class="badge badge-${{lvl}}">${{esc(r.risk_level)}}</span>)
+       → Residual: ${{esc(r.residual_score)}} (<span class="badge badge-${{rlvl}}">${{esc(r.residual_level)}}</span>)</p>
+    <p>Status: <span class="status">${{esc(r.status)}}</span> | Owner: ${{esc(r.owner) || '—'}}${{r.agent_id ? ' | Agent: '+esc(r.agent_id) : ''}}</p>
+    ${{overdue ? '<p><span class="badge badge-overdue">⚠ Review overdue since '+esc(r.next_review.slice(0,10))+'</span></p>' : ''}}
   </div>`;
   if (r.mitigations.length) {{
     html += `<div class="detail-section"><h3>Mitigations (${{r.mitigations.length}})</h3><ul>`;
     r.mitigations.forEach(m => {{
-      html += `<li><strong>${{m.description}}</strong> — ${{m.status}} (effectiveness: ${{Math.round(m.effectiveness*100)}}%${{m.owner ? ', owner: '+m.owner : ''}})</li>`;
+      html += `<li><strong>${{esc(m.description)}}</strong> — ${{esc(m.status)}} (effectiveness: ${{Math.round((m.effectiveness||0)*100)}}%${{m.owner ? ', owner: '+esc(m.owner) : ''}})</li>`;
     }});
     html += `</ul></div>`;
   }}
   if (r.score_history.length) {{
     html += `<div class="detail-section"><h3>Score History</h3><ul>`;
     r.score_history.forEach(([ts, sc]) => {{
-      html += `<li>${{ts.slice(0,10)}}: ${{sc}}</li>`;
+      html += `<li>${{esc(String(ts).slice(0,10))}}: ${{esc(sc)}}</li>`;
     }});
     html += `</ul></div>`;
   }}
   if (r.audit_trail.length) {{
     html += `<div class="detail-section"><h3>Audit Trail</h3><ul>`;
     r.audit_trail.forEach(a => {{
-      html += `<li><strong>${{a.action}}</strong> — ${{a.details}} (${{a.timestamp.slice(0,16).replace('T',' ')}}${{a.user !== 'system' ? ', by '+a.user : ''}})</li>`;
+      html += `<li><strong>${{esc(a.action)}}</strong> — ${{esc(a.details)}} (${{esc(String(a.timestamp).slice(0,16).replace('T',' '))}}${{a.user !== 'system' ? ', by '+esc(a.user) : ''}})</li>`;
     }});
     html += `</ul></div>`;
   }}
@@ -753,12 +799,25 @@ function showDetail(r) {{
   p.scrollIntoView({{behavior:'smooth'}});
 }}
 
+// CSV injection / quote-escape hardening: any field can contain commas,
+// quotes, or newlines.  Quote every value and double internal quotes per RFC 4180.
+function csvField(v) {{
+  const s = (v === null || v === undefined) ? '' : String(v);
+  return '"' + s.replace(/"/g, '""') + '"';
+}}
 function exportCSV() {{
   let csv = 'Risk ID,Title,Category,Likelihood,Impact,Inherent,Residual,Level,Status,Owner,Agent,Mitigations,Overdue\\n';
   const now = new Date();
   RISKS.forEach(r => {{
     const overdue = r.next_review && new Date(r.next_review) < now && r.status !== 'Closed';
-    csv += `${{r.risk_id}},"${{r.title}}",${{r.category}},${{r.likelihood}},${{r.impact}},${{r.inherent_score}},${{r.residual_score}},${{r.risk_level}},${{r.status}},${{r.owner}},${{r.agent_id}},${{r.mitigations.length}},${{overdue?'Yes':'No'}}\\n`;
+    csv += [
+      csvField(r.risk_id), csvField(r.title), csvField(r.category),
+      csvField(r.likelihood), csvField(r.impact),
+      csvField(r.inherent_score), csvField(r.residual_score),
+      csvField(r.risk_level), csvField(r.status), csvField(r.owner),
+      csvField(r.agent_id), csvField(r.mitigations.length),
+      csvField(overdue ? 'Yes' : 'No'),
+    ].join(',') + '\\n';
   }});
   const blob = new Blob([csv], {{type:'text/csv'}});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);

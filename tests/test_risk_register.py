@@ -145,3 +145,26 @@ class TestRiskRegister:
         html = reg.to_html()
         assert "Risk Register" in html
         assert "RISK-" in html
+
+    def test_html_escapes_xss_payload(self):
+        """Regression for CWE-79: attacker-controlled fields must not break out
+        of the embedded ``<script>`` data block or inject DOM nodes."""
+        reg = RiskRegister(RegisterConfig(seed=1))
+        e = _make_entry(
+            risk_id="R-XSS",
+            title="</script><img src=x onerror=alert(1)>",
+            description="<svg onload=alert(2)>",
+            owner='"><script>x</script>',
+        )
+        e.mitigations.append(
+            Mitigation(description="<bad>", effectiveness=0.5, owner="o")
+        )
+        reg.risks.append(e)
+        html = reg.to_html()
+        # Literal payloads must NOT survive into the rendered output.
+        assert "</script><img" not in html
+        assert "<svg onload=" not in html
+        assert '"><script>x</script>' not in html
+        # The safe-for-script encoding rewrites '<' as \u003c inside the data
+        # block, so the unicode escape must be present.
+        assert "\\u003c" in html
