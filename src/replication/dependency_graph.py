@@ -476,27 +476,57 @@ class DependencyGraph:
                 affected += 1
         return affected
 
+    def _build_reverse_dependents(self) -> Dict[str, List[str]]:
+        """Build a resource -> list-of-resources-that-depend-on-it map.
+
+        Cached on the instance and invalidated whenever a resource is
+        added/removed.  Lets BFS-style cascade traversals iterate only
+        direct dependents (O(E)) instead of scanning every resource at
+        every BFS step (which made :meth:`_transitive_resource_failures`
+        O(R^2) per call, and :meth:`analyze` overall O(R^3)).
+        """
+        cache = getattr(self, "_dependents_cache", None)
+        cache_key = (len(self._resources), id(self._resources))
+        if cache is not None and self._dependents_cache_key == cache_key:
+            return cache
+        dependents: Dict[str, List[str]] = {n: [] for n in self._resources}
+        for rname, res in self._resources.items():
+            for dep in res.depends_on:
+                if dep in self._resources:
+                    dependents[dep].append(rname)
+        self._dependents_cache = dependents
+        self._dependents_cache_key = cache_key
+        return dependents
+
     def _transitive_resource_failures(self, trigger: str) -> Set[str]:
-        """Find all resources that fail when *trigger* fails."""
+        """Find all resources that fail when *trigger* fails.
+
+        Uses a precomputed reverse-dependents map so each BFS step is
+        O(out-degree) rather than O(R) - turning the previous worst-case
+        O(R^2) per call into O(V + E).
+        """
         failed: Set[str] = {trigger}
+        if trigger not in self._resources:
+            return failed
+        dependents = self._build_reverse_dependents()
         queue: deque[str] = deque([trigger])
 
         while queue:
             current = queue.popleft()
-            # Find resources that depend on current
-            for rname, res in self._resources.items():
+            current_group = self._resources[current].redundancy_group
+            group_members = (
+                self._redundancy_groups[current_group] if current_group else None
+            )
+            # If this failed node belongs to a redundancy group with
+            # surviving members, downstream dependents are protected and
+            # we don't propagate failure through this edge.
+            if group_members is not None and (group_members - failed):
+                continue
+            for rname in dependents.get(current, ()):  # only direct dependents
                 if rname in failed:
                     continue
-                if current in res.depends_on:
-                    # Check if this resource has redundancy for *current*
-                    group = self._resources[current].redundancy_group if current in self._resources else None
-                    if group:
-                        group_members = self._redundancy_groups[group]
-                        survivors = group_members - failed
-                        if survivors:
-                            continue  # redundancy saves this dependency
-                    failed.add(rname)
-                    queue.append(rname)
+                failed.add(rname)
+                queue.append(rname)
 
         return failed
 
