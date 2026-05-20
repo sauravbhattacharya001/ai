@@ -50,6 +50,7 @@ Usage (API)::
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import math
 import random
@@ -572,9 +573,14 @@ class FleetReport:
 
     def to_html(self) -> str:
         """Generate interactive HTML dashboard."""
-        sessions_json = json.dumps([s.to_dict() for s in self.sessions])
-        caps_json = json.dumps(self.most_targeted_capabilities[:10])
-        techs_json = json.dumps(self.most_common_techniques[:8])
+        # Escape ``</`` to prevent a payload like ``</script><script>...``
+        # from breaking out of the inline ``<script>`` block (CWE-79).
+        def _safe_json(obj: object) -> str:
+            return json.dumps(obj).replace("</", "<\\/")
+
+        sessions_json = _safe_json([s.to_dict() for s in self.sessions])
+        caps_json = _safe_json(self.most_targeted_capabilities[:10])
+        techs_json = _safe_json(self.most_common_techniques[:8])
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -645,7 +651,7 @@ th {{ color: #f0883e; }}
 <div class="panel recs">
   <h3>Autonomous Recommendations</h3>
   <ul>
-    {"".join(f"<li>{r}</li>" for r in self.recommendations[:6])}
+    {"".join(f"<li>{html.escape(str(r))}</li>" for r in self.recommendations[:6])}
   </ul>
 </div>
 
@@ -654,12 +660,22 @@ const sessions = {sessions_json};
 const caps = {caps_json};
 const techs = {techs_json};
 
+// Escape untrusted strings before injecting into HTML to prevent XSS
+// (CWE-79). Session-supplied fields such as actor_id and signals[].engine
+// flow into innerHTML below; rendering them raw would let an attacker
+// craft a probe whose actor_id is `<img src=x onerror=...>`.
+function esc(v) {{
+  return String(v).replace(/[&<>"']/g, c => ({{
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }}[c]));
+}}
+
 // Render capability bars
 const capsDiv = document.getElementById('caps-chart');
 const maxCap = caps.length > 0 ? caps[0][1] : 1;
 caps.forEach(([name, count]) => {{
   const pct = (count / maxCap * 100).toFixed(0);
-  capsDiv.innerHTML += `<div class="bar"><span class="bar-label">${{name}}</span><div class="bar-fill" style="width:${{pct}}%;background:#f0883e;"></div><span class="bar-value">${{count}}</span></div>`;
+  capsDiv.innerHTML += `<div class="bar"><span class="bar-label">${{esc(name)}}</span><div class="bar-fill" style="width:${{pct}}%;background:#f0883e;"></div><span class="bar-value">${{esc(count)}}</span></div>`;
 }});
 
 // Render technique bars
@@ -667,15 +683,15 @@ const techsDiv = document.getElementById('techs-chart');
 const maxTech = techs.length > 0 ? techs[0][1] : 1;
 techs.forEach(([name, count]) => {{
   const pct = (count / maxTech * 100).toFixed(0);
-  techsDiv.innerHTML += `<div class="bar"><span class="bar-label">${{name}}</span><div class="bar-fill" style="width:${{pct}}%;background:#58a6ff;"></div><span class="bar-value">${{count}}</span></div>`;
+  techsDiv.innerHTML += `<div class="bar"><span class="bar-label">${{esc(name)}}</span><div class="bar-fill" style="width:${{pct}}%;background:#58a6ff;"></div><span class="bar-value">${{esc(count)}}</span></div>`;
 }});
 
 // Render sessions table
 const tbody = document.getElementById('sessions-table');
 sessions.sort((a, b) => b.threat_score - a.threat_score).slice(0, 15).forEach(s => {{
-  const cls = 'threat-' + s.threat_level;
-  const topSignal = s.signals.length > 0 ? s.signals[0].engine.replace('Engine', '') : '—';
-  tbody.innerHTML += `<tr><td>${{s.actor_id}}</td><td class="${{cls}}">${{s.threat_level}}</td><td>${{s.threat_score}}</td><td>${{s.probe_count}}</td><td>${{s.leak_count}}</td><td>${{topSignal}}</td></tr>`;
+  const cls = 'threat-' + esc(s.threat_level);
+  const topSignal = s.signals.length > 0 ? String(s.signals[0].engine).replace('Engine', '') : '—';
+  tbody.innerHTML += `<tr><td>${{esc(s.actor_id)}}</td><td class="${{cls}}">${{esc(s.threat_level)}}</td><td>${{esc(s.threat_score)}}</td><td>${{esc(s.probe_count)}}</td><td>${{esc(s.leak_count)}}</td><td>${{esc(topSignal)}}</td></tr>`;
 }});
 </script>
 </body>

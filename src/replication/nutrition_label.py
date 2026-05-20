@@ -32,6 +32,7 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import sys
 import textwrap
@@ -303,32 +304,39 @@ class NutritionLabel:
         }, indent=2)
 
     def to_html(self) -> str:
-        """Render as styled HTML nutrition label."""
+        """Render as styled HTML nutrition label.
+
+        All string fields sourced from caller-supplied data
+        (``AgentProfile``, nutrient names/units, allergen/warning text)
+        are HTML-escaped to prevent stored XSS when reports are written
+        to disk and served by a web frontend.
+        """
+        e = html.escape
         rows = ""
         for n in self.nutrients:
             indent = "&nbsp;" * (n.indent * 4)
             bold_s = "<b>" if n.bold else ""
             bold_e = "</b>" if n.bold else ""
-            rows += (f"<tr><td>{indent}{bold_s}{n.name}{bold_e}</td>"
-                     f"<td>{n.value:.0f}{n.unit}</td>"
+            rows += (f"<tr><td>{indent}{bold_s}{e(n.name)}{bold_e}</td>"
+                     f"<td>{n.value:.0f}{e(n.unit)}</td>"
                      f"<td>{n.daily_value_pct:.0f}%</td></tr>\n")
 
         allergen_html = ""
         if self.allergens:
             allergen_html = (
                 f'<div class="allergens"><b>Contains:</b> '
-                f'{", ".join(self.allergens)}</div>'
+                f'{", ".join(e(a) for a in self.allergens)}</div>'
             )
 
         warn_html = ""
         if self.warnings:
-            items = "".join(f"<li>{w}</li>" for w in self.warnings)
+            items = "".join(f"<li>{e(w)}</li>" for w in self.warnings)
             warn_html = f'<div class="warnings"><b>⚠️ Warnings:</b><ul>{items}</ul></div>'
 
         return textwrap.dedent(f"""\
         <!DOCTYPE html>
         <html><head><meta charset="utf-8">
-        <title>Safety Nutrition Label — {self.agent_name}</title>
+        <title>Safety Nutrition Label — {e(self.agent_name)}</title>
         <style>
           body {{ font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px;
                  background: #f5f5f5; }}
@@ -357,12 +365,12 @@ class NutritionLabel:
         </style></head><body>
         <div class="label">
           <h1>Safety Nutrition Facts</h1>
-          <div class="grade">{self.safety_grade}</div>
-          <h2>{self.agent_name} v{self.version}</h2>
-          <div class="meta">Serving Size: {self.serving_size}</div>
+          <div class="grade">{e(self.safety_grade)}</div>
+          <h2>{e(self.agent_name)} v{e(self.version)}</h2>
+          <div class="meta">Serving Size: {e(self.serving_size)}</div>
           <div class="cal-row">
             <span>Risk Calories {self.risk_calories}</span>
-            <span>Tier: {self.risk_tier.value.upper()}</span>
+            <span>Tier: {e(self.risk_tier.value.upper())}</span>
           </div>
           <table>
             <tr><th></th><th></th><th>% Daily Value</th></tr>
@@ -372,7 +380,7 @@ class NutritionLabel:
           {warn_html}
           <div class="footer">
             Safeguard Coverage: {self.safeguard_coverage:.0f}% &bull;
-            Generated: {self.generated_at}
+            Generated: {e(self.generated_at)}
           </div>
         </div></body></html>""")
 

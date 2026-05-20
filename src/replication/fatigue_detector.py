@@ -33,6 +33,7 @@ Programmatic::
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import math
 import random
@@ -403,7 +404,13 @@ def simulate_alerts(
 
 
 def generate_html_report(result: FatigueResult) -> str:
-    """Generate a self-contained HTML fatigue report."""
+    """Generate a self-contained HTML fatigue report.
+
+    Indicator names/details, severity strings, and recommendation text
+    are HTML-escaped to prevent stored XSS when caller-supplied alert
+    payloads bubble up into the report (CWE-79).
+    """
+    e = html.escape
     level_colors = {
         "healthy": "#22c55e", "mild": "#84cc16",
         "moderate": "#eab308", "severe": "#f97316", "critical": "#ef4444",
@@ -415,18 +422,18 @@ def generate_html_report(result: FatigueResult) -> str:
         bar_color = "#22c55e" if ind.score < 30 else "#eab308" if ind.score < 60 else "#ef4444"
         indicator_rows += f"""
         <tr>
-          <td><strong>{ind.name.replace('_', ' ').title()}</strong></td>
+          <td><strong>{e(ind.name.replace('_', ' ').title())}</strong></td>
           <td>
             <div style="background:#e5e7eb;border-radius:4px;overflow:hidden;height:20px;width:200px;display:inline-block;vertical-align:middle">
               <div style="background:{bar_color};height:100%;width:{min(ind.score, 100):.0f}%"></div>
             </div>
             <span style="margin-left:8px">{ind.score:.0f}/100</span>
           </td>
-          <td>{ind.detail}</td>
-          <td><span style="color:{bar_color};font-weight:bold">{ind.severity}</span></td>
+          <td>{e(ind.detail)}</td>
+          <td><span style="color:{bar_color};font-weight:bold">{e(ind.severity)}</span></td>
         </tr>"""
 
-    rec_items = "".join(f"<li>{r}</li>" for r in result.recommendations)
+    rec_items = "".join(f"<li>{e(r)}</li>" for r in result.recommendations)
 
     stats_json = json.dumps(result.stats, indent=2)
 
@@ -454,7 +461,7 @@ def generate_html_report(result: FatigueResult) -> str:
 <h1 style="text-align:center">🔔 Alert Fatigue Report</h1>
 <div class="score-card">
   <div class="score">{result.score:.0f}</div>
-  <div class="level">{result.level}</div>
+  <div class="level">{e(result.level)}</div>
   <p style="color:#6b7280;margin-top:0.5rem">Fatigue Score (0 = no fatigue, 100 = critical)</p>
 </div>
 
