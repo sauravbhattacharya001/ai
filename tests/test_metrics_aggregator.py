@@ -117,6 +117,81 @@ class TestAggregate:
         # Status should be one of the valid values
         assert results[0].status in ("ok", "warn", "error", "skip")
 
+    # ── Regression tests for issue #89 ──────────────────────────────
+    #
+    # The previous implementation wrapped every probe body in a bare
+    # `except Exception: return ModuleMetric(..., "skip", ...)`, so a
+    # real bug like `AttributeError` on a `None` return showed up as
+    # a benign "skip" row and the CLI exited 0. The fix moves error
+    # classification into `_run_probe`: ImportError → skip, everything
+    # else → error.
+
+    def test_real_bug_surfaces_as_error(self):
+        """A registered probe that raises a real exception must be reported as error."""
+        @probe("_test_real_bug")
+        def _failing():
+            raise TypeError("'NoneType' object has no attribute 'get'")
+
+        try:
+            results = aggregate(["_test_real_bug"])
+            assert len(results) == 1
+            assert results[0].status == "error", (
+                f"real bugs must surface as 'error', got {results[0].status!r}"
+            )
+            # Detail must include both the exception type and the message
+            # so operators can actually debug from the dashboard.
+            assert "TypeError" in results[0].detail
+            assert "NoneType" in results[0].detail
+        finally:
+            del _PROBE_REGISTRY["_test_real_bug"]
+
+    def test_import_error_remains_skip(self):
+        """ImportError still maps to 'skip' — optional deps shouldn't fail the run."""
+        @probe("_test_missing_dep")
+        def _missing():
+            raise ImportError("No module named 'optional_thing'")
+
+        try:
+            results = aggregate(["_test_missing_dep"])
+            assert results[0].status == "skip"
+            assert "ImportError" in results[0].detail
+        finally:
+            del _PROBE_REGISTRY["_test_missing_dep"]
+
+    def test_module_not_found_error_remains_skip(self):
+        """ModuleNotFoundError (subclass of ImportError) is also a skip."""
+        @probe("_test_mnfe")
+        def _mnfe():
+            raise ModuleNotFoundError("No module named 'optional_thing'")
+
+        try:
+            results = aggregate(["_test_mnfe"])
+            assert results[0].status == "skip"
+        finally:
+            del _PROBE_REGISTRY["_test_mnfe"]
+
+    def test_other_exceptions_classified_as_error(self):
+        """AttributeError, KeyError, ZeroDivisionError → error (not skip)."""
+        cases = [
+            ("_test_attr", AttributeError("oops")),
+            ("_test_key", KeyError("missing")),
+            ("_test_div", ZeroDivisionError("x/0")),
+            ("_test_val", ValueError("bad input")),
+        ]
+        for name, exc in cases:
+            @probe(name)
+            def _fail(_e=exc):
+                raise _e
+
+            try:
+                results = aggregate([name])
+                assert results[0].status == "error", (
+                    f"{type(exc).__name__} should classify as 'error'"
+                )
+                assert type(exc).__name__ in results[0].detail
+            finally:
+                del _PROBE_REGISTRY[name]
+
 
 # ── _render_table ────────────────────────────────────────────────────
 
@@ -171,19 +246,79 @@ class TestConstants:
 
 class TestCLI:
     def test_main_table_output(self, capsys):
-        main(["--modules", "scorecard"])
+        rc = main(["--modules", "scorecard"])
         out = capsys.readouterr().out
         assert "scorecard" in out
+        # The scorecard probe may currently surface an error in some
+        # environments (its underlying module API drifted). After the
+        # #89 fix that's exactly what we want — the row must be
+        # rendered either way. Exit code is asserted in the dedicated
+        # error/skip CLI tests below.
+        assert rc in (0, 1)
 
     def test_main_json_output(self, capsys):
-        main(["--json", "--modules", "scorecard"])
+        rc = main(["--json", "--modules", "scorecard"])
         out = capsys.readouterr().out
         parsed = json.loads(out)
         assert isinstance(parsed, list)
         assert parsed[0]["module"] == "scorecard"
+        assert rc in (0, 1)
 
     def test_main_all_modules(self, capsys):
-        main([])
+        rc = main([])
         out = capsys.readouterr().out
         # Should render without crashing
         assert "Module" in out or "module" in out.lower()
+        assert rc in (0, 1)  # depends on test env state
+
+    def test_main_nonzero_exit_when_probe_errors(self, capsys):
+        """Regression for #89: real bugs must produce a non-zero exit code
+        so cron/monitoring loops can alert on them.
+        """
+        @probe("_test_cli_error")
+        def _broken():
+            raise RuntimeError("simulated regression")
+
+        try:
+            rc = main(["--modules", "_test_cli_error"])
+            assert rc == 1, "errors must produce non-zero CLI exit"
+            out = capsys.readouterr().out
+            assert "_test_cli_error" in out
+            assert "RuntimeError" in out
+        finally:
+            del _PROBE_REGISTRY["_test_cli_error"]
+
+    def test_main_zero_exit_on_only_skips(self, capsys):
+        """Skips (optional deps) must NOT fail the run — would create
+        false alarms on environments where optional probes aren't
+        installed.
+        """
+        @probe("_test_cli_skip")
+        def _skip():
+            raise ImportError("optional dep missing")
+
+        try:
+            rc = main(["--modules", "_test_cli_skip"])
+            assert rc == 0, "skips must not fail the CLI"
+        finally:
+            del _PROBE_REGISTRY["_test_cli_skip"]
+
+    def test_main_json_includes_error_detail(self, capsys):
+        """The JSON output must include the full ExceptionType: message
+        detail (the old impl truncated it to ~36 chars in the table
+        and the JSON view never even tried to show it as an error).
+        """
+        @probe("_test_cli_detail")
+        def _broken():
+            raise AttributeError("'NoneType' object has no attribute 'get'")
+
+        try:
+            rc = main(["--json", "--modules", "_test_cli_detail"])
+            out = capsys.readouterr().out
+            parsed = json.loads(out)
+            assert parsed[0]["status"] == "error"
+            assert "AttributeError" in parsed[0]["detail"]
+            assert "NoneType" in parsed[0]["detail"]
+            assert rc == 1
+        finally:
+            del _PROBE_REGISTRY["_test_cli_detail"]

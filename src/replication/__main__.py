@@ -59,11 +59,20 @@ def _ensure_utf8() -> None:
 # ── dispatch helpers ─────────────────────────────────────────────────
 
 def _call_main(module_name: str, args: List[str]) -> None:
-    """Call the main() function in a submodule."""
+    """Call the main() function in a submodule.
+
+    If the module's ``main()`` returns an int it is treated as a
+    process exit code (used e.g. by ``metrics_aggregator.main`` to
+    propagate ``error``-state probes through the ``python -m
+    replication metrics`` CLI so monitoring loops can alert on real
+    bugs instead of silently exiting 0).
+    """
     import importlib
     mod = importlib.import_module(f".{module_name}", package="replication")
     sys.argv = [f"replication {module_name}"] + args
-    mod.main()  # type: ignore[attr-defined]
+    rc = mod.main()  # type: ignore[attr-defined]
+    if isinstance(rc, int) and rc != 0:
+        sys.exit(rc)
 
 
 def _run_module(module_name: str, args: List[str]) -> None:
