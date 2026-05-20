@@ -57,6 +57,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from .remediation_planner import Finding
+from ._helpers import jaccard as _jaccard_impl
 
 
 # ── Constants ──────────────────────────────────────────────────────
@@ -290,12 +291,7 @@ def _tokens(text: str) -> set:
 
 
 def _jaccard(a: set, b: set) -> float:
-    if not a and not b:
-        return 0.0
-    union = a | b
-    if not union:
-        return 0.0
-    return len(a & b) / len(union)
+    return _jaccard_impl(a, b)
 
 
 def _bump_severity(sev: str, delta: int) -> str:

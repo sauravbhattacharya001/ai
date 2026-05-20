@@ -64,6 +64,7 @@ from .remediation_planner import (
     RemediationPlan,
     RemediationPlanner,
 )
+from ._helpers import jaccard
 
 
 # ── Constants ────────────────────────────────────────────────────────
@@ -389,13 +390,9 @@ def _action_skill_tags(action: RemediationAction) -> List[str]:
 
 def _jaccard(a: Sequence[str], b: Sequence[str]) -> float:
     sa, sb = set(a), set(b)
-    if not sa and not sb:
-        return 0.0
     if not sa or not sb:
         return 0.0
-    inter = len(sa & sb)
-    union = len(sa | sb)
-    return inter / union if union else 0.0
+    return jaccard(sa, sb)
 
 
 def _seniority_fit(team: Team, severity: str, risk_appetite: str) -> float:

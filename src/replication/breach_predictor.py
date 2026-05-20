@@ -59,6 +59,7 @@ from ._helpers import (
     Severity,
     box_header,
     emit_output,
+    jaccard,
     linear_regression,
     stats_mean,
     stats_std,
@@ -270,12 +271,13 @@ def _alert_level(score: float) -> str:
 
 
 def _jaccard(set_a: set, set_b: set) -> float:
-    """Jaccard similarity between two sets."""
-    if not set_a and not set_b:
-        return 0.0
-    intersection = len(set_a & set_b)
-    union = len(set_a | set_b)
-    return intersection / union if union else 0.0
+    """Jaccard similarity between two sets.
+
+    Thin compatibility wrapper around :func:`replication._helpers.jaccard`;
+    kept so existing call sites (and any out-of-tree monkeypatches) keep
+    working unchanged.
+    """
+    return jaccard(set_a, set_b)
 
 
 def _cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:

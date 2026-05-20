@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from enum import Enum
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, Iterable, List, TYPE_CHECKING
 
 
 class Severity(Enum):
@@ -242,6 +242,26 @@ def clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
     and *sleeper_agent*.
     """
     return max(lo, min(hi, value))
+
+
+def jaccard(a: Iterable[Any], b: Iterable[Any]) -> float:
+    """Jaccard similarity ``|A ∩ B| / |A ∪ B|``.
+
+    Accepts any iterables (lists, tuples, sets) and coerces to ``set``
+    so callers don't need to remember the conversion. Two empty inputs
+    yield ``0.0`` rather than the mathematically undefined ``0/0``,
+    matching the convention used across the duplicated implementations
+    in *breach_predictor*, *finding_triage*, and *remediation_assignment*
+    that this helper replaces.
+    """
+    sa = a if isinstance(a, set) else set(a)
+    sb = b if isinstance(b, set) else set(b)
+    if not sa and not sb:
+        return 0.0
+    union = len(sa | sb)
+    if not union:
+        return 0.0
+    return len(sa & sb) / union
 
 
 # ── output ───────────────────────────────────────────────

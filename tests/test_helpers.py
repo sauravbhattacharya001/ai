@@ -2,7 +2,7 @@
 
 import math
 
-from replication._helpers import stats_mean, stats_std, box_header
+from replication._helpers import jaccard, stats_mean, stats_std, box_header
 
 # ── stats_mean ───────────────────────────────────────────────────────
 
@@ -77,3 +77,36 @@ class TestBoxHeader:
         assert lines[0][-1] == "┐"
         assert lines[2][0] == "└"
         assert lines[2][-1] == "┘"
+
+
+# ── jaccard ─────────────────────────────────────────────
+
+
+class TestJaccard:
+    def test_both_empty_returns_zero(self):
+        # Avoid undefined 0/0; matches the convention of the three
+        # legacy local copies this helper replaced.
+        assert jaccard(set(), set()) == 0.0
+
+    def test_one_empty_returns_zero(self):
+        assert jaccard({"a"}, set()) == 0.0
+        assert jaccard(set(), {"a"}) == 0.0
+
+    def test_identical_sets(self):
+        assert jaccard({1, 2, 3}, {1, 2, 3}) == 1.0
+
+    def test_disjoint_sets(self):
+        assert jaccard({1, 2}, {3, 4}) == 0.0
+
+    def test_partial_overlap(self):
+        # |A ∩ B| = 2 ({2,3}), |A ∪ B| = 4 ({1,2,3,4}) → 0.5
+        assert jaccard({1, 2, 3}, {2, 3, 4}) == 0.5
+
+    def test_accepts_lists_and_tuples(self):
+        assert jaccard([1, 1, 2], (2, 3)) == 1 / 3
+
+    def test_accepts_generators(self):
+        assert jaccard((x for x in [1, 2]), (x for x in [2, 3])) == 1 / 3
+
+    def test_string_tokens(self):
+        assert jaccard({"sql", "auth"}, {"auth", "xss"}) == 1 / 3
