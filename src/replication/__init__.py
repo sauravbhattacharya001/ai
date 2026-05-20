@@ -482,6 +482,16 @@ from .kill_switch import (
     create_quarantine_killswitch,
 )
 
+from .kill_switch_tuner import (
+    KillSwitchTuningAdvisor,
+    TuningAction,
+    TuningFinding,
+    TuningReport,
+    to_json as kill_switch_tuner_to_json,
+    to_markdown as kill_switch_tuner_to_markdown,
+    to_text as kill_switch_tuner_to_text,
+)
+
 from .capability_fingerprint import (
     Capability,
     CapabilityCategory,
@@ -890,6 +900,14 @@ __all__ = [
     "create_conservative_killswitch",
     "create_aggressive_killswitch",
     "create_quarantine_killswitch",
+    # kill_switch_tuner
+    "KillSwitchTuningAdvisor",
+    "TuningAction",
+    "TuningFinding",
+    "TuningReport",
+    "kill_switch_tuner_to_json",
+    "kill_switch_tuner_to_markdown",
+    "kill_switch_tuner_to_text",
     # anomaly_replay
     "AnomalyReplayer",
     "ReplayConfig",
