@@ -66,7 +66,7 @@ from .kill_switch import (
     TriggerCondition,
     TriggerKind,
 )
-from ._helpers import Severity
+from ._helpers import Severity, clamp as _clamp
 
 
 # ---------------------------------------------------------------------------
@@ -144,10 +144,6 @@ def _severity_to_priority(value: float) -> str:
     if value >= 30:
         return "P2"
     return "P3"
-
-
-def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
-    return max(lo, min(hi, v))
 
 
 # ---------------------------------------------------------------------------

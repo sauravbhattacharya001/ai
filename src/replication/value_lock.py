@@ -44,7 +44,6 @@ from __future__ import annotations
 import argparse
 import html as html_mod
 import json
-import math
 import random
 import sys
 import time
@@ -58,6 +57,7 @@ from ._helpers import (
     box_header,
     emit_output,
     linear_regression,
+    pearson_correlation,
     stats_mean,
     stats_std,
 )
@@ -444,18 +444,16 @@ class ValueLockVerifier:
 
     @staticmethod
     def _pearson(x: List[float], y: List[float]) -> float:
-        """Pearson correlation coefficient."""
-        n = len(x)
-        if n < 2:
-            return 0.0
-        x_mean = sum(x) / n
-        y_mean = sum(y) / n
-        num = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, y))
-        dx = math.sqrt(sum((xi - x_mean) ** 2 for xi in x))
-        dy = math.sqrt(sum((yi - y_mean) ** 2 for yi in y))
-        if dx == 0 or dy == 0:
-            return 0.0
-        return num / (dx * dy)
+        """Pearson correlation coefficient (delegates to shared helper).
+
+        Kept as a thin static wrapper so external callers / tests that
+        reference ``ValueLockVerifier._pearson`` keep working.  The
+        actual implementation lives in :func:`replication._helpers.pearson_correlation`
+        to avoid drift across modules (alignment, reward_hacking,
+        situational_awareness, value_lock all needed an identical body).
+        """
+        n = min(len(x), len(y))
+        return pearson_correlation(list(x[:n]), list(y[:n]))
 
     def _generate_insights(
         self,
