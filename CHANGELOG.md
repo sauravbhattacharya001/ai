@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.13.0] - 2026-05-19
+
+Maintenance release (14 commits since v3.12.0) focused on **agentic safety advisors**, **performance-critical hot paths**, and **internal helper consolidation**. No breaking changes — all public APIs and CLI flags are preserved.
+
+### Added
+
+- **KillSwitchTuningAdvisor** (`kill_switch_tuner.py`) — agentic tuner that audits a `KillSwitchManager` post-hoc and emits ranked tuning recommendations (threshold, cooldown, strategy, budget, sustained-window, severity). Designed as a sibling to the existing remediation/triage advisors so operators can close the loop between observed kill outcomes and policy. CLI: `python -m replication.kill_switch_tuner`.
+- **FindingTriageAdvisor** (intake stage) — 5th agentic sibling alongside RemediationROIAdvisor. Deduplicates and re-ranks findings as they enter the pipeline.
+- **RemediationROIAdvisor** — ranks fixes by debt-paid-down per effort-day, closing the loop from detector signal → prioritized fix.
+
+### Fixed
+
+- **metrics_aggregator**: probe exceptions now surface as `"error"` status instead of silently being downgraded to `"skip"`. Real bugs were being hidden in the dashboard.
+- **risk_register HTML report**: stored XSS hardening (CWE-79) — finding titles, descriptions, and tags are now html-escaped before being embedded in the rendered report.
+- **triage CLI tests**: subprocess invocations now set `cwd=src` so the `replication` module resolves on Python ≥ 3.12 with no package install.
+
+### Performance
+
+- **emergent_coalition**: timing correlation/precedence reduced from O(N·M) to O((N+M) log N) via merge-style traversal of pre-sorted timestamps. Measurable speedup on fleet sizes ≥ 200 agents.
+- **dependency_graph**: cascade traversal reduced from O(R³) to O(V+E) by building a reverse adjacency map once instead of re-walking forward edges per resource.
+
+### Changed / Internal
+
+- **lateral_movement**: deterministic MITRE technique mapping + safer severity sort (no more order flapping on identical confidence scores).
+- **_helpers.severity_rank**: single shared severity ordering. Removed ~5 near-duplicate `_sev_rank` helpers that had subtly different INFO/CRITICAL offsets.
+- **CLI `emit_output`**: consolidated the "write-to-file-or-print" boilerplate (previously duplicated across 50+ `main()` functions).
+- **_pearson / _clamp dedup**: `ValueLockVerifier._pearson` and `kill_switch_tuner._clamp` now delegate to the shared `_helpers` implementations (drift surface eliminated; behavior identical).
+- **escape_route**: +25 new tests covering exfil-path scoring edge cases.
+
+### Quality
+
+- 5523 tests passing, ~35s on a single core.
+- Public API unchanged — drop-in upgrade from v3.12.x.
+
 ## [3.12.0] - 2026-05-17
 
 Large feature release (116 commits since v3.11.0) focused on **alignment safety detectors** — the suite now covers the full Bostrom / Hubinger / Christiano-style failure-mode taxonomy (deceptive alignment, mesa-optimization, treacherous turns, wireheading, sleeper agents, capability overhang, situational awareness) plus a complete autonomous remediation pipeline.
