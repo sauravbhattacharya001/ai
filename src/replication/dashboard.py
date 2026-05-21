@@ -416,14 +416,38 @@ class DashboardGenerator:
 
     # ── Public utilities ─────────────────────────────────────────
 
-    def get_report_data(self, report: SimulationReport) -> Dict[str, Any]:
-        """Extract structured data from a report for programmatic use."""
+    # Keys whose values are derived from wall-clock measurements and are
+    # therefore not reproducible across runs even when the simulator's
+    # logical seed is identical. Callers building deterministic snapshots
+    # (golden-file tests, hash-based comparisons, etc.) should exclude
+    # these via ``include_nondeterministic=False`` or call
+    # :meth:`get_report_data_deterministic`.
+    NONDETERMINISTIC_KEYS: frozenset = frozenset({"duration_ms"})
+
+    def get_report_data(
+        self,
+        report: SimulationReport,
+        *,
+        include_nondeterministic: bool = True,
+    ) -> Dict[str, Any]:
+        """Extract structured data from a report for programmatic use.
+
+        Parameters
+        ----------
+        report:
+            The simulation report to summarize.
+        include_nondeterministic:
+            When ``True`` (default) the returned dict contains every field,
+            including wall-clock derived ones such as ``duration_ms``. Set
+            to ``False`` to get a strictly reproducible view suitable for
+            equality comparisons across runs with the same seed.
+        """
         workers = report.workers
         depth_counts: Dict[int, int] = {}
         for w in workers.values():
             depth_counts[w.depth] = depth_counts.get(w.depth, 0) + 1
 
-        return {
+        data: Dict[str, Any] = {
             "strategy": report.config.strategy,
             "worker_count": len(workers),
             "max_depth": max((w.depth for w in workers.values()), default=0),
@@ -440,6 +464,23 @@ class DashboardGenerator:
             "timeline_count": len(report.timeline),
             "audit_count": len(report.audit_events),
         }
+
+        if not include_nondeterministic:
+            for key in self.NONDETERMINISTIC_KEYS:
+                data.pop(key, None)
+
+        return data
+
+    def get_report_data_deterministic(
+        self, report: SimulationReport
+    ) -> Dict[str, Any]:
+        """Return :meth:`get_report_data` with wall-clock fields removed.
+
+        Convenience wrapper for golden-file tests and reproducibility
+        checks. Equivalent to ``get_report_data(report,
+        include_nondeterministic=False)``.
+        """
+        return self.get_report_data(report, include_nondeterministic=False)
 
 
 # ── Helpers ──────────────────────────────────────────────────────
