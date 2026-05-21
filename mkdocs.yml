@@ -169,6 +169,13 @@ nav:
           - Sycophancy Detector: api/sycophancy_detector.md
           - Reward Hacking: api/reward_hacking.md
           - Corrigibility Auditor: api/corrigibility_auditor.md
+          - Cognitive Sabotage Detector: api/cognitive_sabotage.md
+          - Wireheading Detector: api/wireheading.md
+          - Treacherous Turn Detector: api/treacherous_turn.md
+          - Sleeper Agent Detector: api/sleeper_agent.md
+          - Mesa-Optimizer Detector: api/mesa_optimizer.md
+          - Capability Overhang Detector: api/capability_overhang.md
+          - Emergent Coalition Detector: api/emergent_coalition.md
       - Advanced Safety:
           - Access Control: api/access_control.md
           - Red Team: api/red_team.md
@@ -180,6 +187,15 @@ nav:
           - Model Card: api/model_card.md
           - Safety Autopilot: api/safety_autopilot.md
           - Safety Benchmark: api/safety_benchmark.md
+      - Remediation & Advisors:
+          - Remediation Planner: api/remediation_planner.md
+          - Remediation Progress Tracker: api/remediation_progress.md
+          - Remediation Assignment Advisor: api/remediation_assignment.md
+          - Remediation ROI Advisor: api/remediation_roi.md
+          - Safety Debt Advisor: api/safety_debt.md
+          - Finding Triage Advisor: api/finding_triage.md
+          - Kill Switch Tuner: api/kill_switch_tuner.md
+          - Defense Layer Redundancy Advisor: api/defense_layer_redundancy_advisor.md
       - Reporting:
           - Reporter: api/reporter.md
           - Exporter: api/exporter.md
