@@ -254,7 +254,25 @@ class TestDeterminism:
         sim2 = Simulator(ScenarioConfig(strategy="greedy", seed=42))
         r1 = sim1.run()
         r2 = sim2.run()
-        # Reports should have same data (HTML has timestamp so won't match exactly)
-        d1 = gen.get_report_data(r1)
-        d2 = gen.get_report_data(r2)
+        # Reports should have the same logical data for the same seed.
+        # ``duration_ms`` reflects wall-clock execution time and is
+        # intentionally non-deterministic, so we use the deterministic
+        # view here (mirroring how HTML output's timestamp is excluded).
+        d1 = gen.get_report_data_deterministic(r1)
+        d2 = gen.get_report_data_deterministic(r2)
         assert d1 == d2
+        # ``duration_ms`` must not leak into the deterministic view.
+        assert "duration_ms" not in d1
+        # But the full view still reports it.
+        assert "duration_ms" in gen.get_report_data(r1)
+
+    def test_include_nondeterministic_flag(self, gen):
+        sim = Simulator(ScenarioConfig(strategy="greedy", seed=7))
+        report = sim.run()
+        full = gen.get_report_data(report, include_nondeterministic=True)
+        lean = gen.get_report_data(report, include_nondeterministic=False)
+        # Lean view drops every documented non-deterministic key, and
+        # nothing else, so the two views differ only by that set.
+        assert set(full) - set(lean) == set(gen.NONDETERMINISTIC_KEYS)
+        for key in gen.NONDETERMINISTIC_KEYS:
+            assert key not in lean
