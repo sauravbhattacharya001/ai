@@ -152,6 +152,7 @@ _HAS_MAIN = {
     "safety_debt",
     "remediation_roi",
     "finding_triage",
+    "runbook_freshness_advisor",
 }
 
 # Modules with inline __main__ blocks only (no main())
@@ -283,6 +284,7 @@ SUBCOMMANDS: Dict[str, Tuple[Callable[[List[str]], None], str]] = {
     "regulatory-map":    (_make_handler("regulatory_mapper"),                    "Map safety findings to regulatory framework articles (EU AI Act, NIST, ISO 42001, OECD)"),
     "capability-catalog": (_make_handler("capability_catalog"),                  "Track, classify, and manage observed agent capabilities"),
     "harden":             (_make_handler("hardening_advisor"),                    "Analyze safety config and recommend hardening improvements"),
+    "runbook-freshness":  (_make_handler("runbook_freshness_advisor"),           "Audit incident runbook library for staleness, orphaned owners, drill gaps, and content-vs-execution drift"),
     "exposure":           (_make_handler("exposure_window"),                     "Analyze safety control exposure windows & coverage gaps"),
     "comms":              (_make_handler("incident_comms"),                      "Draft templated incident communications for stakeholders"),
     "memory-forensics":   (_make_handler("memory_forensics"),                    "Analyze agent memory for tampering, planted memories, amnesia & consistency violations"),
