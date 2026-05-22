@@ -53,23 +53,23 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
+from ._helpers import (
+    APPETITE_THRESHOLD_MULT,
+    APPETITES,
+    SEVERITY_LEVELS,
+    SEVERITY_WEIGHT,
+)
+
 
 # ── Constants ─────────────────────────────────────────────────────────
 
-SEVERITY_LEVELS: Tuple[str, ...] = ("info", "low", "medium", "high", "critical")
-SEVERITY_WEIGHT: Dict[str, int] = {
-    "info": 0,
-    "low": 1,
-    "medium": 2,
-    "high": 3,
-    "critical": 4,
-}
+# SEVERITY_LEVELS / SEVERITY_WEIGHT are re-exported via _helpers below.
 
 STATUS_OPEN = {"open", "in_progress", "blocked", "todo", "wip", "review"}
 STATUS_DONE = {"done", "closed", "resolved", "completed", "fixed"}
 STATUS_DROPPED = {"wontfix", "cancelled", "rejected", "duplicate"}
 
-APPETITES: Tuple[str, ...] = ("cautious", "balanced", "aggressive")
+# APPETITES re-exported from _helpers (see import below).
 
 # Multiplier on staleness_score: cautious is stricter (higher score),
 # aggressive is more lenient.
@@ -87,13 +87,13 @@ BASE_THRESHOLDS: Dict[str, float] = {
     "abandoned_days": 60.0,   # opened > N days ago, no update for > 30d
     "at_risk_days_before_due": 3.0,  # < N days to due -> AT_RISK
     "recently_completed_days": 7.0,
+    # Lower bound for the "no update for ..." leg of ABANDONED. Scales
+    # with the active risk_appetite (so aggressive boards tolerate longer
+    # silences before calling something abandoned, cautious less).
+    "abandoned_idle_floor_days": 30.0,
 }
 
-APPETITE_THRESHOLD_MULT: Dict[str, float] = {
-    "cautious": 0.70,
-    "balanced": 1.00,
-    "aggressive": 1.40,
-}
+# APPETITE_THRESHOLD_MULT re-exported from _helpers (see import below).
 
 
 # ── Data model ────────────────────────────────────────────────────────
@@ -566,10 +566,15 @@ class RemediationStalenessAdvisor:
             return ("OVERDUE", reasons, score,
                     "Escalate to owner or reassign immediately")
 
-        # Abandoned: very old and untouched for a long stretch.
+        # Abandoned: very old and untouched for a long stretch. The
+        # idle floor scales with the active risk_appetite via
+        # thresholds["abandoned_idle_floor_days"]; previously this was
+        # hard-pinned to the "balanced" multiplier (= 30d) and so the
+        # appetite had no effect on whether something was flagged
+        # ABANDONED via the idle leg.
         if (days_open is not None and days_open >= thresholds["abandoned_days"]
                 and days_since_update is not None
-                and days_since_update >= max(30.0 * APPETITE_THRESHOLD_MULT.get("balanced", 1.0),
+                and days_since_update >= max(thresholds["abandoned_idle_floor_days"],
                                              thresholds["idle_days"] * 3)):
             reasons.append(f"open_{days_open:.0f}d_no_update_{days_since_update:.0f}d")
             score = 75.0 + min(20.0, days_since_update / 5.0) + sev_w

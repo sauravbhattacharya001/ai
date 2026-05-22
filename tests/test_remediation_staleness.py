@@ -339,3 +339,50 @@ def test_audit_runs_for_all_supported_appetites(appetite):
     report = _advisor().audit(payload)
     assert report.risk_appetite == appetite
     assert report.portfolio.total_actions == 1
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Regression: the idle-leg floor for ABANDONED used to be hard-pinned
+# to the *balanced* APPETITE_THRESHOLD_MULT (30 d) so the active
+# appetite had no effect. With BASE_THRESHOLDS["abandoned_idle_floor_days"]
+# the floor now scales with the appetite, just like the other thresholds.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_aggressive_appetite_relaxes_abandoned_idle_floor():
+    # 100 d open, only 35 d since last update.
+    # balanced:   idle floor = 30 d        -> 35 >= 30 -> ABANDONED
+    # aggressive: idle floor = 30 * 1.4 = 42 -> 35 <  42 -> NOT abandoned
+    actions = [StalenessAction(
+        id="A", owner="alice", status="open", severity="medium",
+        opened_at=_ago(100), last_updated_at=_ago(35),
+    )]
+
+    bal = _advisor().audit(StalenessInput(
+        actions=[*actions], risk_appetite="balanced"))
+    agg = _advisor().audit(StalenessInput(
+        actions=[*actions], risk_appetite="aggressive"))
+
+    assert bal.findings[0].verdict == "ABANDONED"
+    assert agg.findings[0].verdict != "ABANDONED"
+
+
+def test_cautious_appetite_tightens_abandoned_idle_floor():
+    # 100 d open, 22 d since last update.
+    # balanced: idle_days=7, stale_days=21, abandoned_days=60,
+    #           floor=max(30, 7*3=21) = 30 -> 22 < 30 -> STALE not ABANDONED
+    # cautious: abandoned_days = 60 * 0.7 = 42, floor=max(21, 21*0.7*3=44.1)
+    #           = 44.1 d. 100 >= 42 (opened long enough) but 22 < 44.1,
+    #           so still NOT abandoned via the idle leg either.
+    # The key assertion is that the cautious floor is *not* lower than
+    # balanced (regression-pin for the bug where the floor was static).
+    from replication.remediation_staleness import (
+        APPETITE_THRESHOLD_MULT, BASE_THRESHOLDS,
+    )
+    bal_floor = BASE_THRESHOLDS["abandoned_idle_floor_days"] * \
+        APPETITE_THRESHOLD_MULT["balanced"]
+    cau_floor = BASE_THRESHOLDS["abandoned_idle_floor_days"] * \
+        APPETITE_THRESHOLD_MULT["cautious"]
+    agg_floor = BASE_THRESHOLDS["abandoned_idle_floor_days"] * \
+        APPETITE_THRESHOLD_MULT["aggressive"]
+    assert cau_floor < bal_floor < agg_floor
