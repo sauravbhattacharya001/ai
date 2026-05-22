@@ -1,8 +1,17 @@
-"""Tests for replication._helpers — stats_mean, stats_std, box_header."""
+"""Tests for replication._helpers — stats_mean, stats_std, box_header, jaccard,
+linear_regression, pearson_correlation."""
 
 import math
+import random
 
-from replication._helpers import jaccard, stats_mean, stats_std, box_header
+from replication._helpers import (
+    jaccard,
+    stats_mean,
+    stats_std,
+    box_header,
+    linear_regression,
+    pearson_correlation,
+)
 
 # ── stats_mean ───────────────────────────────────────────────────────
 
@@ -110,3 +119,157 @@ class TestJaccard:
 
     def test_string_tokens(self):
         assert jaccard({"sql", "auth"}, {"auth", "xss"}) == 1 / 3
+
+
+# ── linear_regression ────────────────────────────────────────────────
+#
+# These tests pin down the shared :func:`linear_regression` helper used by
+# *drift*, *hoarding*, and several detectors. They double as a regression
+# suite for the closed-form ``ss_xx = n*(n^2-1)/12`` optimisation: if that
+# identity is ever broken, the perfect-fit tests below catch it instantly.
+
+
+class TestLinearRegressionHelper:
+    def test_empty(self):
+        slope, intercept, r2 = linear_regression([])
+        assert slope == 0.0 and intercept == 0.0 and r2 == 0.0
+
+    def test_single(self):
+        slope, intercept, r2 = linear_regression([7.5])
+        assert slope == 0.0
+        assert intercept == 7.5
+        assert r2 == 0.0
+
+    def test_flat_returns_zero_slope(self):
+        slope, intercept, r2 = linear_regression([4.0, 4.0, 4.0, 4.0])
+        assert slope == 0.0
+        assert intercept == 4.0
+        # No y-variance → r² defined as 0 in this helper.
+        assert r2 == 0.0
+
+    def test_perfect_positive_line(self):
+        # y = 2*x + 3 for x = 0..4
+        ys = [3.0, 5.0, 7.0, 9.0, 11.0]
+        slope, intercept, r2 = linear_regression(ys)
+        assert abs(slope - 2.0) < 1e-12
+        assert abs(intercept - 3.0) < 1e-12
+        assert abs(r2 - 1.0) < 1e-12
+
+    def test_perfect_negative_line(self):
+        # y = -3*x + 10
+        ys = [10.0, 7.0, 4.0, 1.0, -2.0]
+        slope, intercept, r2 = linear_regression(ys)
+        assert abs(slope - (-3.0)) < 1e-12
+        assert abs(intercept - 10.0) < 1e-12
+        assert abs(r2 - 1.0) < 1e-12
+
+    def test_two_points_is_perfect_fit(self):
+        slope, intercept, r2 = linear_regression([0.0, 10.0])
+        assert abs(slope - 10.0) < 1e-12
+        assert abs(intercept - 0.0) < 1e-12
+        assert abs(r2 - 1.0) < 1e-12
+
+    def test_noisy_trend_is_imperfect(self):
+        slope, _, r2 = linear_regression([1.0, 3.0, 2.0, 4.0, 3.0])
+        assert slope > 0.0
+        assert 0.0 < r2 < 1.0
+
+    def test_large_inputs_match_naive_three_pass(self):
+        # Regression guard for the closed-form ss_xx + two-pass
+        # optimisation. Compare against a deliberately naive reference
+        # implementation on a 1k-sample sequence.
+        random.seed(20260521)
+        ys = [random.gauss(0.0, 1.0) + 0.01 * i for i in range(1000)]
+
+        def reference(ys):
+            n = len(ys)
+            x_mean = (n - 1) / 2.0
+            y_mean = sum(ys) / n
+            ss_xy = sum((i - x_mean) * (y - y_mean) for i, y in enumerate(ys))
+            ss_xx = sum((i - x_mean) ** 2 for i in range(n))
+            ss_yy = sum((y - y_mean) ** 2 for y in ys)
+            slope = ss_xy / ss_xx
+            return slope, y_mean - slope * x_mean, (ss_xy ** 2) / (ss_xx * ss_yy)
+
+        got = linear_regression(ys)
+        ref = reference(ys)
+        for a, b in zip(got, ref):
+            assert abs(a - b) < 1e-9, (a, b)
+
+    def test_constant_input_does_not_divide_by_zero(self):
+        # Pathological: ss_yy = 0; must not raise and must return r²=0.
+        slope, intercept, r2 = linear_regression([2.5] * 50)
+        assert slope == 0.0
+        assert intercept == 2.5
+        assert r2 == 0.0
+
+    def test_closed_form_ss_xx_identity(self):
+        # The optimisation relies on sum_{i=0..n-1} (i - (n-1)/2)^2 =
+        # n*(n^2 - 1) / 12. If that is wrong, the fitted slope of an
+        # exactly-linear sequence drifts. Sweep several n.
+        for n in (3, 4, 5, 17, 64, 257):
+            ys = [3.0 * i - 1.0 for i in range(n)]
+            slope, intercept, r2 = linear_regression(ys)
+            assert abs(slope - 3.0) < 1e-9, n
+            assert abs(intercept - (-1.0)) < 1e-9, n
+            assert abs(r2 - 1.0) < 1e-9, n
+
+
+# ── pearson_correlation ──────────────────────────────────────────────
+
+
+class TestPearsonCorrelationHelper:
+    def test_perfect_positive(self):
+        assert abs(pearson_correlation([1, 2, 3, 4], [2, 4, 6, 8]) - 1.0) < 1e-12
+
+    def test_perfect_negative(self):
+        assert abs(pearson_correlation([1, 2, 3, 4], [8, 6, 4, 2]) - (-1.0)) < 1e-12
+
+    def test_zero_for_short_inputs(self):
+        assert pearson_correlation([], []) == 0.0
+        assert pearson_correlation([1], [1]) == 0.0
+        assert pearson_correlation([1, 2], [3]) == 0.0  # len(y) < 2
+        assert pearson_correlation([1], [3, 4]) == 0.0  # len(x) < 2
+
+    def test_zero_variance_returns_zero(self):
+        assert pearson_correlation([1, 1, 1, 1], [1, 2, 3, 4]) == 0.0
+        assert pearson_correlation([1, 2, 3, 4], [5, 5, 5, 5]) == 0.0
+
+    def test_unequal_length_truncates_to_shorter(self):
+        # zip() semantics in the prior implementation truncated to the
+        # shorter sequence; the optimised version preserves that.
+        # corr([1,2,3], [2,4,6]) = +1.
+        r = pearson_correlation([1, 2, 3, 99, 99], [2, 4, 6])
+        assert abs(r - 1.0) < 1e-12
+
+    def test_known_value(self):
+        # Manually computed reference: anscombe-ish small sample.
+        x = [10, 8, 13, 9, 11, 14, 6, 4, 12, 7, 5]
+        y = [8.04, 6.95, 7.58, 8.81, 8.33, 9.96, 7.24, 4.26, 10.84, 4.82, 5.68]
+        # Anscombe Quartet I correlation is famously ≈ 0.8164.
+        r = pearson_correlation(x, y)
+        assert abs(r - 0.8164) < 1e-3
+
+    def test_symmetric(self):
+        random.seed(42)
+        x = [random.random() for _ in range(200)]
+        y = [random.random() for _ in range(200)]
+        assert abs(pearson_correlation(x, y) - pearson_correlation(y, x)) < 1e-12
+
+    def test_scale_and_shift_invariant(self):
+        # Pearson is invariant under positive affine transforms.
+        random.seed(7)
+        x = [random.random() for _ in range(150)]
+        y = [random.random() for _ in range(150)]
+        base = pearson_correlation(x, y)
+        shifted = pearson_correlation([xi + 100 for xi in x], [3 * yi - 7 for yi in y])
+        assert abs(base - shifted) < 1e-9
+
+    def test_bounded_in_unit_interval(self):
+        random.seed(99)
+        for _ in range(20):
+            n = random.randint(5, 100)
+            x = [random.gauss(0, 1) for _ in range(n)]
+            y = [random.gauss(0, 1) for _ in range(n)]
+            r = pearson_correlation(x, y)
+            assert -1.0 - 1e-9 <= r <= 1.0 + 1e-9
