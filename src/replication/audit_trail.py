@@ -71,13 +71,33 @@ class AuditEvent:
 
 
 def _compute_hash(event: AuditEvent) -> str:
-    """SHA-256 over canonical fields (excludes the hash itself)."""
-    payload = (
-        f"{event.seq}|{event.timestamp}|{event.category}|{event.severity}"
-        f"|{event.message}|{event.source}|{event.actor}|{event.target}"
-        f"|{json.dumps(event.metadata, sort_keys=True)}|{event.prev_hash}"
+    """SHA-256 over canonical fields (excludes the hash itself).
+
+    Uses canonical JSON serialization so that the boundaries between fields
+    are unambiguous. Earlier versions used ``|``-delimited concatenation,
+    which allowed a tamperer to shift bytes across user-controlled fields
+    (e.g. ``message='foo|bar'`` vs ``source='bar|baz'``) and still hash to
+    the same value -- defeating the tamper-evident guarantee of the chain.
+    See regression test ``test_no_delimiter_collision``.
+    """
+    payload = json.dumps(
+        {
+            "seq": event.seq,
+            "timestamp": event.timestamp,
+            "category": event.category,
+            "severity": event.severity,
+            "message": event.message,
+            "source": event.source,
+            "actor": event.actor,
+            "target": event.target,
+            "metadata": event.metadata,
+            "prev_hash": event.prev_hash,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
     )
-    return hashlib.sha256(payload.encode()).hexdigest()
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 # ── Audit Trail ──────────────────────────────────────────────────────

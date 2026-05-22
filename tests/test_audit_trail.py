@@ -104,6 +104,34 @@ class TestHashChain:
         h2 = _compute_hash(ev)
         assert h1 == h2 == ev.hash
 
+    def test_no_delimiter_collision(self):
+        """Regression: hash payload must be unambiguous across fields.
+
+        Pre-fix, `_compute_hash` used "|"-delimited concatenation, so an
+        attacker could shift bytes across user-controlled fields and still
+        match the original hash, defeating tamper detection.
+        """
+        common = dict(
+            seq=0, timestamp="2026-01-01T00:00:00Z", category="policy",
+            severity="info", actor="", target="", metadata={}, prev_hash="g",
+        )
+        a = AuditEvent(message="foo|bar", source="baz", **common)
+        b = AuditEvent(message="foo", source="bar|baz", **common)
+        assert _compute_hash(a) != _compute_hash(b)
+
+        # Empty-vs-padded also distinct
+        c = AuditEvent(message="x", source="", **common)
+        d = AuditEvent(message="", source="x", **common)
+        assert _compute_hash(c) != _compute_hash(d)
+
+    def test_metadata_tamper_detected(self):
+        """Mutating metadata after the fact must invalidate the chain."""
+        trail = AuditTrail()
+        ev = trail.log("config", "info", "x", metadata={"k": 1})
+        ev.metadata["k"] = 2
+        issues = trail.verify()
+        assert any("tampered" in str(i) for i in issues)
+
 
 # ── search ───────────────────────────────────────────────────────────
 
