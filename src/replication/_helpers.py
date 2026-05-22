@@ -26,6 +26,36 @@ class Severity(Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
+
+# String-keyed mirrors of :class:`Severity` for modules that work with the
+# raw severity strings (the remediation_* family). Keeping these alongside
+# the enum guarantees the level set never drifts between modules that use
+# the enum and modules that use plain strings.
+#
+# Ordering matches :class:`Severity` (INFO < LOW < MEDIUM < HIGH < CRITICAL)
+# and the integer weights are identical to :data:`_SEVERITY_RANK`.
+SEVERITY_LEVELS: "tuple[str, ...]" = tuple(s.value for s in Severity)
+
+SEVERITY_WEIGHT: "dict[str, int]" = {s.value: i for i, s in enumerate(Severity)}
+
+# Risk appetites used by the remediation_* modules. Hoisted here so the
+# accepted set and the capacity / threshold multipliers can't drift
+# between sibling planners.
+APPETITES: "tuple[str, ...]" = ("cautious", "balanced", "aggressive")
+
+APPETITE_CAPACITY_MULT: "dict[str, float]" = {
+    "cautious": 0.80,
+    "balanced": 1.00,
+    "aggressive": 1.20,
+}
+
+APPETITE_THRESHOLD_MULT: "dict[str, float]" = {
+    "cautious": 0.70,
+    "balanced": 1.00,
+    "aggressive": 1.40,
+}
+
+
 if TYPE_CHECKING:
     from .simulator import SimulationReport
 

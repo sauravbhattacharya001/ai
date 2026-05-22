@@ -34,24 +34,20 @@ from dataclasses import dataclass, field, asdict, is_dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
+from ._helpers import (
+    APPETITE_CAPACITY_MULT,
+    APPETITES,
+    SEVERITY_LEVELS,
+    SEVERITY_WEIGHT,
+)
+
 
 # ── Constants ────────────────────────────────────────────────────────
-
-SEVERITY_LEVELS: Tuple[str, ...] = ("info", "low", "medium", "high", "critical")
-SEVERITY_WEIGHT: Dict[str, int] = {
-    "info": 0,
-    "low": 1,
-    "medium": 2,
-    "high": 3,
-    "critical": 4,
-}
-
-APPETITES: Tuple[str, ...] = ("cautious", "balanced", "aggressive")
-APPETITE_CAPACITY_MULT: Dict[str, float] = {
-    "cautious": 0.80,
-    "balanced": 1.00,
-    "aggressive": 1.20,
-}
+#
+# SEVERITY_LEVELS, SEVERITY_WEIGHT, APPETITES and APPETITE_CAPACITY_MULT
+# are re-exported from :mod:`replication._helpers` so the canonical
+# tables live in one place. Importers of this module that referenced
+# the previously-local names continue to work unchanged.
 
 DEFAULT_HORIZON_SPRINTS = 4
 DEFAULT_SPRINT_LENGTH_DAYS = 14
