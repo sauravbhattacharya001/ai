@@ -363,15 +363,38 @@ def jaccard(a: Iterable[Any], b: Iterable[Any]) -> float:
     matching the convention used across the duplicated implementations
     in *breach_predictor*, *finding_triage*, and *remediation_assignment*
     that this helper replaces.
+
+    Performance: derive the union cardinality from the inclusion-
+    exclusion identity ``|A ∪ B| = |A| + |B| - |A ∩ B|`` so we only
+    build the intersection set, never the union. For the dedupe
+    hot-path in *finding_triage* (called O(n²) per batch over token
+    sets of ~10-50 elements) this halves the set-construction work
+    relative to the previous ``sa | sb`` + ``sa & sb`` pair. Also
+    short-circuits when the smaller side is empty (union reduces to
+    the larger side, intersection is empty → result is 0.0) so we skip
+    the intersection entirely.
     """
     sa = a if isinstance(a, set) else set(a)
     sb = b if isinstance(b, set) else set(b)
-    if not sa and not sb:
+    na = len(sa)
+    nb = len(sb)
+    # Cheap exits before touching the intersection.
+    if na == 0 or nb == 0:
+        # Two empty sets, or one empty: union is max(na, nb); if both
+        # are empty the helper convention is 0.0, otherwise the
+        # intersection is empty so the ratio is also 0.0.
         return 0.0
-    union = len(sa | sb)
-    if not union:
+    # Intersect against the smaller side — CPython's set ``&`` already
+    # picks the smaller operand for iteration, but being explicit makes
+    # the cost obvious and survives potential reimplementations.
+    if na <= nb:
+        inter = len(sa & sb)
+    else:
+        inter = len(sb & sa)
+    union = na + nb - inter
+    if not union:  # pragma: no cover — unreachable given the guards above
         return 0.0
-    return len(sa & sb) / union
+    return inter / union
 
 
 # ── output ───────────────────────────────────────────────

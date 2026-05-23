@@ -123,6 +123,41 @@ class TestJaccard:
     def test_string_tokens(self):
         assert jaccard({"sql", "auth"}, {"auth", "xss"}) == 1 / 3
 
+    def test_inclusion_exclusion_identity(self):
+        # The v3.14 optimisation derives the union cardinality from
+        # |A ∪ B| = |A| + |B| - |A ∩ B| instead of materialising the
+        # union set. Pin a battery of cases so future micro-optimisations
+        # can't silently drift away from the textbook definition.
+        import random
+        rng = random.Random(20260523)
+        for _ in range(200):
+            n_a = rng.randint(0, 60)
+            n_b = rng.randint(0, 60)
+            # Draw from a shared universe so overlap probability is
+            # realistic for the dedupe hot-path in finding_triage.
+            sa = {rng.randint(0, 80) for _ in range(n_a)}
+            sb = {rng.randint(0, 80) for _ in range(n_b)}
+            got = jaccard(sa, sb)
+            if not sa or not sb:
+                # Helper convention: any-empty → 0.0 (avoids 0/0).
+                assert got == 0.0
+            else:
+                ref = len(sa & sb) / len(sa | sb)
+                assert abs(got - ref) < 1e-12, (sa, sb)
+
+    def test_disjoint_large_sets(self):
+        # The fast-path must still avoid materialising the union for
+        # disjoint inputs (only behaviour, not perf, is asserted here).
+        a = set(range(0, 1000))
+        b = set(range(1000, 2000))
+        assert jaccard(a, b) == 0.0
+
+    def test_subset_returns_size_ratio(self):
+        # |A ∩ B| = |A|, |A ∪ B| = |B|.
+        a = set(range(10))
+        b = set(range(20))
+        assert jaccard(a, b) == 10 / 20
+
 
 # ── linear_regression ────────────────────────────────────────────────
 #
