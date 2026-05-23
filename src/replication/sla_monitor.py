@@ -53,6 +53,12 @@ _OPERATORS = {
     "!=": lambda a, b: abs(a - b) >= 1e-9,
 }
 
+# Operators where being *below* the threshold is the safe side. Used to
+# compute a signed safety-margin (positive = inside the SLA, negative =
+# breach) without re-deriving the direction at every check site.
+_LESS_OPS = frozenset(("<", "<="))
+_GREATER_OPS = frozenset((">", ">="))
+
 
 @dataclass
 class SLATarget:
@@ -70,6 +76,23 @@ class SLATarget:
 
     def check(self, actual: float) -> bool:
         return _OPERATORS[self.operator](actual, self.threshold)
+
+    def margin(self, actual: float) -> float:
+        """Signed distance from the threshold on the *safe* side.
+
+        Positive when the target is satisfied with room to spare, zero on
+        the boundary, negative when the target is breached. For
+        ``==``/``!=`` targets (which have no natural direction) the margin
+        is ``0`` on pass and ``-|actual - threshold|`` on fail so reports
+        still surface *how far off* the value is.
+        """
+        if self.operator in _LESS_OPS:
+            return self.threshold - actual
+        if self.operator in _GREATER_OPS:
+            return actual - self.threshold
+        # Equality-style ops: report distance, sign by pass/fail.
+        distance = abs(actual - self.threshold)
+        return 0.0 if self.check(actual) else -distance
 
 
 @dataclass
@@ -191,12 +214,20 @@ def _extract_metrics(sim: SimulationReport, sc: ScorecardResult) -> Dict[str, fl
         key = dim.name.lower().replace(" ", "_").replace("-", "_") + "_score"
         metrics[key] = dim.score
 
-    # From simulation
-    metrics["total_workers"] = float(sim.total_spawned)
-    metrics["max_depth_used"] = float(sim.max_depth_reached)
-    metrics["violations"] = float(sim.violations)
-    total_attempts = max(sim.total_spawned, 1)
-    metrics["violation_rate"] = sim.violations / total_attempts
+    # From simulation. The simulator exposes per-replication counters
+    # plus a worker dict; older revisions read attributes that never
+    # existed on SimulationReport (`total_spawned`, `max_depth_reached`,
+    # `violations`), which silently fell back to `0` for every metric.
+    n_workers = len(sim.workers)
+    metrics["total_workers"] = float(n_workers)
+    metrics["max_depth_used"] = float(
+        max((w.depth for w in sim.workers.values()), default=0)
+    )
+
+    attempts = sim.total_replications_attempted
+    denials = sim.total_replications_denied
+    metrics["violations"] = float(denials)
+    metrics["violation_rate"] = denials / attempts if attempts > 0 else 0.0
 
     # Extract specific dimension scores by known names
     for dim in sc.dimensions:
@@ -239,46 +270,52 @@ class SLAMonitor:
         scenario: Optional[ScenarioConfig] = None,
         scorecard_config: Optional[ScorecardConfig] = None,
     ) -> SLAReport:
-        """Run simulation + scorecard and check all SLA targets."""
+        """Run a scorecard against *scenario* and check all SLA targets.
+
+        ``scorecard_config`` overrides the default :class:`ScorecardConfig`
+        used to drive the underlying scorecard run (e.g. to skip the slow
+        Monte-Carlo phase). The simulation embedded in the scorecard
+        result is reused for metric extraction; we no longer run a second,
+        independent simulation, which was both wasteful and produced
+        metrics that didn't match the scorecard scores they were paired
+        with.
+        """
         t0 = time.time()
 
         sc_cfg = scorecard_config or ScorecardConfig()
-        if scenario:
-            sc_cfg.scenario = scenario
+        effective_scenario = scenario or ScenarioConfig()
 
-        scorecard = SafetyScorecard()
-        sc_result = scorecard.evaluate(sc_cfg)
+        scorecard = SafetyScorecard(sc_cfg)
+        sc_result = scorecard.evaluate(effective_scenario)
 
-        # Also get the raw simulation for metrics
-        sim_cfg = sc_cfg.scenario or ScenarioConfig()
-        sim = Simulator()
-        sim_report = sim.run(sim_cfg)
+        # Reuse the simulation already run inside the scorecard. The old
+        # code spun up a second `Simulator()` with default-only args,
+        # ignoring the caller's scenario entirely. Falling back to a
+        # fresh sim is only needed when the scorecard config opted out
+        # of producing one (current scorecard always returns one, but
+        # guard against future refactors).
+        sim_report = sc_result.simulation
+        if sim_report is None:
+            sim_report = Simulator(effective_scenario).run()
 
         metrics = _extract_metrics(sim_report, sc_result)
         elapsed = time.time() - t0
 
-        checks: List[SLACheckResult] = []
-        for target in self.targets:
-            actual = metrics.get(target.metric, 0.0)
-            passed = target.check(actual)
-            # Calculate margin: positive = safe side, negative = breach
-            if target.operator in ("<=", "<"):
-                margin = target.threshold - actual
-            elif target.operator in (">=", ">"):
-                margin = actual - target.threshold
-            else:
-                margin = 0.0 if passed else -abs(actual - target.threshold)
-            checks.append(SLACheckResult(target=target, actual=actual, passed=passed, margin=margin))
-
-        scenario_name = ""
-        if scenario and scenario.strategy:
-            scenario_name = scenario.strategy
+        checks = [
+            SLACheckResult(
+                target=target,
+                actual=metrics.get(target.metric, 0.0),
+                passed=target.check(metrics.get(target.metric, 0.0)),
+                margin=target.margin(metrics.get(target.metric, 0.0)),
+            )
+            for target in self.targets
+        ]
 
         return SLAReport(
             checks=checks,
             timestamp=datetime.now(timezone.utc).isoformat(),
             duration_s=elapsed,
-            scenario=scenario_name,
+            scenario=effective_scenario.strategy or "",
         )
 
 

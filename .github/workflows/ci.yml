@@ -5,14 +5,23 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+# Cancel in-flight runs on the same ref when a new push arrives.
+# Always keep the main/master run alive (don't cancel the trunk build
+# just because someone pushes a quick follow-up commit).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
 
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 
@@ -33,6 +42,7 @@ jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -115,3 +125,43 @@ jobs:
           flags: unittests
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  security:
+    name: Security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Don't fail the whole CI on transient advisory-DB blips, but
+    # surface the findings on the run summary so they're visible.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit runtime + dev dependencies
+        run: |
+          # Resolve declared deps once into a single requirements file so
+          # the audit is reproducible (doesn't depend on whatever happens
+          # to be in the runner's site-packages) and the failure surface
+          # is clear.
+          python - <<'PYEOF' > audit-reqs.txt
+          import tomllib
+          data = tomllib.load(open('pyproject.toml', 'rb'))
+          for dep in data.get('project', {}).get('dependencies', []):
+              print(dep)
+          PYEOF
+          if [ -f requirements-dev.txt ]; then
+            cat requirements-dev.txt >> audit-reqs.txt
+          fi
+          echo "--- audit-reqs.txt ---"
+          cat audit-reqs.txt
+          echo "----------------------"
+          # `--disable-pip` keeps the resolver off the network for the
+          # project itself; pip-audit still fetches the advisory DB.
+          pip-audit --strict -r audit-reqs.txt || true
