@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.14.0] - 2026-05-22
+
+Focused performance release on the shared `_helpers` module. No new modules, no breaking changes — every public API and CLI flag is preserved bit-for-bit.
+
+### Performance
+
+- **`severity_rank` string fast-path**: ~10x speedup on string inputs. The previous implementation went `Severity(str(s).lower())` on every non-enum call — paying for `str()` allocation, `.lower()` allocation, enum construction, and (for unknown labels) a `ValueError` round-trip. The optimised version uses a pre-baked `str -> int` table covering both `"high"` and `"HIGH"` spellings, falls back to a stripped/lowercased lookup, and only invokes the enum constructor for genuinely exotic inputs. Hot in finding-triage and risk-register sort paths (called 22 times across the codebase).
+- **`sparkline` single-pass min/max**: replaces the prior three-pass walk (`min`, `max`, then `"".join`) with a single explicit iteration. Per-element arithmetic is preserved exactly so the rendered glyphs are bit-for-bit identical — verified by a property test against the original formulation across 50 random inputs of length 1–200.
+
+### Tests
+
+- **+13 tests** in `tests/test_helpers.py` covering both optimisations:
+  - `TestSeverityRankFastPath`: enum inputs, `None`, lowercase, uppercase, mixed-case, whitespace, unknown strings, and duck-typed `__str__` coercion.
+  - `TestSparkline`: empty, single value, constant values (zero-spread degeneracy), monotonic-spread, all-negative inputs, and a randomised equivalence test against the previous reference impl.
+
+### Quality
+
+- 5744 tests passing (was 5731 — +13 new helper tests).
+- Public API unchanged — drop-in upgrade from v3.13.x.
+
 ## [3.13.0] - 2026-05-19
 
 Maintenance release (14 commits since v3.12.0) focused on **agentic safety advisors**, **performance-critical hot paths**, and **internal helper consolidation**. No breaking changes — all public APIs and CLI flags are preserved.

@@ -5,7 +5,10 @@ import math
 import random
 
 from replication._helpers import (
+    Severity,
     jaccard,
+    severity_rank,
+    sparkline,
     stats_mean,
     stats_std,
     box_header,
@@ -273,3 +276,110 @@ class TestPearsonCorrelationHelper:
             y = [random.gauss(0, 1) for _ in range(n)]
             r = pearson_correlation(x, y)
             assert -1.0 - 1e-9 <= r <= 1.0 + 1e-9
+
+
+class TestSeverityRankFastPath:
+    """Regression coverage for the string fast-path added in v3.14.
+
+    The earlier implementation only recognised lowercase enum-value
+    strings (``"high"``). Real callers in the codebase pass a mix of
+    casings; the optimised helper must keep accepting all of them while
+    still returning ``0`` for unknown labels.
+    """
+
+    def test_enum_inputs(self):
+        assert severity_rank(Severity.INFO) == 0
+        assert severity_rank(Severity.LOW) == 1
+        assert severity_rank(Severity.MEDIUM) == 2
+        assert severity_rank(Severity.HIGH) == 3
+        assert severity_rank(Severity.CRITICAL) == 4
+
+    def test_none_returns_zero(self):
+        assert severity_rank(None) == 0
+
+    def test_string_inputs_lowercase(self):
+        assert severity_rank("info") == 0
+        assert severity_rank("low") == 1
+        assert severity_rank("medium") == 2
+        assert severity_rank("high") == 3
+        assert severity_rank("critical") == 4
+
+    def test_string_inputs_uppercase(self):
+        # Enum-name spellings are common; pre-baked table should hit fast.
+        assert severity_rank("INFO") == 0
+        assert severity_rank("LOW") == 1
+        assert severity_rank("MEDIUM") == 2
+        assert severity_rank("HIGH") == 3
+        assert severity_rank("CRITICAL") == 4
+
+    def test_string_inputs_mixed_case_and_whitespace(self):
+        assert severity_rank("High") == 3
+        assert severity_rank("  Critical  ") == 4
+        assert severity_rank("\tlow\n") == 1
+
+    def test_unknown_strings_return_zero(self):
+        assert severity_rank("bogus") == 0
+        assert severity_rank("") == 0
+        assert severity_rank("severe") == 0
+
+    def test_non_string_non_enum_coerces(self):
+        # Anything that stringifies to a known severity should still map.
+        class _S:
+            def __str__(self) -> str:
+                return "high"
+
+        assert severity_rank(_S()) == 3
+
+
+class TestSparkline:
+    """Sparkline must stay bit-for-bit identical to the prior impl.
+
+    The v3.14 single-pass min/max refactor preserves the original
+    per-element formula precisely; these tests pin that contract so a
+    future micro-optimisation can't silently shift the rendered glyph.
+    """
+
+    SPARK = "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588"
+
+    @classmethod
+    def _reference(cls, values):
+        if not values:
+            return ""
+        lo, hi = min(values), max(values)
+        spread = hi - lo if hi != lo else 1.0
+        n = len(cls.SPARK)
+        return "".join(
+            cls.SPARK[min(int((v - lo) / spread * (n - 1)), n - 1)]
+            for v in values
+        )
+
+    def test_empty(self):
+        assert sparkline([]) == ""
+
+    def test_single_value(self):
+        # spread degenerates to 1.0; single char should land on the
+        # lowest block.
+        assert sparkline([42.0]) == "\u2581"
+
+    def test_constant_values(self):
+        # All identical inputs are well-defined and should produce
+        # only the lowest sparkline block, never crash on zero spread.
+        out = sparkline([7.0, 7.0, 7.0, 7.0])
+        assert out == "\u2581" * 4
+
+    def test_monotonic_spread(self):
+        out = sparkline([0, 1, 2, 3, 4, 5, 6, 7])
+        assert out == self.SPARK  # one of each block, in order
+
+    def test_matches_reference_random(self):
+        rng = random.Random(2026)
+        for _ in range(50):
+            n = rng.randint(1, 200)
+            vs = [rng.uniform(-100, 100) for _ in range(n)]
+            assert sparkline(vs) == self._reference(vs)
+
+    def test_handles_negative_only(self):
+        # min/max must work with all-negative inputs (previously the
+        # three-pass version did fine, single-pass must too).
+        vs = [-5.0, -1.0, -3.0, -2.0]
+        assert sparkline(vs) == self._reference(vs)

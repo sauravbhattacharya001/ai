@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ai-replication-sandbox"
-version = "3.13.0"
+version = "3.14.0"
 description = "Contract-enforced sandbox for studying AI agent self-replication safety"
 readme = "README.md"
 license = {file = "LICENSE"}
