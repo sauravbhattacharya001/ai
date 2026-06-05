@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.15.0] - 2026-06-05
+
+Agentic advisors, SLA monitor refactor, performance, and test coverage.
+
+### Features
+
+- **PostmortemQualityAdvisor** — agentic auditor for incident postmortems. 11 per-postmortem verdicts, severity-aware priority, blameful-language scan, P0-first deduplicated playbook, A-F grading with floor. CLI: `python -m replication postmortem-quality --demo`.
+- **OnCallLoadBalanceAdvisor** — agentic shift-rotation fairness auditor. Detects burnout, insufficient rest gaps, single-points-of-failure per tier, load inequality (Gini), and underused bench depth. Risk appetite scaling. CLI: `python -m replication.oncall_load_balance_advisor --demo`.
+
+### Refactoring
+
+- **sla_monitor**: Fixed two silent bugs where `evaluate()` discarded the caller's scenario config and read non-existent simulation attributes (resulting in every SLA target evaluating against zero). Rewrote to thread ScenarioConfig through to scorecard, reuse actual simulation results, and hoist margin calculation into `SLATarget.margin()`.
+
+### Performance
+
+- **`jaccard()` via inclusion-exclusion** — halves set-construction work on the dedupe hot path in finding_triage (called O(n²) per batch). Short-circuits when either side is empty.
+
+### Tests
+
+- **+45 tests** for `attack_graph` and `auto_investigator` modules (26 + 19 tests covering graph construction, cache invalidation, cycle handling, investigation classification, depth levels, and recommendations).
+- **+47 tests** for `safety_gate` (kill switch, replication depth, restricted actions, audit logging, alignment, resource limits, all six custom-check operators, JSON serialiser, CLI exit-code contract).
+- **+48 tests** for `sla_monitor` (SLATarget contract, margin direction, preset sanity, _parse_target edge cases, end-to-end evaluate, SLAReport serialization).
+- **+29 tests** for `PostmortemQualityAdvisor`.
+- **+21 tests** for `OnCallLoadBalanceAdvisor`.
+
+Full test suite: 5863 passing.
+
 ## [3.14.0] - 2026-05-22
 
 Focused performance release on the shared `_helpers` module. No new modules, no breaking changes — every public API and CLI flag is preserved bit-for-bit.
