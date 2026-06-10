@@ -58,6 +58,11 @@ from ._helpers import Severity, box_header, emit_output
 # Enums & Constants
 # ---------------------------------------------------------------------------
 
+# Box-drawing horizontal line. Defined as a module constant so it can be
+# referenced inside f-string replacement fields: embedding the ``\u2500``
+# escape directly inside ``{...}`` is a SyntaxError on Python < 3.12
+# (PEP 701), and this package supports Python 3.10+.
+_HLINE = "\u2500"
 
 
 class ThreatCategory(Enum):
@@ -168,7 +173,7 @@ class Playbook:
         if self.escalation:
             lines.append("\u2500\u2500\u2500 Escalation Matrix \u2500\u2500\u2500")
             lines.append(f"  {'Role':<25} {'Trigger':<12} {'Method':<15} {'SLA'}")
-            lines.append(f"  {'\u2500' * 25} {'\u2500' * 12} {'\u2500' * 15} {'\u2500' * 10}")
+            lines.append(f"  {_HLINE * 25} {_HLINE * 12} {_HLINE * 15} {_HLINE * 10}")
             for contact in self.escalation:
                 lines.append(
                     f"  {contact.role:<25} {contact.notify_at.value:<12} "
@@ -1090,10 +1095,10 @@ def main(argv=None):
     emit_output(output, args.output, "Output")
 
     if not args.json and not args.html:
-        print(f"\n{'\u2500' * 57}")
+        print(f"\n{_HLINE * 57}")
         print(f"  {len(playbooks)} playbook(s) generated")
-        print(f"  Use --html -o playbook.html for a visual report")
-        print(f"  Use --json for machine-readable output")
+        print("  Use --html -o playbook.html for a visual report")
+        print("  Use --json for machine-readable output")
 
 
 if __name__ == "__main__":
