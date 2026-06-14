@@ -1,0 +1,135 @@
+name: Detection Accuracy (False Positive / False Negative)
+description: Report a detector or analyzer that flagged benign behavior (false positive) or missed a real threat (false negative)
+title: "[Detection]: "
+labels: ["detection-accuracy"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for **detector accuracy** problems — a signal/finding that shouldn't
+        have fired, a real threat that wasn't caught, or a severity/confidence score
+        that's clearly miscalibrated. For crashes or stack traces, use the **Bug Report**
+        template instead.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Detection Problem
+      options:
+        - False Positive (flagged benign behavior)
+        - False Negative (missed a real threat)
+        - Miscalibrated severity (fired, but wrong level)
+        - Miscalibrated confidence score
+        - Other accuracy issue
+    validations:
+      required: true
+
+  - type: input
+    id: detector
+    attributes:
+      label: Detector / Analyzer
+      description: Which module produced (or should have produced) the signal?
+      placeholder: "e.g., deception_detector, sycophancy_detector, prompt_injection, dlp_scanner"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Signal Category (if applicable)
+      description: For multi-category detectors, which category was involved?
+      options:
+        - "Not applicable / single-purpose detector"
+        - "INCONSISTENCY"
+        - "OMISSION"
+        - "MISDIRECTION"
+        - "SYCOPHANCY"
+        - "SANDBAGGING"
+        - "FABRICATION"
+        - "STRATEGIC_AMBIGUITY"
+        - "SELECTIVE_DISCLOSURE"
+        - "Other (describe below)"
+
+  - type: textarea
+    id: input
+    attributes:
+      label: Triggering Input
+      description: >
+        The minimal statements / actions / payload fed to the detector. Paste the
+        Statement / ActionRecord values or the CLI invocation so the result can be
+        reproduced.
+      render: python
+      placeholder: |
+        detector.add_statement(Statement(
+            agent_id="agent-1",
+            text="I cannot access the file system",
+            timestamp=1000.0,
+        ))
+        detector.add_action(ActionRecord(
+            agent_id="agent-1", action="file_read", target="/etc/config",
+            timestamp=1100.0, success=True,
+        ))
+        report = detector.analyze("agent-1")
+    validations:
+      required: true
+
+  - type: textarea
+    id: emitted
+    attributes:
+      label: Emitted Verdict
+      description: What the detector actually reported — signals, severity, and scores.
+      placeholder: |
+        signal.category = INCONSISTENCY
+        signal.severity = HIGH
+        signal.confidence = 0.92
+        report.trust_score = 0.31
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Correct Verdict
+      description: What the detector *should* have reported, and why this input is benign / malicious.
+      placeholder: |
+        Should be no signal (or LOW): the two statements describe different
+        capabilities at different times, so they aren't actually contradictory.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity-emitted
+    attributes:
+      label: Severity Reported
+      description: The severity level the detector assigned (if any).
+      options:
+        - "None / no signal"
+        - "INFO"
+        - "LOW"
+        - "MEDIUM"
+        - "HIGH"
+        - "CRITICAL"
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Downstream Impact
+      description: >
+        Does this misdetection affect gating, scoring, or routing? e.g., trips a
+        safety_gate, skews a scorecard, mis-routes an alert, or blocks a benign
+        replication. False positives that block legitimate work and false negatives
+        on real threats are highest priority.
+      placeholder: "e.g., this false positive trips safety_gate and blocks all worker spawns in the fleet."
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "Output of `python -m replication --version` (or the package version)."
+      placeholder: "3.15.0"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Anything else relevant — related findings, prior tuning, or links.

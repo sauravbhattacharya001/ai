@@ -7,7 +7,7 @@ Convenience re-exports so consumers can write::
 instead of reaching into submodules.
 """
 
-__version__ = "3.14.0"
+__version__ = "3.15.0"
 __license__ = "MIT"
 
 from .contract import (

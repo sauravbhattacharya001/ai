@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ai-replication-sandbox"
-version = "3.15.0"
+dynamic = ["version"]
 description = "Contract-enforced sandbox for studying AI agent self-replication safety"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -49,6 +49,9 @@ dev = [
     "flake8",
     "mypy",
 ]
+
+[tool.hatch.version]
+path = "src/replication/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = ["src/replication/"]
